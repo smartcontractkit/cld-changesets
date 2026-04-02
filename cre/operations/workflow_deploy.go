@@ -1,11 +1,14 @@
 package operations
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/Masterminds/semver/v3"
 	cfgenv "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/config/env"
@@ -14,6 +17,7 @@ import (
 	creartifacts "github.com/smartcontractkit/chainlink-deployments-framework/cre/artifacts"
 	crecli "github.com/smartcontractkit/chainlink-deployments-framework/cre/cli"
 	fwops "github.com/smartcontractkit/chainlink-deployments-framework/operations"
+	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -112,7 +116,8 @@ var CREWorkflowDeployOp = fwops.NewOperation(
 				},
 			},
 		}
-		if _, err := crecli.WriteWorkflowYAML(bundleDir, workflowCfg); err != nil {
+		workflowYAMLPath, err := crecli.WriteWorkflowYAML(bundleDir, workflowCfg)
+		if err != nil {
 			return CREWorkflowDeployOutput{}, fmt.Errorf("write workflow.yaml: %w", err)
 		}
 
@@ -124,6 +129,10 @@ var CREWorkflowDeployOp = fwops.NewOperation(
 		if err != nil {
 			return CREWorkflowDeployOutput{}, fmt.Errorf("write context.yaml: %w", err)
 		}
+		logResolvedFile(os.Stdout, "workflow.yaml", workflowYAMLPath, prettyYAML)
+		logResolvedFile(os.Stdout, "project.yaml", projectDest, prettyYAML)
+		logResolvedFile(os.Stdout, "context.yaml", contextPath, prettyYAML)
+		logResolvedFile(os.Stdout, "config.json", configPath, prettyJSON)
 
 		envPath, err := crecli.WriteCREEnvFile(workDir, contextPath, deps.CRECfg, input.DonFamily)
 		if err != nil {
@@ -205,4 +214,39 @@ func BuildWorkflowDeployArgs(workDir, envPath, binaryPath, configPath string, ex
 		args = append(args, extra...)
 	}
 	return args
+}
+
+func logResolvedFile(w io.Writer, name, path string, formatter func([]byte) string) {
+	content, err := os.ReadFile(path)
+	if err != nil {
+		fmt.Fprintf(w, "\n--- Resolved %s (%s) ---\nfailed to read file: %v\n", name, path, err)
+
+		return
+	}
+
+	rendered := formatter(content)
+	fmt.Fprintf(w, "\n--- Resolved %s (%s) ---\n%s\n", name, path, strings.TrimRight(rendered, "\n"))
+}
+
+func prettyYAML(content []byte) string {
+	var v any
+	if err := yaml.Unmarshal(content, &v); err != nil {
+		return string(content)
+	}
+
+	out, err := yaml.Marshal(v)
+	if err != nil {
+		return string(content)
+	}
+
+	return string(out)
+}
+
+func prettyJSON(content []byte) string {
+	var out bytes.Buffer
+	if err := json.Indent(&out, content, "", "  "); err != nil {
+		return string(content)
+	}
+
+	return out.String()
 }

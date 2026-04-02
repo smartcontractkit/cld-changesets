@@ -4,8 +4,9 @@ go 1.25.6
 
 require (
 	github.com/Masterminds/semver/v3 v3.4.0
-	github.com/smartcontractkit/chainlink-deployments-framework v0.88.1
+	github.com/smartcontractkit/chainlink-deployments-framework v0.93.0
 	github.com/stretchr/testify v1.11.1
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -113,7 +114,6 @@ require (
 	github.com/samber/lo v1.52.0 // indirect
 	github.com/santhosh-tekuri/jsonschema/v5 v5.3.1 // indirect
 	github.com/scylladb/go-reflectx v1.0.1 // indirect
-	github.com/segmentio/ksuid v1.0.4 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/sigurn/crc16 v0.0.0-20211026045750-20ab5afb07e3 // indirect
@@ -198,7 +198,6 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260209200024-4cfbd4190f57 // indirect
 	google.golang.org/grpc v1.79.2 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
 replace (
