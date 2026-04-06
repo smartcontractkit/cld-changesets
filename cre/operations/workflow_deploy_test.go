@@ -116,7 +116,7 @@ func TestCREWorkflowDeployOp(t *testing.T) {
 			t.Parallel()
 
 			mockCLI := tc.setupCLI(t)
-			bundle := fwops.NewBundle(t.Context, logger.Test(t), fwops.NewMemoryReporter())
+			bundle := fwops.NewBundle(t.Context(), logger.Test(t), fwops.NewMemoryReporter())
 			deps := CREDeployDeps{
 				CLI:    mockCLI,
 				CRECfg: cfgenv.CREConfig{},
