@@ -169,6 +169,9 @@ var CREWorkflowDeployOp = fwops.NewOperation(
 			}
 			return CREWorkflowDeployOutput{}, fmt.Errorf("cre workflow deploy: %w", runErr)
 		}
+		if res == nil {
+			return CREWorkflowDeployOutput{}, fmt.Errorf("cre workflow deploy: CLI returned nil result without error")
+		}
 
 		return CREWorkflowDeployOutput{
 			ExitCode: res.ExitCode,

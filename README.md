@@ -9,12 +9,12 @@ This repository contains reusable common CLD Changesets such as MCMS, Datastore,
 
 ### `cre`
 
-Package [`cre`](./cre) holds CRE-related changesets and operations. 
+Directory [`cre`](./cre) holds CRE-related changesets and operations.
 
 **`cre_workflow_deploy`:** resolves pre-built workflow WASM, workflow config, and **`project.yaml`** (GitHub release, URL, or local), writes **`workflow.yaml`** and **`context.yaml`**, and runs `cre workflow deploy` via the framework [`operations`](https://pkg.go.dev/github.com/smartcontractkit/chainlink-deployments-framework/operations) API.
 
 - **Changeset:** `cre/changesets.CREWorkflowDeployChangeset`
-- **Input:** `cre.CREWorkflowDeployInput` — pipeline YAML supplies `project` ([`cre/artifacts.ConfigSource`](https://pkg.go.dev/github.com/smartcontractkit/chainlink-deployments-framework/cre/artifacts#ConfigSource)), `deploymentRegistry`, and the workflow bundle (binary, config, name). RPCs and `cre-cli` settings live in the user-provided `project.yaml`.
+- **Input:** `cre/operations.CREWorkflowDeployInput` — pipeline YAML supplies `project` ([`cre/artifacts.ConfigSource`](https://pkg.go.dev/github.com/smartcontractkit/chainlink-deployments-framework/cre/artifacts#ConfigSource)), `deploymentRegistry`, and the workflow bundle (binary, config, name). RPCs and `cre-cli` settings live in the user-provided `project.yaml`.
 - **Operation:** `cre/operations.CREWorkflowDeployOp`
 
 Domain resolvers can be pass-through; pipeline YAML must include `donFamily`, `project`, and the workflow bundle fields.
@@ -23,9 +23,8 @@ Domain resolvers can be pass-through; pipeline YAML must include `donFamily`, `p
 
 | Package | Purpose |
 |---------|---------|
-| `cre` | Shared types (`CREWorkflowDeployInput`, `CREDeployDeps`) |
 | `cre/changesets` | CLD changesets (e.g. `CREWorkflowDeployChangeset`) |
-| `cre/operations` | Idempotent CLD operations invoked by changesets |
+| `cre/operations` | Idempotent CLD operations invoked by changesets; also defines shared CRE deploy types (`CREWorkflowDeployInput`, `CREDeployDeps`) |
 
 ## Usage
 

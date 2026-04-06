@@ -1,6 +1,7 @@
 package operations
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -116,7 +117,7 @@ func TestCREWorkflowDeployOp(t *testing.T) {
 			t.Parallel()
 
 			mockCLI := tc.setupCLI(t)
-			bundle := fwops.NewBundle(t.Context(), logger.Test(t), fwops.NewMemoryReporter())
+			bundle := fwops.NewBundle(func() context.Context { return t.Context() }, logger.Test(t), fwops.NewMemoryReporter())
 			deps := CREDeployDeps{
 				CLI:    mockCLI,
 				CRECfg: cfgenv.CREConfig{},

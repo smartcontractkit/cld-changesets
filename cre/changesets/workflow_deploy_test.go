@@ -1,30 +1,32 @@
 package changesets
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/cld-changesets/cre/operations"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	fcre "github.com/smartcontractkit/chainlink-deployments-framework/cre"
 	creartifacts "github.com/smartcontractkit/chainlink-deployments-framework/cre/artifacts"
 	cremocks "github.com/smartcontractkit/chainlink-deployments-framework/cre/mocks"
-	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	testenv "github.com/smartcontractkit/chainlink-deployments-framework/engine/test/environment"
 	focr "github.com/smartcontractkit/chainlink-deployments-framework/offchain/ocr"
-	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
-func newTestEnv(t *testing.T, opts ...cldf.EnvironmentOption) *cldf.Environment {
+func newTestEnv(t *testing.T, opts ...testenv.LoadOpt) *cldf.Environment {
 	t.Helper()
-	return cldf.NewEnvironment("t", logger.Test(t), cldf.NewMemoryAddressBook(),
-		datastore.NewMemoryDataStore().Seal(), nil, nil, t.Context(),
-		focr.XXXGenerateTestOCRSecrets(), chain.NewBlockChains(map[uint64]chain.BlockChain{}),
-		opts...)
+	env, err := testenv.New(t.Context(), opts...)
+	require.NoError(t, err)
+	if env.OCRSecrets.IsEmpty() {
+		env.OCRSecrets = focr.XXXGenerateTestOCRSecrets()
+	}
+	return env
 }
 
 func validInput(t *testing.T) operations.CREWorkflowDeployInput {
@@ -52,8 +54,8 @@ func TestCREWorkflowDeployChangeset_VerifyPreconditions(t *testing.T) {
 	t.Parallel()
 
 	mockCLI := cremocks.NewMockCLIRunner(t)
-	envNoCLI := newTestEnv(t, cldf.WithCRERunner(fcre.NewRunner()))
-	envWithCLI := newTestEnv(t, cldf.WithCRERunner(fcre.NewRunner(fcre.WithCLI(mockCLI))))
+	envNoCLI := newTestEnv(t, testenv.WithCRERunner(fcre.NewRunner()))
+	envWithCLI := newTestEnv(t, testenv.WithCRERunner(fcre.NewRunner(fcre.WithCLI(mockCLI))))
 	envNoCRE := newTestEnv(t)
 
 	good := validInput(t)
@@ -123,4 +125,85 @@ func TestCREWorkflowDeployChangeset_VerifyPreconditions(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestCREWorkflowDeployChangeset_Apply(t *testing.T) {
+	t.Setenv("ONCHAIN_EVM_DEPLOYER_KEY", "abc123")
+
+	cs := CREWorkflowDeployChangeset{}
+	input := validInput(t)
+
+	t.Run("success returns report", func(t *testing.T) {
+		mockCLI := cremocks.NewMockCLIRunner(t)
+		mockCLI.On("ContextRegistries").Return([]fcre.ContextRegistryEntry{
+			{ID: "private", Type: "off-chain"},
+		}).Once()
+		mockCLI.
+			On("Run", mock.Anything, mock.Anything, mock.Anything).
+			Run(func(args mock.Arguments) {
+				require.Nil(t, args.Get(1))
+				gotArgs := args.Get(2).([]string)
+				require.GreaterOrEqual(t, len(gotArgs), 2)
+				require.Equal(t, "workflow", gotArgs[0])
+				require.Equal(t, "deploy", gotArgs[1])
+			}).
+			Return(&fcre.CallResult{
+				ExitCode: 0,
+				Stdout:   []byte("ok"),
+			}, nil).
+			Once()
+		env := newTestEnv(t, testenv.WithCRERunner(fcre.NewRunner(fcre.WithCLI(mockCLI))))
+
+		out, err := cs.Apply(*env, input)
+		require.NoError(t, err)
+		require.Len(t, out.Reports, 1)
+		output, ok := out.Reports[0].Output.(operations.CREWorkflowDeployOutput)
+		require.True(t, ok)
+		require.Equal(t, 0, output.ExitCode)
+		require.Equal(t, "ok", output.Stdout)
+		mockCLI.AssertExpectations(t)
+	})
+
+	t.Run("operation error returns report and error", func(t *testing.T) {
+		mockCLI := cremocks.NewMockCLIRunner(t)
+		mockCLI.On("ContextRegistries").Return([]fcre.ContextRegistryEntry{
+			{ID: "private", Type: "off-chain"},
+		}).Once()
+		mockCLI.On("Run", mock.Anything, mock.Anything, mock.Anything).
+			Return((*fcre.CallResult)(nil), errors.New("op failed")).
+			Once()
+		env := newTestEnv(t, testenv.WithCRERunner(fcre.NewRunner(fcre.WithCLI(mockCLI))))
+
+		out, err := cs.Apply(*env, input)
+		require.ErrorContains(t, err, "cre workflow deploy: op failed")
+		require.Len(t, out.Reports, 1)
+		output, ok := out.Reports[0].Output.(operations.CREWorkflowDeployOutput)
+		require.True(t, ok)
+		require.Equal(t, "", output.Stdout)
+		mockCLI.AssertExpectations(t)
+	})
+
+	t.Run("on-chain registry injects deployer key env", func(t *testing.T) {
+		mockCLI := cremocks.NewMockCLIRunner(t)
+		mockCLI.On("ContextRegistries").Return([]fcre.ContextRegistryEntry{
+			{ID: "onchain-reg", Type: "on-chain"},
+		}).Once()
+		mockCLI.
+			On("Run", mock.Anything, mock.Anything, mock.Anything).
+			Run(func(args mock.Arguments) {
+				gotEnv, ok := args.Get(1).(map[string]string)
+				require.True(t, ok)
+				require.Equal(t, "abc123", gotEnv["CRE_ETH_PRIVATE_KEY"])
+			}).
+			Return(&fcre.CallResult{ExitCode: 0}, nil).
+			Once()
+		env := newTestEnv(t, testenv.WithCRERunner(fcre.NewRunner(fcre.WithCLI(mockCLI))))
+
+		onChainInput := input
+		onChainInput.DeploymentRegistry = "onchain-reg"
+		out, err := cs.Apply(*env, onChainInput)
+		require.NoError(t, err)
+		require.Len(t, out.Reports, 1)
+		mockCLI.AssertExpectations(t)
+	})
 }
