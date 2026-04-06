@@ -1,0 +1,4 @@
+golang        1.25.6
+golangci-lint 2.8.0
+mockery       3.6.3
+task          3.41.0
