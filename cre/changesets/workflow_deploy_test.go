@@ -22,7 +22,7 @@ import (
 func newTestEnv(t *testing.T, opts ...cldf.EnvironmentOption) *cldf.Environment {
 	t.Helper()
 	return cldf.NewEnvironment("t", logger.Test(t), cldf.NewMemoryAddressBook(),
-		datastore.NewMemoryDataStore().Seal(), nil, nil, t.Context,
+		datastore.NewMemoryDataStore().Seal(), nil, nil, t.Context(),
 		focr.XXXGenerateTestOCRSecrets(), chain.NewBlockChains(map[uint64]chain.BlockChain{}),
 		opts...)
 }
