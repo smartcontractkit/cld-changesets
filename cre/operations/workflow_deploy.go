@@ -65,7 +65,7 @@ var CREWorkflowDeployOp = fwops.NewOperation(
 	func(b fwops.Bundle, deps CREDeployDeps, input CREWorkflowDeployInput) (CREWorkflowDeployOutput, error) {
 		ctx := b.GetContext()
 		if deps.CLI == nil {
-			return CREWorkflowDeployOutput{}, fmt.Errorf("CRE CLIRunner is nil")
+			return CREWorkflowDeployOutput{}, fmt.Errorf("cre CLIRunner is nil")
 		}
 
 		workDir, err := os.MkdirTemp("", "cre-workflow-artifacts-*")
