@@ -1,3 +1,4 @@
+// Package changesets provides CRE workflow changesets that can be applied to deployment environments.
 package changesets
 
 import (
@@ -22,7 +23,7 @@ func (CREWorkflowDeployChangeset) VerifyPreconditions(e cldf.Environment, input 
 	if e.CRERunner.CLI() == nil {
 		return fmt.Errorf("CRE CLI runner is not configured")
 	}
-	if err := input.WorkflowBundle.Validate(); err != nil {
+	if err := input.Validate(); err != nil {
 		return err
 	}
 	if err := input.Project.Validate(); err != nil {
@@ -45,10 +46,9 @@ func (CREWorkflowDeployChangeset) Apply(e cldf.Environment, input creops.CREWork
 	}
 
 	deps := creops.CREDeployDeps{
-		CLI:                 e.CRERunner.CLI(),
-		CRECfg:              envCfg.CRE,
-		DomainCRERegistries: e.CRERunner.CLI().ContextRegistries(),
-		EVMDeployerKey:      envCfg.Onchain.EVM.DeployerKey,
+		CLI:            e.CRERunner.CLI(),
+		CRECfg:         envCfg.CRE,
+		EVMDeployerKey: envCfg.Onchain.EVM.DeployerKey,
 	}
 
 	report, err := fwops.ExecuteOperation(e.OperationsBundle, creops.CREWorkflowDeployOp, deps, input)

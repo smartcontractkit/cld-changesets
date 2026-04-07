@@ -1,3 +1,4 @@
+// Package operations provides CRE workflow operations that execute side effects via the CRE CLI.
 package operations
 
 import (
@@ -28,9 +29,8 @@ const (
 
 // CREDeployDeps holds non-serializable dependencies for the workflow deploy operation.
 type CREDeployDeps struct {
-	CLI                 fcre.CLIRunner
-	CRECfg              cfgenv.CREConfig
-	DomainCRERegistries []fcre.ContextRegistryEntry
+	CLI    fcre.CLIRunner
+	CRECfg cfgenv.CREConfig
 	// EVMDeployerKey is the raw hex EVM private key from Onchain.EVM.DeployerKey.
 	// Injected into the child process environment as CRE_ETH_PRIVATE_KEY only for on-chain registries.
 	EVMDeployerKey string
@@ -121,7 +121,7 @@ var CREWorkflowDeployOp = fwops.NewOperation(
 			return CREWorkflowDeployOutput{}, fmt.Errorf("write workflow.yaml: %w", err)
 		}
 
-		ctxCfg, err := crecli.BuildContextConfig(input.DonFamily, input.Context, deps.CRECfg, deps.DomainCRERegistries)
+		ctxCfg, err := crecli.BuildContextConfig(input.DonFamily, input.Context, deps.CRECfg, deps.CLI.ContextRegistries())
 		if err != nil {
 			return CREWorkflowDeployOutput{}, err
 		}
@@ -151,13 +151,6 @@ var CREWorkflowDeployOp = fwops.NewOperation(
 			}
 		}
 		res, runErr = deps.CLI.Run(ctx, runEnv, args...)
-		if res != nil {
-			b.Logger.Infow("CRE workflow deploy finished",
-				"exitCode", res.ExitCode,
-				"stdout", string(res.Stdout),
-				"stderr", string(res.Stderr),
-			)
-		}
 		if runErr != nil {
 			var exitErr *fcre.ExitError
 			if errors.As(runErr, &exitErr) {
@@ -172,6 +165,12 @@ var CREWorkflowDeployOp = fwops.NewOperation(
 		if res == nil {
 			return CREWorkflowDeployOutput{}, fmt.Errorf("cre workflow deploy: CLI returned nil result without error")
 		}
+
+		b.Logger.Infow("CRE workflow deploy finished",
+			"exitCode", res.ExitCode,
+			"stdout", string(res.Stdout),
+			"stderr", string(res.Stderr),
+		)
 
 		return CREWorkflowDeployOutput{
 			ExitCode: res.ExitCode,
@@ -220,13 +219,13 @@ func BuildWorkflowDeployArgs(workDir, envPath, binaryPath, configPath string, ex
 func logResolvedFile(w io.Writer, name, path string, formatter func([]byte) string) {
 	content, err := os.ReadFile(path)
 	if err != nil {
-		fmt.Fprintf(w, "\n--- Resolved %s (%s) ---\nfailed to read file: %v\n", name, path, err)
+		_, _ = fmt.Fprintf(w, "\n--- Resolved %s (%s) ---\nfailed to read file: %v\n", name, path, err)
 
 		return
 	}
 
 	rendered := formatter(content)
-	fmt.Fprintf(w, "\n--- Resolved %s (%s) ---\n%s\n", name, path, strings.TrimRight(rendered, "\n"))
+	_, _ = fmt.Fprintf(w, "\n--- Resolved %s (%s) ---\n%s\n", name, path, strings.TrimRight(rendered, "\n"))
 }
 
 func prettyYAML(content []byte) string {

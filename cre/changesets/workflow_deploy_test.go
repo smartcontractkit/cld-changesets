@@ -135,18 +135,11 @@ func TestCREWorkflowDeployChangeset_Apply(t *testing.T) {
 
 	t.Run("success returns report", func(t *testing.T) {
 		mockCLI := cremocks.NewMockCLIRunner(t)
-		mockCLI.On("ContextRegistries").Return([]fcre.ContextRegistryEntry{
+		mockCLI.EXPECT().ContextRegistries().Return([]fcre.ContextRegistryEntry{
 			{ID: "private", Type: "off-chain"},
 		}).Once()
-		mockCLI.
-			On("Run", mock.Anything, mock.Anything, mock.Anything).
-			Run(func(args mock.Arguments) {
-				require.Nil(t, args.Get(1))
-				gotArgs := args.Get(2).([]string)
-				require.GreaterOrEqual(t, len(gotArgs), 2)
-				require.Equal(t, "workflow", gotArgs[0])
-				require.Equal(t, "deploy", gotArgs[1])
-			}).
+		mockCLI.EXPECT().
+			Run(mock.Anything, (map[string]string)(nil), matchCLIArgs("workflow", "deploy")).
 			Return(&fcre.CallResult{
 				ExitCode: 0,
 				Stdout:   []byte("ok"),
@@ -161,15 +154,14 @@ func TestCREWorkflowDeployChangeset_Apply(t *testing.T) {
 		require.True(t, ok)
 		require.Equal(t, 0, output.ExitCode)
 		require.Equal(t, "ok", output.Stdout)
-		mockCLI.AssertExpectations(t)
 	})
 
 	t.Run("operation error returns report and error", func(t *testing.T) {
 		mockCLI := cremocks.NewMockCLIRunner(t)
-		mockCLI.On("ContextRegistries").Return([]fcre.ContextRegistryEntry{
+		mockCLI.EXPECT().ContextRegistries().Return([]fcre.ContextRegistryEntry{
 			{ID: "private", Type: "off-chain"},
 		}).Once()
-		mockCLI.On("Run", mock.Anything, mock.Anything, mock.Anything).
+		mockCLI.EXPECT().Run(mock.Anything, mock.Anything, mock.Anything).
 			Return((*fcre.CallResult)(nil), errors.New("op failed")).
 			Once()
 		env := newTestEnv(t, testenv.WithCRERunner(fcre.NewRunner(fcre.WithCLI(mockCLI))))
@@ -179,22 +171,18 @@ func TestCREWorkflowDeployChangeset_Apply(t *testing.T) {
 		require.Len(t, out.Reports, 1)
 		output, ok := out.Reports[0].Output.(operations.CREWorkflowDeployOutput)
 		require.True(t, ok)
-		require.Equal(t, "", output.Stdout)
-		mockCLI.AssertExpectations(t)
+		require.Empty(t, output.Stdout)
 	})
 
 	t.Run("on-chain registry injects deployer key env", func(t *testing.T) {
 		mockCLI := cremocks.NewMockCLIRunner(t)
-		mockCLI.On("ContextRegistries").Return([]fcre.ContextRegistryEntry{
+		mockCLI.EXPECT().ContextRegistries().Return([]fcre.ContextRegistryEntry{
 			{ID: "onchain-reg", Type: "on-chain"},
 		}).Once()
-		mockCLI.
-			On("Run", mock.Anything, mock.Anything, mock.Anything).
-			Run(func(args mock.Arguments) {
-				gotEnv, ok := args.Get(1).(map[string]string)
-				require.True(t, ok)
-				require.Equal(t, "abc123", gotEnv["CRE_ETH_PRIVATE_KEY"])
-			}).
+		mockCLI.EXPECT().
+			Run(mock.Anything, mock.MatchedBy(func(env map[string]string) bool {
+				return env != nil && env["CRE_ETH_PRIVATE_KEY"] == "abc123"
+			}), mock.Anything).
 			Return(&fcre.CallResult{ExitCode: 0}, nil).
 			Once()
 		env := newTestEnv(t, testenv.WithCRERunner(fcre.NewRunner(fcre.WithCLI(mockCLI))))
@@ -204,6 +192,19 @@ func TestCREWorkflowDeployChangeset_Apply(t *testing.T) {
 		out, err := cs.Apply(*env, onChainInput)
 		require.NoError(t, err)
 		require.Len(t, out.Reports, 1)
-		mockCLI.AssertExpectations(t)
+	})
+}
+
+func matchCLIArgs(wantArgs ...string) any {
+	return mock.MatchedBy(func(args []string) bool {
+		if len(wantArgs) > len(args) {
+			return false
+		}
+		for i := range wantArgs {
+			if wantArgs[i] != args[i] {
+				return false
+			}
+		}
+		return true
 	})
 }
