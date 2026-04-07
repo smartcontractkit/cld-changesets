@@ -69,7 +69,7 @@ func TestCREWorkflowDeployChangeset_VerifyPreconditions(t *testing.T) {
 		{
 			name:    "no CRERunner",
 			env:     *envNoCRE,
-			wantErr: "CRERunner is not available",
+			wantErr: "cre runner is not available in this environment",
 		},
 		{
 			name:    "CRERunner without CLI",
