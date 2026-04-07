@@ -18,6 +18,7 @@ import (
 	creartifacts "github.com/smartcontractkit/chainlink-deployments-framework/cre/artifacts"
 	crecli "github.com/smartcontractkit/chainlink-deployments-framework/cre/cli"
 	fwops "github.com/smartcontractkit/chainlink-deployments-framework/operations"
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 	"gopkg.in/yaml.v3"
 )
 
@@ -129,10 +130,10 @@ var CREWorkflowDeployOp = fwops.NewOperation(
 		if err != nil {
 			return CREWorkflowDeployOutput{}, fmt.Errorf("write context.yaml: %w", err)
 		}
-		logResolvedFile(os.Stdout, "workflow.yaml", workflowYAMLPath, prettyYAML)
-		logResolvedFile(os.Stdout, "project.yaml", projectDest, prettyYAML)
-		logResolvedFile(os.Stdout, "context.yaml", contextPath, prettyYAML)
-		logResolvedFile(os.Stdout, "config.json", configPath, prettyJSON)
+		logResolvedFile(b.Logger, "workflow.yaml", workflowYAMLPath, prettyYAML)
+		logResolvedFile(b.Logger, "project.yaml", projectDest, prettyYAML)
+		logResolvedFile(b.Logger, "context.yaml", contextPath, prettyYAML)
+		logResolvedFile(b.Logger, "config.json", configPath, prettyJSON)
 
 		envPath, err := crecli.WriteCREEnvFile(workDir, contextPath, deps.CRECfg, input.DonFamily)
 		if err != nil {
@@ -216,16 +217,14 @@ func BuildWorkflowDeployArgs(workDir, envPath, binaryPath, configPath string, ex
 	return args
 }
 
-func logResolvedFile(w io.Writer, name, path string, formatter func([]byte) string) {
+func logResolvedFile(lggr logger.Logger, name, path string, formatter func([]byte) string) {
 	content, err := os.ReadFile(path)
 	if err != nil {
-		_, _ = fmt.Fprintf(w, "\n--- Resolved %s (%s) ---\nfailed to read file: %v\n", name, path, err)
-
+		lggr.Infow("Resolved artifact file", "name", name, "path", path, "error", err)
 		return
 	}
 
-	rendered := formatter(content)
-	_, _ = fmt.Fprintf(w, "\n--- Resolved %s (%s) ---\n%s\n", name, path, strings.TrimRight(rendered, "\n"))
+	lggr.Infof("--- Resolved %s (%s) ---\n%s", name, path, strings.TrimRight(formatter(content), "\n"))
 }
 
 func prettyYAML(content []byte) string {
