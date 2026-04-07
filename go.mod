@@ -2,7 +2,6 @@ module github.com/smartcontractkit/cld-changesets
 
 go 1.25.6
 
-replace github.com/docker/docker => github.com/docker/docker v28.5.2+incompatible
 
 require (
 	github.com/Masterminds/semver/v3 v3.4.0
