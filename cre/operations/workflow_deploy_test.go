@@ -21,6 +21,7 @@ func writeFile(t *testing.T, name string, data []byte) string {
 	t.Helper()
 	p := filepath.Join(t.TempDir(), name)
 	require.NoError(t, os.WriteFile(p, data, 0o600))
+
 	return p
 }
 
@@ -40,6 +41,8 @@ func TestCREWorkflowDeployOp(t *testing.T) {
 		{
 			name: "success invokes CLI with deploy args",
 			input: func(t *testing.T) CREWorkflowDeployInput {
+				t.Helper()
+
 				return CREWorkflowDeployInput{
 					WorkflowBundle: creartifacts.WorkflowBundle{
 						WorkflowName:       "wf",
@@ -52,20 +55,25 @@ func TestCREWorkflowDeployOp(t *testing.T) {
 				}
 			},
 			setupCLI: func(t *testing.T) *cremocks.MockCLIRunner {
+				t.Helper()
 				m := cremocks.NewMockCLIRunner(t)
 				m.EXPECT().ContextRegistries().Return(testRegistries()).Once()
 				m.EXPECT().Run(mock.Anything, mock.Anything, matchCLIArgs("workflow", "deploy")).Return(
 					&fcre.CallResult{ExitCode: 0, Stdout: []byte("ok"), Stderr: nil}, nil,
 				).Once()
+
 				return m
 			},
 			assert: func(t *testing.T, _ fwops.Report[CREWorkflowDeployInput, CREWorkflowDeployOutput], err error) {
+				t.Helper()
 				require.NoError(t, err)
 			},
 		},
 		{
 			name: "missing binary returns resolve error",
 			input: func(t *testing.T) CREWorkflowDeployInput {
+				t.Helper()
+
 				return CREWorkflowDeployInput{
 					WorkflowBundle: creartifacts.WorkflowBundle{
 						WorkflowName:       "wf",
@@ -77,14 +85,21 @@ func TestCREWorkflowDeployOp(t *testing.T) {
 					Project: creartifacts.NewConfigSourceLocal(writeFile(t, "project.yaml", []byte("cld-deploy: {}\n"))),
 				}
 			},
-			setupCLI: func(t *testing.T) *cremocks.MockCLIRunner { return cremocks.NewMockCLIRunner(t) },
+			setupCLI: func(t *testing.T) *cremocks.MockCLIRunner {
+				t.Helper()
+
+				return cremocks.NewMockCLIRunner(t)
+			},
 			assert: func(t *testing.T, _ fwops.Report[CREWorkflowDeployInput, CREWorkflowDeployOutput], err error) {
+				t.Helper()
 				require.ErrorContains(t, err, "resolve workflow binary")
 			},
 		},
 		{
 			name: "CLI exit error propagates exit code and output",
 			input: func(t *testing.T) CREWorkflowDeployInput {
+				t.Helper()
+
 				return CREWorkflowDeployInput{
 					WorkflowBundle: creartifacts.WorkflowBundle{
 						WorkflowName:       "wf",
@@ -97,15 +112,18 @@ func TestCREWorkflowDeployOp(t *testing.T) {
 				}
 			},
 			setupCLI: func(t *testing.T) *cremocks.MockCLIRunner {
+				t.Helper()
 				exitErr := &fcre.ExitError{ExitCode: 7, Stdout: []byte("out"), Stderr: []byte("err")}
 				m := cremocks.NewMockCLIRunner(t)
 				m.EXPECT().ContextRegistries().Return(testRegistries()).Once()
 				m.EXPECT().Run(mock.Anything, mock.Anything, mock.Anything).Return(
 					&fcre.CallResult{ExitCode: 7, Stdout: exitErr.Stdout, Stderr: exitErr.Stderr}, exitErr,
 				).Once()
+
 				return m
 			},
 			assert: func(t *testing.T, out fwops.Report[CREWorkflowDeployInput, CREWorkflowDeployOutput], err error) {
+				t.Helper()
 				require.ErrorContains(t, err, "cre workflow deploy")
 				require.Equal(t, 7, out.Output.ExitCode)
 				require.Equal(t, "out", out.Output.Stdout)
@@ -155,6 +173,7 @@ func TestBuildWorkflowDeployArgs(t *testing.T) {
 			envPath: filepath.Join(workDir, ".env"),
 			extra:   []string{"--extra"},
 			check: func(t *testing.T, args []string) {
+				t.Helper()
 				require.Equal(t, []string{
 					"workflow", "deploy", bundleDir,
 					"-R", workDir, "-T", CREDeployTargetName,
@@ -167,6 +186,7 @@ func TestBuildWorkflowDeployArgs(t *testing.T) {
 		{
 			name: "without env or extra",
 			check: func(t *testing.T, args []string) {
+				t.Helper()
 				require.NotContains(t, args, "-e")
 				require.Len(t, args, 12)
 			},
@@ -202,6 +222,7 @@ func matchCLIArgs(wantArgs ...string) any {
 				return false
 			}
 		}
+
 		return true
 	})
 }

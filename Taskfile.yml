@@ -1,0 +1,24 @@
+# https://taskfile.dev
+
+version: "3"
+
+tasks:
+  lint:
+    desc: Runs the linter
+    cmds:
+      - golangci-lint run {{.CLI_ARGS}}
+
+  lint:verbose:
+    desc: Runs the linter in verbose mode
+    cmds:
+      - golangci-lint run --verbose
+
+  lint:fix:
+    desc: Runs the linter in fix mode
+    cmds:
+      - golangci-lint run --fix
+
+  test:
+    desc: Run tests
+    cmds:
+      - go test ./... {{.CLI_ARGS}}

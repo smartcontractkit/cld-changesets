@@ -66,7 +66,7 @@ var CREWorkflowDeployOp = fwops.NewOperation(
 	func(b fwops.Bundle, deps CREDeployDeps, input CREWorkflowDeployInput) (CREWorkflowDeployOutput, error) {
 		ctx := b.GetContext()
 		if deps.CLI == nil {
-			return CREWorkflowDeployOutput{}, fmt.Errorf("cre CLIRunner is nil")
+			return CREWorkflowDeployOutput{}, errors.New("cre CLIRunner is nil")
 		}
 
 		workDir, err := os.MkdirTemp("", "cre-workflow-artifacts-*")
@@ -91,7 +91,7 @@ var CREWorkflowDeployOp = fwops.NewOperation(
 		}
 
 		bundleDir := filepath.Join(workDir, creBundleSubdir)
-		if err := os.MkdirAll(bundleDir, 0o700); err != nil {
+		if err = os.MkdirAll(bundleDir, 0o700); err != nil {
 			return CREWorkflowDeployOutput{}, err
 		}
 
@@ -100,7 +100,7 @@ var CREWorkflowDeployOp = fwops.NewOperation(
 			return CREWorkflowDeployOutput{}, fmt.Errorf("resolve project.yaml: %w", err)
 		}
 		projectDest := filepath.Join(workDir, "project.yaml")
-		if err := copyFile(projectSrc, projectDest); err != nil {
+		if err = copyFile(projectSrc, projectDest); err != nil {
 			return CREWorkflowDeployOutput{}, fmt.Errorf("copy project.yaml: %w", err)
 		}
 
@@ -143,15 +143,13 @@ var CREWorkflowDeployOp = fwops.NewOperation(
 		args := BuildWorkflowDeployArgs(workDir, envPath, binaryPath, configPath, input.ExtraCREArgs)
 		b.Logger.Infow("Running CRE workflow deploy", "args", args)
 
-		var runErr error
-		var res *fcre.CallResult
 		var runEnv map[string]string
 		if crecli.IsOnChainRegistry(input.DeploymentRegistry, crecli.FlatRegistries(ctxCfg)) {
 			runEnv = map[string]string{
 				"CRE_ETH_PRIVATE_KEY": deps.EVMDeployerKey,
 			}
 		}
-		res, runErr = deps.CLI.Run(ctx, runEnv, args...)
+		res, runErr := deps.CLI.Run(ctx, runEnv, args...)
 		if runErr != nil {
 			var exitErr *fcre.ExitError
 			if errors.As(runErr, &exitErr) {
@@ -161,10 +159,11 @@ var CREWorkflowDeployOp = fwops.NewOperation(
 					Stderr:   string(exitErr.Stderr),
 				}, fmt.Errorf("cre workflow deploy: %w", runErr)
 			}
+
 			return CREWorkflowDeployOutput{}, fmt.Errorf("cre workflow deploy: %w", runErr)
 		}
 		if res == nil {
-			return CREWorkflowDeployOutput{}, fmt.Errorf("cre workflow deploy: CLI returned nil result without error")
+			return CREWorkflowDeployOutput{}, errors.New("cre workflow deploy: CLI returned nil result without error")
 		}
 
 		b.Logger.Infow("CRE workflow deploy finished",
@@ -195,6 +194,7 @@ func copyFile(src, dst string) error {
 	defer func() { _ = out.Close() }()
 
 	_, err = io.Copy(out, in)
+
 	return err
 }
 
@@ -214,6 +214,7 @@ func BuildWorkflowDeployArgs(workDir, envPath, binaryPath, configPath string, ex
 		args = append(args, "-e", envPath)
 	}
 	args = append(args, extra...)
+
 	return args
 }
 

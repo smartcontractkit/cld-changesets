@@ -26,6 +26,7 @@ func newTestEnv(t *testing.T, opts ...testenv.LoadOpt) *cldf.Environment {
 	if env.OCRSecrets.IsEmpty() {
 		env.OCRSecrets = focr.XXXGenerateTestOCRSecrets()
 	}
+
 	return env
 }
 
@@ -82,6 +83,7 @@ func TestCREWorkflowDeployChangeset_VerifyPreconditions(t *testing.T) {
 			input: func() operations.CREWorkflowDeployInput {
 				in := good
 				in.Project = creartifacts.ConfigSource{}
+
 				return in
 			},
 			wantErr: "project:",
@@ -92,6 +94,7 @@ func TestCREWorkflowDeployChangeset_VerifyPreconditions(t *testing.T) {
 			input: func() operations.CREWorkflowDeployInput {
 				in := good
 				in.DeploymentRegistry = ""
+
 				return in
 			},
 			wantErr: "deploymentRegistry is required",
@@ -102,6 +105,7 @@ func TestCREWorkflowDeployChangeset_VerifyPreconditions(t *testing.T) {
 			input: func() operations.CREWorkflowDeployInput {
 				in := good
 				in.DonFamily = ""
+
 				return in
 			},
 			wantErr: "donFamily is required",
@@ -136,7 +140,7 @@ func TestCREWorkflowDeployChangeset_Apply(t *testing.T) {
 	cs := CREWorkflowDeployChangeset{}
 	input := validInput(t)
 
-	t.Run("success returns report", func(t *testing.T) {
+	t.Run("success returns report", func(t *testing.T) { //nolint:paralleltest
 		mockCLI := cremocks.NewMockCLIRunner(t)
 		mockCLI.EXPECT().ContextRegistries().Return([]fcre.ContextRegistryEntry{
 			{ID: "private", Type: "off-chain"},
@@ -159,7 +163,7 @@ func TestCREWorkflowDeployChangeset_Apply(t *testing.T) {
 		require.Equal(t, "ok", output.Stdout)
 	})
 
-	t.Run("operation error returns report and error", func(t *testing.T) {
+	t.Run("operation error returns report and error", func(t *testing.T) { //nolint:paralleltest
 		mockCLI := cremocks.NewMockCLIRunner(t)
 		mockCLI.EXPECT().ContextRegistries().Return([]fcre.ContextRegistryEntry{
 			{ID: "private", Type: "off-chain"},
@@ -177,7 +181,7 @@ func TestCREWorkflowDeployChangeset_Apply(t *testing.T) {
 		require.Empty(t, output.Stdout)
 	})
 
-	t.Run("on-chain registry injects deployer key env", func(t *testing.T) {
+	t.Run("on-chain registry injects deployer key env", func(t *testing.T) { //nolint:paralleltest
 		mockCLI := cremocks.NewMockCLIRunner(t)
 		mockCLI.EXPECT().ContextRegistries().Return([]fcre.ContextRegistryEntry{
 			{ID: "onchain-reg", Type: "on-chain"},
@@ -208,6 +212,7 @@ func matchCLIArgs(wantArgs ...string) any {
 				return false
 			}
 		}
+
 		return true
 	})
 }

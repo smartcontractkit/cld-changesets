@@ -2,6 +2,7 @@
 package changesets
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -18,10 +19,10 @@ type CREWorkflowDeployChangeset struct{}
 // VerifyPreconditions ensures the environment can run CRE and input is valid.
 func (CREWorkflowDeployChangeset) VerifyPreconditions(e cldf.Environment, input creops.CREWorkflowDeployInput) error {
 	if e.CRERunner == nil {
-		return fmt.Errorf("cre runner is not available in this environment")
+		return errors.New("cre runner is not available in this environment")
 	}
 	if e.CRERunner.CLI() == nil {
-		return fmt.Errorf("cre CLI runner is not configured")
+		return errors.New("cre CLI runner is not configured")
 	}
 	if err := input.Validate(); err != nil {
 		return err
@@ -30,11 +31,12 @@ func (CREWorkflowDeployChangeset) VerifyPreconditions(e cldf.Environment, input 
 		return fmt.Errorf("project: %w", err)
 	}
 	if strings.TrimSpace(input.DeploymentRegistry) == "" {
-		return fmt.Errorf("deploymentRegistry is required")
+		return errors.New("deploymentRegistry is required")
 	}
 	if strings.TrimSpace(input.DonFamily) == "" {
-		return fmt.Errorf("donFamily is required")
+		return errors.New("donFamily is required")
 	}
+
 	return nil
 }
 
@@ -58,5 +60,6 @@ func (CREWorkflowDeployChangeset) Apply(e cldf.Environment, input creops.CREWork
 	if err != nil {
 		return out, err
 	}
+
 	return out, nil
 }
