@@ -213,9 +213,7 @@ func BuildWorkflowDeployArgs(workDir, envPath, binaryPath, configPath string, ex
 	if envPath != "" {
 		args = append(args, "-e", envPath)
 	}
-	if len(extra) > 0 {
-		args = append(args, extra...)
-	}
+	args = append(args, extra...)
 	return args
 }
 
