@@ -63,25 +63,24 @@ func TestCREWorkflowDeployChangeset_VerifyPreconditions(t *testing.T) {
 	tests := []struct {
 		name    string
 		env     cldf.Environment
-		modify  func(operations.CREWorkflowDeployInput) operations.CREWorkflowDeployInput
+		input   func() operations.CREWorkflowDeployInput
 		wantErr string
 	}{
 		{
 			name:    "no CRERunner",
 			env:     *envNoCRE,
-			modify:  func(in operations.CREWorkflowDeployInput) operations.CREWorkflowDeployInput { return in },
 			wantErr: "CRERunner is not available",
 		},
 		{
 			name:    "CRERunner without CLI",
 			env:     *envNoCLI,
-			modify:  func(in operations.CREWorkflowDeployInput) operations.CREWorkflowDeployInput { return in },
 			wantErr: "CLI runner is not configured",
 		},
 		{
 			name: "missing project",
 			env:  *envWithCLI,
-			modify: func(in operations.CREWorkflowDeployInput) operations.CREWorkflowDeployInput {
+			input: func() operations.CREWorkflowDeployInput {
+				in := good
 				in.Project = creartifacts.ConfigSource{}
 				return in
 			},
@@ -90,7 +89,8 @@ func TestCREWorkflowDeployChangeset_VerifyPreconditions(t *testing.T) {
 		{
 			name: "missing deploymentRegistry",
 			env:  *envWithCLI,
-			modify: func(in operations.CREWorkflowDeployInput) operations.CREWorkflowDeployInput {
+			input: func() operations.CREWorkflowDeployInput {
+				in := good
 				in.DeploymentRegistry = ""
 				return in
 			},
@@ -99,17 +99,16 @@ func TestCREWorkflowDeployChangeset_VerifyPreconditions(t *testing.T) {
 		{
 			name: "missing donFamily",
 			env:  *envWithCLI,
-			modify: func(in operations.CREWorkflowDeployInput) operations.CREWorkflowDeployInput {
+			input: func() operations.CREWorkflowDeployInput {
+				in := good
 				in.DonFamily = ""
 				return in
 			},
 			wantErr: "donFamily is required",
 		},
 		{
-			name:    "valid input passes",
-			env:     *envWithCLI,
-			modify:  func(in operations.CREWorkflowDeployInput) operations.CREWorkflowDeployInput { return in },
-			wantErr: "",
+			name: "valid input passes",
+			env:  *envWithCLI,
 		},
 	}
 
@@ -117,7 +116,11 @@ func TestCREWorkflowDeployChangeset_VerifyPreconditions(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			err := cs.VerifyPreconditions(tc.env, tc.modify(good))
+			input := good
+			if tc.input != nil {
+				input = tc.input()
+			}
+			err := cs.VerifyPreconditions(tc.env, input)
 			if tc.wantErr == "" {
 				require.NoError(t, err)
 			} else {
