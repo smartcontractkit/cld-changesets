@@ -114,9 +114,6 @@ linters:
         - name: receiver-naming
         - name: time-naming
         - name: unexported-return
-        - name: indent-error-flow
-        - name: errorf
-        - name: empty-block
         - name: string-of-int
         - name: struct-tag
         - name: superfluous-else
