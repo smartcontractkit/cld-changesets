@@ -52,7 +52,7 @@ type CREWorkflowDeployInput struct {
 	// Resolved the same way as Binary and Config: local path or GitHub ref.
 	Project creartifacts.ConfigSource `json:"project" yaml:"project"`
 	// Optional - Context overrides CRE_* process env defaults for the generated context.yaml.
-	Context crecli.ContextOverrides `json:"context,omitempty" yaml:"context,omitempty"`
+	Context crecli.ContextOverrides `json:"context" yaml:"context"`
 	// Optional - ExtraCREArgs are appended after built-in workflow deploy arguments (e.g. org/tenant flags).
 	ExtraCREArgs []string `json:"extraCreArgs,omitempty" yaml:"extraCreArgs,omitempty"`
 }
