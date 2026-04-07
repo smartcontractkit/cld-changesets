@@ -18,10 +18,10 @@ type CREWorkflowDeployChangeset struct{}
 // VerifyPreconditions ensures the environment can run CRE and input is valid.
 func (CREWorkflowDeployChangeset) VerifyPreconditions(e cldf.Environment, input creops.CREWorkflowDeployInput) error {
 	if e.CRERunner == nil {
-		return fmt.Errorf("CRERunner is not available in this environment")
+		return fmt.Errorf("cre runner is not available in this environment")
 	}
 	if e.CRERunner.CLI() == nil {
-		return fmt.Errorf("CRE CLI runner is not configured")
+		return fmt.Errorf("cre CLI runner is not configured")
 	}
 	if err := input.Validate(); err != nil {
 		return err
