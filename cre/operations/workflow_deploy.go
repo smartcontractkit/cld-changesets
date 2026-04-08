@@ -57,7 +57,7 @@ type CREWorkflowDeployInput struct {
 	// Optional - ExtraCREArgs are appended after built-in workflow deploy arguments (e.g. org/tenant flags).
 	ExtraCREArgs []string `json:"extraCreArgs,omitempty" yaml:"extraCreArgs,omitempty"`
 	// Optional - TargetName is the CRE CLI target key that must match a top-level key
-	// in project.yaml Defaults to CREDeployTargetName ("cld-deploy") when empty.
+	// in project.yaml. Defaults to CREDeployTargetName ("cld-deploy") when empty.
 	TargetName string `json:"targetName,omitempty" yaml:"targetName,omitempty"`
 }
 
