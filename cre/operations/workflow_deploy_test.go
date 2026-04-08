@@ -264,6 +264,7 @@ func TestBuildWorkflowDeployArgs(t *testing.T) {
 				t.Helper()
 				require.NotContains(t, args, "-e")
 				tIdx := indexOf(args, "-T")
+				require.NotEqual(t, -1, tIdx)
 				require.Greater(t, len(args), tIdx+1)
 				require.Equal(t, "production-settings", args[tIdx+1])
 				require.Len(t, args, 12)
