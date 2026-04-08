@@ -67,6 +67,7 @@ func (in CREWorkflowDeployInput) resolveTargetName() string {
 	if target != "" {
 		return target
 	}
+
 	return CREDeployTargetName
 }
 

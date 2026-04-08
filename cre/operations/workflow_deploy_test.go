@@ -312,5 +312,6 @@ func indexOf(sl []string, s string) int {
 			return i
 		}
 	}
+
 	return -1
 }
