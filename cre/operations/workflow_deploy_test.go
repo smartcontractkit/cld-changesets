@@ -70,6 +70,41 @@ func TestCREWorkflowDeployOp(t *testing.T) {
 			},
 		},
 		{
+			name: "custom target name is forwarded to CLI",
+			input: func(t *testing.T) CREWorkflowDeployInput {
+				t.Helper()
+
+				return CREWorkflowDeployInput{
+					WorkflowBundle: creartifacts.WorkflowBundle{
+						WorkflowName:       "wf",
+						Binary:             creartifacts.NewBinarySourceLocal(writeFile(t, "x.wasm", []byte("wasm"))),
+						Config:             creartifacts.NewConfigSourceLocal(writeFile(t, "cfg.json", []byte(`{"a":1}`))),
+						DonFamily:          "feeds-zone-a",
+						DeploymentRegistry: "private",
+					},
+					Project:    creartifacts.NewConfigSourceLocal(writeFile(t, "project.yaml", []byte("production-settings:\n  rpcs: []\n"))),
+					TargetName: "production-settings",
+				}
+			},
+			setupCLI: func(t *testing.T) *cremocks.MockCLIRunner {
+				t.Helper()
+				m := cremocks.NewMockCLIRunner(t)
+				m.EXPECT().ContextRegistries().Return(testRegistries()).Once()
+				m.EXPECT().Run(mock.Anything, mock.Anything, mock.MatchedBy(func(args []string) bool {
+					tIdx := indexOf(args, "-T")
+					return tIdx >= 0 && tIdx+1 < len(args) && args[tIdx+1] == "production-settings"
+				})).Return(
+					&fcre.CallResult{ExitCode: 0, Stdout: []byte("ok"), Stderr: nil}, nil,
+				).Once()
+
+				return m
+			},
+			assert: func(t *testing.T, _ fwops.Report[CREWorkflowDeployInput, CREWorkflowDeployOutput], err error) {
+				t.Helper()
+				require.NoError(t, err)
+			},
+		},
+		{
 			name: "missing binary returns resolve error",
 			input: func(t *testing.T) CREWorkflowDeployInput {
 				t.Helper()
@@ -150,6 +185,43 @@ func TestCREWorkflowDeployOp(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
+// resolveTargetName
+// ---------------------------------------------------------------------------
+
+func TestResolveTargetName(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		input  CREWorkflowDeployInput
+		expect string
+	}{
+		{
+			name:   "empty defaults to CREDeployTargetName",
+			input:  CREWorkflowDeployInput{},
+			expect: CREDeployTargetName,
+		},
+		{
+			name:   "whitespace defaults to CREDeployTargetName",
+			input:  CREWorkflowDeployInput{TargetName: "   "},
+			expect: CREDeployTargetName,
+		},
+		{
+			name:   "custom target is returned trimmed",
+			input:  CREWorkflowDeployInput{TargetName: " production-settings "},
+			expect: "production-settings",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, tc.expect, tc.input.resolveTargetName())
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
 // BuildWorkflowDeployArgs
 // ---------------------------------------------------------------------------
 
@@ -163,15 +235,17 @@ func TestBuildWorkflowDeployArgs(t *testing.T) {
 	cfg := filepath.Join(workDir, "c.json")
 
 	tests := []struct {
-		name    string
-		envPath string
-		extra   []string
-		check   func(t *testing.T, args []string)
+		name       string
+		targetName string
+		envPath    string
+		extra      []string
+		check      func(t *testing.T, args []string)
 	}{
 		{
-			name:    "with env and extra args",
-			envPath: filepath.Join(workDir, ".env"),
-			extra:   []string{"--extra"},
+			name:       "default target with env and extra args",
+			targetName: CREDeployTargetName,
+			envPath:    filepath.Join(workDir, ".env"),
+			extra:      []string{"--extra"},
 			check: func(t *testing.T, args []string) {
 				t.Helper()
 				require.Equal(t, []string{
@@ -184,10 +258,15 @@ func TestBuildWorkflowDeployArgs(t *testing.T) {
 			},
 		},
 		{
-			name: "without env or extra",
+			name:       "custom target without env or extra",
+			targetName: "production-settings",
 			check: func(t *testing.T, args []string) {
 				t.Helper()
 				require.NotContains(t, args, "-e")
+				tIdx := indexOf(args, "-T")
+				require.NotEqual(t, -1, tIdx)
+				require.Greater(t, len(args), tIdx+1)
+				require.Equal(t, "production-settings", args[tIdx+1])
 				require.Len(t, args, 12)
 			},
 		},
@@ -196,7 +275,7 @@ func TestBuildWorkflowDeployArgs(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			tc.check(t, BuildWorkflowDeployArgs(workDir, tc.envPath, wasm, cfg, tc.extra))
+			tc.check(t, BuildWorkflowDeployArgs(tc.targetName, workDir, tc.envPath, wasm, cfg, tc.extra))
 		})
 	}
 }
@@ -225,4 +304,14 @@ func matchCLIArgs(wantArgs ...string) any {
 
 		return true
 	})
+}
+
+func indexOf(sl []string, s string) int {
+	for i, v := range sl {
+		if v == s {
+			return i
+		}
+	}
+
+	return -1
 }

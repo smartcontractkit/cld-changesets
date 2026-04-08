@@ -1,0 +1,38 @@
+name: pull-request-main
+
+on:
+  merge_group:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  ci-lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+      actions: read
+    steps:
+      - name: Linting Go
+        uses: smartcontractkit/.github/actions/ci-lint-go@ci-lint-go/v2 # ci-lint-go@2.x.x
+        with:
+          only-new-issues: "false"
+          golangci-lint-version: v2.11.4
+
+  ci-test:
+    name: Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      id-token: write
+      contents: read
+      actions: read
+    steps:
+      - name: Build and test
+        uses: smartcontractkit/.github/actions/ci-test-go@dfcba48f05933158428bce867d790e3d5a9baa6b # ci-test-go@1.1.0
+        with:
+          go-test-cmd: go test -race -coverprofile=coverage.txt ./...
+          use-go-cache: true
+          artifact-name: unit-tests
