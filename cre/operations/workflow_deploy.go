@@ -56,6 +56,18 @@ type CREWorkflowDeployInput struct {
 	Context crecli.ContextOverrides `json:"context" yaml:"context"`
 	// Optional - ExtraCREArgs are appended after built-in workflow deploy arguments (e.g. org/tenant flags).
 	ExtraCREArgs []string `json:"extraCreArgs,omitempty" yaml:"extraCreArgs,omitempty"`
+	// Optional - TargetName is the CRE CLI target key that must match a top-level key
+	// in project.yaml Defaults to CREDeployTargetName ("cld-deploy") when empty.
+	TargetName string `json:"targetName,omitempty" yaml:"targetName,omitempty"`
+}
+
+// resolveTargetName returns the user-specified target name, falling back to [CREDeployTargetName].
+func (in CREWorkflowDeployInput) resolveTargetName() string {
+	target := strings.TrimSpace(in.TargetName)
+	if target != "" {
+		return target
+	}
+	return CREDeployTargetName
 }
 
 // CREWorkflowDeployOp deploys a workflow via the CRE CLI (single side effect: CLI invocation).
@@ -104,8 +116,9 @@ var CREWorkflowDeployOp = fwops.NewOperation(
 			return CREWorkflowDeployOutput{}, fmt.Errorf("copy project.yaml: %w", err)
 		}
 
+		target := input.resolveTargetName()
 		workflowCfg := crecli.WorkflowConfig{
-			CREDeployTargetName: {
+			target: {
 				UserWorkflow: crecli.UserWorkflow{
 					DeploymentRegistry: input.DeploymentRegistry,
 					WorkflowName:       input.WorkflowName,
@@ -140,7 +153,7 @@ var CREWorkflowDeployOp = fwops.NewOperation(
 			return CREWorkflowDeployOutput{}, fmt.Errorf("write CRE .env file: %w", err)
 		}
 
-		args := BuildWorkflowDeployArgs(workDir, envPath, binaryPath, configPath, input.ExtraCREArgs)
+		args := BuildWorkflowDeployArgs(target, workDir, envPath, binaryPath, configPath, input.ExtraCREArgs)
 		b.Logger.Infow("Running CRE workflow deploy", "args", args)
 
 		var runEnv map[string]string
@@ -199,13 +212,13 @@ func copyFile(src, dst string) error {
 }
 
 // BuildWorkflowDeployArgs constructs the CRE CLI argument list for `cre workflow deploy`.
-func BuildWorkflowDeployArgs(workDir, envPath, binaryPath, configPath string, extra []string) []string {
+func BuildWorkflowDeployArgs(targetName, workDir, envPath, binaryPath, configPath string, extra []string) []string {
 	bundleDir := filepath.Join(workDir, creBundleSubdir)
 	args := []string{
 		"workflow", "deploy",
 		bundleDir,
 		"-R", workDir,
-		"-T", CREDeployTargetName,
+		"-T", targetName,
 		"--wasm", binaryPath,
 		"--config", configPath,
 		"--yes",
