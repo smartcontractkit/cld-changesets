@@ -19,7 +19,7 @@ jobs:
         uses: smartcontractkit/.github/actions/ci-lint-go@ci-lint-go/v2 # ci-lint-go@2.x.x
         with:
           only-new-issues: "false"
-          golangci-lint-version: v2.10.1
+          golangci-lint-version: v2.11.4
 
   ci-test:
     name: Tests
