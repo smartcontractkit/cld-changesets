@@ -152,7 +152,7 @@ func GetMCMSWithTimelockState(store datastore.AddressRefStore, chain cldf_evm.Ch
 // LoadAddressesFromDataStore loads addresses from DataStore with optional qualifier.
 // This is a public utility function that can be used by other packages to avoid duplication.
 //
-// Deprecated: Use GetTypeVersionByQualifier instead.
+// Deprecated: Use GetAddressTypeVersionByQualifier instead.
 func LoadAddressesFromDataStore(ds datastore.DataStore, chainSelector uint64, qualifier string) (map[string]cldf.TypeAndVersion, error) {
 	addressesChain, err := GetAddressTypeVersionByQualifier(ds.Addresses(), chainSelector, qualifier)
 	if err != nil {
