@@ -111,12 +111,12 @@ func GenerateTimelockView(tl owner_helpers.RBACTimelock) (TimelockView, error) {
 	for _, role := range []Role{ADMIN_ROLE, PROPOSER_ROLE, BYPASSER_ROLE, CANCELLER_ROLE, EXECUTOR_ROLE} {
 		numMembers, err := tl.GetRoleMemberCount(nil, role.ID)
 		if err != nil {
-			return TimelockView{}, nil
+			return TimelockView{}, fmt.Errorf("get role member count for role %s (%s): %w", role.Name, role.ID.Hex(), err)
 		}
 		for i := int64(0); i < numMembers.Int64(); i++ {
 			member, err2 := tl.GetRoleMember(nil, role.ID, big.NewInt(i))
 			if err2 != nil {
-				return TimelockView{}, nil
+				return TimelockView{}, fmt.Errorf("get role member for role %s (%s) at index %d: %w", role.Name, role.ID.Hex(), i, err2)
 			}
 			membersByRole[role.Name] = append(membersByRole[role.Name], member)
 		}
