@@ -180,6 +180,9 @@ func MaybeLoadMCMSWithTimelockChainStateFromRefs(chain cldf_evm.Chain, refs []da
 
 	dedupMap := make(map[string]cldf.TypeAndVersion, len(refs))
 	for _, ref := range refs {
+		if ref.Version == nil {
+			return nil, fmt.Errorf("invalid MCMS ref on chain %s: nil version for address %s type %s", chain.Name(), ref.Address, ref.Type)
+		}
 		tv := cldf.TypeAndVersion{
 			Type:    cldf.ContractType(ref.Type),
 			Version: *ref.Version,
@@ -197,6 +200,9 @@ func MaybeLoadMCMSWithTimelockChainStateFromRefs(chain cldf_evm.Chain, refs []da
 	}
 
 	for _, ref := range refs {
+		if ref.Version == nil {
+			return nil, fmt.Errorf("invalid MCMS ref on chain %s: nil version for address %s type %s", chain.Name(), ref.Address, ref.Type)
+		}
 		addr := common.HexToAddress(ref.Address)
 		tv := cldf.TypeAndVersion{
 			Type:    cldf.ContractType(ref.Type),
