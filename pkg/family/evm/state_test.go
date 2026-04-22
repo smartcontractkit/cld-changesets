@@ -27,6 +27,8 @@ import (
 )
 
 func TestMCMSWithTimelockState_GenerateMCMSWithTimelockViewV2(t *testing.T) {
+	t.Parallel()
+
 	selector := chain_selectors.TEST_90000001.Selector
 	env, err := environment.New(t.Context(),
 		environment.WithEVMSimulated(t, []uint64{selector}),
@@ -120,6 +122,8 @@ func TestMCMSWithTimelockState_GenerateMCMSWithTimelockViewV2(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			state := tt.contracts
 
 			got, err := state.GenerateMCMSWithTimelockView()
@@ -135,9 +139,13 @@ func TestMCMSWithTimelockState_GenerateMCMSWithTimelockViewV2(t *testing.T) {
 }
 
 func TestAddressesForChain(t *testing.T) {
+	t.Parallel()
+
 	chainSelector := chain_selectors.ETHEREUM_MAINNET.Selector
 
 	t.Run("environment with AddressBook only", func(t *testing.T) {
+		t.Parallel()
+
 		// Create environment with only AddressBook
 		addressBook := cldf.NewMemoryAddressBook()
 		err := addressBook.Save(chainSelector, "0x1234567890123456789012345678901234567890",
@@ -159,6 +167,8 @@ func TestAddressesForChain(t *testing.T) {
 	})
 
 	t.Run("environment with DataStore only", func(t *testing.T) {
+		t.Parallel()
+
 		// Create environment with only DataStore
 		dataStore := datastore.NewMemoryDataStore()
 		err := dataStore.Addresses().Add(datastore.AddressRef{
@@ -185,6 +195,8 @@ func TestAddressesForChain(t *testing.T) {
 		require.Contains(t, mergedAddresses, "0xABCDEF1234567890123456789012345678901234")
 	})
 	t.Run("environment with AddressBook and DataStore without qualifier", func(t *testing.T) {
+		t.Parallel()
+
 		// Create a mock environment with both AddressBook and DataStore
 		addressBook := cldf.NewMemoryAddressBook()
 		err := addressBook.Save(chainSelector, "0x1234567890123456789012345678901234567890",
@@ -240,6 +252,8 @@ func TestAddressesForChain(t *testing.T) {
 	})
 
 	t.Run("environment with AddressBook and DataStore with qualifier", func(t *testing.T) {
+		t.Parallel()
+
 		dataStore := datastore.NewMemoryDataStore()
 
 		// Add contracts with different qualifiers
@@ -302,6 +316,8 @@ func TestAddressesForChain(t *testing.T) {
 	})
 
 	t.Run("environment with duplicated addresses in AddressBook and DataStore", func(t *testing.T) {
+		t.Parallel()
+
 		const (
 			duplicateAddress = "0x1234567890123456789012345678901234567890"
 			uniqueAddress    = "0xABCDEF1234567890123456789012345678901234"
@@ -397,6 +413,8 @@ func TestAddressesForChain(t *testing.T) {
 }
 
 func TestGetMCMSWithTimelockState(t *testing.T) {
+	t.Parallel()
+
 	selector := chain_selectors.TEST_90000001.Selector
 	env, err := environment.New(t.Context(),
 		environment.WithEVMSimulated(t, []uint64{selector}),
@@ -431,6 +449,8 @@ func TestGetMCMSWithTimelockState(t *testing.T) {
 	}
 
 	t.Run("shared address for bypasser and canceller", func(t *testing.T) {
+		t.Parallel()
+
 		// Store DS with bypasser/canceller sharing the same address
 		store := datastore.NewMemoryDataStore()
 		for _, ref := range commonRefs {
@@ -459,6 +479,8 @@ func TestGetMCMSWithTimelockState(t *testing.T) {
 	})
 
 	t.Run("legacy ManyChainMultisig type is ignored", func(t *testing.T) {
+		t.Parallel()
+
 		// Store with legacy ManyChainMultisig typed bypasser/canceller
 		legacyStore := datastore.NewMemoryDataStore()
 		for _, ref := range commonRefs {

@@ -25,7 +25,8 @@ type Role struct {
 }
 
 const (
-	EXECUTOR_ROLE_STR  = "EXECUTOR_ROLE"
+	EXECUTOR_ROLE_STR = "EXECUTOR_ROLE"
+	//nolint:gosec // Public role identifier constant, not a credential.
 	BYPASSER_ROLE_STR  = "BYPASSER_ROLE"
 	CANCELLER_ROLE_STR = "CANCELLER_ROLE"
 	PROPOSER_ROLE_STR  = "PROPOSER_ROLE"
@@ -80,6 +81,7 @@ func GenerateMCMSView(mcms owner_helpers.ManyChainMultiSig) (MCMSView, error) {
 		for i, s := range in {
 			out[i] = bindings.ManyChainMultiSigSigner{Addr: s.Addr, Index: s.Index, Group: s.Group}
 		}
+
 		return out
 	}
 
@@ -91,6 +93,7 @@ func GenerateMCMSView(mcms owner_helpers.ManyChainMultiSig) (MCMSView, error) {
 	if err != nil {
 		return MCMSView{}, err
 	}
+
 	return MCMSView{
 		// Has no type and version on the contract
 		ContractMetaData: cldcommon.ContractMetaData{
@@ -113,7 +116,8 @@ func GenerateTimelockView(tl owner_helpers.RBACTimelock) (TimelockView, error) {
 		if err != nil {
 			return TimelockView{}, fmt.Errorf("get role member count for role %s (%s): %w", role.Name, role.ID.Hex(), err)
 		}
-		for i := int64(0); i < numMembers.Int64(); i++ {
+		memberCount := numMembers.Int64()
+		for i := range memberCount {
 			member, err2 := tl.GetRoleMember(nil, role.ID, big.NewInt(i))
 			if err2 != nil {
 				return TimelockView{}, fmt.Errorf("get role member for role %s (%s) at index %d: %w", role.Name, role.ID.Hex(), i, err2)
@@ -121,6 +125,7 @@ func GenerateTimelockView(tl owner_helpers.RBACTimelock) (TimelockView, error) {
 			membersByRole[role.Name] = append(membersByRole[role.Name], member)
 		}
 	}
+
 	return TimelockView{
 		// Has no type and version or owner.
 		ContractMetaData: cldcommon.ContractMetaData{

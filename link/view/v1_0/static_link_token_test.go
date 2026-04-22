@@ -16,6 +16,8 @@ import (
 )
 
 func TestStaticLinkTokenView(t *testing.T) {
+	t.Parallel()
+
 	selector := chain_selectors.TEST_90000001.Selector
 	env, err := environment.New(t.Context(),
 		environment.WithEVMSimulated(t, []uint64{selector}),

@@ -1,4 +1,4 @@
-package view
+package v1_0
 
 import (
 	"fmt"
@@ -43,6 +43,7 @@ func GenerateLinkTokenView(lt *link_token.LinkToken) (LinkTokenView, error) {
 	if err != nil {
 		burners = []common.Address{}
 	}
+
 	return LinkTokenView{
 		ContractMetaData: cldchangesetscommon.ContractMetaData{
 			TypeAndVersion: cldf.TypeAndVersion{

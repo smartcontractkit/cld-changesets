@@ -6,7 +6,7 @@ import (
 	"github.com/gagliardetto/solana-go"
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
+	mcmscontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/mcms"
 	mcmssolanasdk "github.com/smartcontractkit/mcms/sdk/solana"
 )
 
@@ -49,17 +49,17 @@ type PDASeed [32]byte
 func maybeLoadMCMSWithTimelockChainState(refs []datastore.AddressRef) (*MCMSWithTimelockState, error) {
 	state := MCMSWithTimelockState{MCMSWithTimelockPrograms: &MCMSWithTimelockPrograms{}}
 
-	mcmProgram := datastore.ContractType(proposalutils.ManyChainMultisigProgram)
-	timelockProgram := datastore.ContractType(proposalutils.RBACTimelockProgram)
-	accessControllerProgram := datastore.ContractType(proposalutils.AccessControllerProgram)
-	proposerMCM := datastore.ContractType(proposalutils.ProposerManyChainMultisig)
-	cancellerMCM := datastore.ContractType(proposalutils.CancellerManyChainMultisig)
-	bypasserMCM := datastore.ContractType(proposalutils.BypasserManyChainMultisig)
-	timelock := datastore.ContractType(proposalutils.RBACTimelock)
-	proposerAccessControllerAccount := datastore.ContractType(proposalutils.ProposerAccessControllerAccount)
-	executorAccessControllerAccount := datastore.ContractType(proposalutils.ExecutorAccessControllerAccount)
-	cancellerAccessControllerAccount := datastore.ContractType(proposalutils.CancellerAccessControllerAccount)
-	bypasserAccessControllerAccount := datastore.ContractType(proposalutils.BypasserAccessControllerAccount)
+	mcmProgram := datastore.ContractType(mcmscontracts.ManyChainMultisigProgram)
+	timelockProgram := datastore.ContractType(mcmscontracts.RBACTimelockProgram)
+	accessControllerProgram := datastore.ContractType(mcmscontracts.AccessControllerProgram)
+	proposerMCM := datastore.ContractType(mcmscontracts.ProposerManyChainMultisig)
+	cancellerMCM := datastore.ContractType(mcmscontracts.CancellerManyChainMultisig)
+	bypasserMCM := datastore.ContractType(mcmscontracts.BypasserManyChainMultisig)
+	timelock := datastore.ContractType(mcmscontracts.RBACTimelock)
+	proposerAccessControllerAccount := datastore.ContractType(mcmscontracts.ProposerAccessControllerAccount)
+	executorAccessControllerAccount := datastore.ContractType(mcmscontracts.ExecutorAccessControllerAccount)
+	cancellerAccessControllerAccount := datastore.ContractType(mcmscontracts.CancellerAccessControllerAccount)
+	bypasserAccessControllerAccount := datastore.ContractType(mcmscontracts.BypasserAccessControllerAccount)
 
 	for _, ref := range refs {
 		address := ref.Address

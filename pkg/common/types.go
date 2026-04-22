@@ -22,6 +22,7 @@ func NewContractMetaData(tv Meta, addr common.Address) (ContractMetaData, error)
 	if err != nil {
 		return ContractMetaData{}, fmt.Errorf("failed to get owner addr %s: %w", addr.String(), err)
 	}
+
 	return ContractMetaData{
 		TypeAndVersion: tvStr,
 		Address:        addr,

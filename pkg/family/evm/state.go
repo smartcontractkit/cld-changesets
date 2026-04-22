@@ -16,7 +16,7 @@ import (
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 
-	linkview "github.com/smartcontractkit/cld-changesets/link/view"
+	v1_1 "github.com/smartcontractkit/cld-changesets/link/view/v1_0"
 
 	"github.com/smartcontractkit/cld-changesets/mcms/common/view/v1_0"
 	common2 "github.com/smartcontractkit/cld-changesets/pkg/common"
@@ -52,6 +52,7 @@ func (state MCMSWithTimelockState) Validate() error {
 	if state.CallProxy == nil {
 		return errors.New("call proxy not found")
 	}
+
 	return nil
 }
 
@@ -74,16 +75,21 @@ func AddressesForChain(env cldf.Environment, chainSelector uint64, qualifier str
 		if env.DataStore != nil {
 			return LoadAddressesFromDataStore(env.DataStore, chainSelector, qualifier)
 		}
+
 		return nil, fmt.Errorf("DataStore not available but qualifier %s specified", qualifier)
 	}
 
 	// For backward compatibility without qualifier, merge both sources
 	// Start with addresses from AddressBook
 	addressBookAddresses := make(map[string]cldf.TypeAndVersion)
-	if addresses, err := env.ExistingAddresses.AddressesForChain(chainSelector); err == nil {
-		addressBookAddresses = addresses
-	} else if !errors.Is(err, cldf.ErrChainNotFound) {
-		return nil, fmt.Errorf("failed to load addresses from AddressBook: %w", err)
+	//nolint:staticcheck // Backward compatibility while callers migrate from AddressBook to DataStore.
+	existingAddresses := env.ExistingAddresses
+	if existingAddresses != nil {
+		if addresses, err := existingAddresses.AddressesForChain(chainSelector); err == nil {
+			addressBookAddresses = addresses
+		} else if !errors.Is(err, cldf.ErrChainNotFound) {
+			return nil, fmt.Errorf("failed to load addresses from AddressBook: %w", err)
+		}
 	}
 
 	// If no DataStore, just return AddressBook addresses
@@ -92,22 +98,22 @@ func AddressesForChain(env cldf.Environment, chainSelector uint64, qualifier str
 	}
 
 	// Try to load addresses from DataStore (without qualifier for general case)
-	dataStoreAddresses, err := LoadAddressesFromDataStore(env.DataStore, chainSelector, "")
-	if err != nil {
-		// If DataStore has no addresses or returns an error, fall back to AddressBook addresses only
-		return addressBookAddresses, nil
+	dataStoreAddresses, dataStoreErr := LoadAddressesFromDataStore(env.DataStore, chainSelector, "")
+	if dataStoreErr == nil {
+		// Merge the two maps - DataStore addresses take precedence
+		mergedAddresses := make(map[string]cldf.TypeAndVersion)
+
+		// First add all AddressBook addresses
+		maps.Copy(mergedAddresses, addressBookAddresses)
+
+		// Then add DataStore addresses (overwriting any conflicts)
+		maps.Copy(mergedAddresses, dataStoreAddresses)
+
+		return mergedAddresses, nil
 	}
 
-	// Merge the two maps - DataStore addresses take precedence
-	mergedAddresses := make(map[string]cldf.TypeAndVersion)
-
-	// First add all AddressBook addresses
-	maps.Copy(mergedAddresses, addressBookAddresses)
-
-	// Then add DataStore addresses (overwriting any conflicts)
-	maps.Copy(mergedAddresses, dataStoreAddresses)
-
-	return mergedAddresses, nil
+	// If DataStore has no addresses or returns an error, fall back to AddressBook addresses only.
+	return addressBookAddresses, nil
 }
 
 // MaybeLoadMCMSWithTimelockStateDataStore loads the MCMSWithTimelockState state for each chain in the given environment from the DataStore.
@@ -119,7 +125,7 @@ func MaybeLoadMCMSWithTimelockStateDataStoreWithQualifier(env cldf.Environment, 
 	result := map[uint64]*MCMSWithTimelockState{}
 	ds := env.DataStore
 	if ds == nil {
-		return nil, fmt.Errorf("datastore not available")
+		return nil, errors.New("datastore not available")
 	}
 	for _, chainSelector := range chainSelectors {
 		chain, ok := env.BlockChains.EVMChains()[chainSelector]
@@ -132,6 +138,7 @@ func MaybeLoadMCMSWithTimelockStateDataStoreWithQualifier(env cldf.Environment, 
 		}
 		result[chainSelector] = state
 	}
+
 	return result, nil
 }
 
@@ -160,6 +167,7 @@ func LoadAddressesFromDataStore(ds datastore.DataStore, chainSelector uint64, qu
 	if err != nil {
 		return nil, err
 	}
+
 	return addressesChain, nil
 }
 
@@ -242,6 +250,7 @@ func MaybeLoadMCMSWithTimelockChainStateFromRefs(chain cldf_evm.Chain, refs []da
 			state.CancellerMcm = mcms
 		}
 	}
+
 	return &state, nil
 }
 
@@ -249,11 +258,12 @@ type LinkTokenState struct {
 	LinkToken *link_token.LinkToken
 }
 
-func (s LinkTokenState) GenerateLinkView() (linkview.LinkTokenView, error) {
+func (s LinkTokenState) GenerateLinkView() (v1_1.LinkTokenView, error) {
 	if s.LinkToken == nil {
-		return linkview.LinkTokenView{}, errors.New("link token not found")
+		return v1_1.LinkTokenView{}, errors.New("link token not found")
 	}
-	return linkview.GenerateLinkTokenView(s.LinkToken)
+
+	return v1_1.GenerateLinkTokenView(s.LinkToken)
 }
 
 func MaybeLoadLinkTokenChainState(chain cldf_evm.Chain, addresses map[string]cldf.TypeAndVersion) (*LinkTokenState, error) {
@@ -278,6 +288,7 @@ func MaybeLoadLinkTokenChainState(chain cldf_evm.Chain, addresses map[string]cld
 			state.LinkToken = lt
 		}
 	}
+
 	return &state, nil
 }
 
@@ -285,11 +296,12 @@ type StaticLinkTokenState struct {
 	StaticLinkToken *link_token_interface.LinkToken
 }
 
-func (s StaticLinkTokenState) GenerateStaticLinkView() (linkview.StaticLinkTokenView, error) {
+func (s StaticLinkTokenState) GenerateStaticLinkView() (v1_1.StaticLinkTokenView, error) {
 	if s.StaticLinkToken == nil {
-		return linkview.StaticLinkTokenView{}, errors.New("static link token not found")
+		return v1_1.StaticLinkTokenView{}, errors.New("static link token not found")
 	}
-	return linkview.GenerateStaticLinkTokenView(s.StaticLinkToken)
+
+	return v1_1.GenerateStaticLinkTokenView(s.StaticLinkToken)
 }
 
 func MaybeLoadStaticLinkTokenState(chain cldf_evm.Chain, addresses map[string]cldf.TypeAndVersion) (*StaticLinkTokenState, error) {
@@ -314,6 +326,7 @@ func MaybeLoadStaticLinkTokenState(chain cldf_evm.Chain, addresses map[string]cl
 			state.StaticLinkToken = lt
 		}
 	}
+
 	return &state, nil
 }
 

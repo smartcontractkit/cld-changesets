@@ -17,6 +17,8 @@ import (
 )
 
 func TestLinkTokenView(t *testing.T) {
+	t.Parallel()
+
 	selector := chainselectors.TEST_90000001.Selector
 	env, err := environment.New(t.Context(),
 		environment.WithEVMSimulated(t, []uint64{selector}),
@@ -35,6 +37,7 @@ func TestLinkTokenView(t *testing.T) {
 func TestLinkTokenViewZk(t *testing.T) {
 	// Timeouts in CI
 	tests.SkipFlakey(t, "https://smartcontract-it.atlassian.net/browse/CCIP-6427")
+	t.Parallel()
 
 	selector := chainselectors.TEST_90000050.Selector
 	env, err := environment.New(t.Context(),
@@ -50,6 +53,8 @@ func TestLinkTokenViewZk(t *testing.T) {
 }
 
 func testLinkTokenViewWithChain(t *testing.T, chain cldf_evm.Chain, lt *link_token.LinkToken) {
+	t.Helper()
+
 	v, err := GenerateLinkTokenView(lt)
 	require.NoError(t, err)
 

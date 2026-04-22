@@ -27,6 +27,7 @@ func GenerateStaticLinkTokenView(lt *link_token_interface.LinkToken) (StaticLink
 	if err != nil {
 		return StaticLinkTokenView{}, fmt.Errorf("failed to get total supply %s: %w", lt.Address(), err)
 	}
+
 	return StaticLinkTokenView{
 		ContractMetaData: common.ContractMetaData{
 			TypeAndVersion: cldf.TypeAndVersion{
