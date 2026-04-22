@@ -26,10 +26,6 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/environment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/runtime"
 
-	"github.com/smartcontractkit/chainlink/deployment/common/changeset"
-	"github.com/smartcontractkit/chainlink/deployment/common/proposalutils"
-	commontypes "github.com/smartcontractkit/chainlink/deployment/common/types"
-
 	mcmsstate "github.com/smartcontractkit/cld-changesets/mcms/state"
 	soltestutils2 "github.com/smartcontractkit/cld-changesets/pkg/family/solana/soltestutils"
 )

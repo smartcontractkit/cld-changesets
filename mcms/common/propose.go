@@ -14,7 +14,6 @@ import (
 	commonconfig "github.com/smartcontractkit/chainlink-common/pkg/config"
 	cldfaptos "github.com/smartcontractkit/chainlink-deployments-framework/chain/aptos"
 	cldfevm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
-	cldfproposalutils "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
 	mcmslib "github.com/smartcontractkit/mcms"
 	mcmschainwrappers "github.com/smartcontractkit/mcms/chainwrappers"
 	mcmssdk "github.com/smartcontractkit/mcms/sdk"
@@ -24,13 +23,11 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/mcms/adapters"
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	contractsmcms "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/mcms"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
 
-	mcmsstate "github.com/smartcontractkit/cld-changesets/mcms/state"
-	"github.com/smartcontractkit/cld-changesets/pkg/contract"
-
 	evmfamily "github.com/smartcontractkit/cld-changesets/pkg/family/evm"
-	"github.com/smartcontractkit/cld-changesets/pkg/family/solana"
+	solanafamily "github.com/smartcontractkit/cld-changesets/pkg/family/solana"
 )
 
 const (
@@ -45,7 +42,7 @@ type TimelockConfig struct {
 	ValidDuration             *commonconfig.Duration `json:"validDuration" yaml:"validDuration"`
 }
 
-func (tc *TimelockConfig) MCMBasedOnActionSolana(s solana.MCMSWithTimelockState) (string, error) {
+func (tc *TimelockConfig) MCMBasedOnActionSolana(s solanafamily.MCMSWithTimelockState) (string, error) {
 	// if MCMSAction is not set, default to timelock.Schedule, this is to ensure no breaking changes for existing code
 	if tc.MCMSAction == "" {
 		tc.MCMSAction = types.TimelockActionSchedule
@@ -149,24 +146,24 @@ func (tc *TimelockConfig) ValidateSolana(e cldf.Environment, chainSelector uint6
 		return nil
 	}
 
-	err = validateContract(contract.RBACTimelock)
+	err = validateContract(contractsmcms.RBACTimelock)
 	if err != nil {
 		return err
 	}
 
 	switch tc.MCMSAction {
 	case types.TimelockActionSchedule:
-		err = validateContract(cldfproposalutils.ProposerManyChainMultisig)
+		err = validateContract(contractsmcms.ProposerManyChainMultisig)
 		if err != nil {
 			return err
 		}
 	case types.TimelockActionCancel:
-		err = validateContract(cldfproposalutils.CancellerManyChainMultisig)
+		err = validateContract(contractsmcms.CancellerManyChainMultisig)
 		if err != nil {
 			return err
 		}
 	case types.TimelockActionBypass:
-		err = validateContract(cldfproposalutils.BypasserManyChainMultisig)
+		err = validateContract(contractsmcms.BypasserManyChainMultisig)
 		if err != nil {
 			return err
 		}
@@ -382,16 +379,16 @@ func buildProposalMetadataV2(
 	return proposalChainMetadata, nil
 }
 
-func getSolanaState(env cldf.Environment, selector uint64) (*mcmsstate.MCMSWithTimelockStateSolana, error) {
+func getSolanaState(env cldf.Environment, selector uint64) (*solanafamily.MCMSWithTimelockState, error) {
 	solanaChains := env.BlockChains.SolanaChains()
 	addresses, err := env.ExistingAddresses.AddressesForChain(selector)
-	solanaState, err1 := mcmsstate.MaybeLoadMCMSWithTimelockChainStateSolana(solanaChains[selector], addresses)
+	solanaState, err1 := solanafamily.MaybeLoadMCMSWithTimelockChainStateLegacyAddrBook(solanaChains[selector], addresses)
 	if err == nil {
 		return solanaState, nil
 	}
 
 	env.Logger.Info("failed to load MCMSState from address book")
-	solanaState, err2 := mcmsstate.MaybeLoadMCMSWithTimelockChainStateSolanaV2(env.DataStore.Addresses().Filter(datastore.AddressRefByChainSelector(selector)))
+	solanaState, err2 := solanafamily.MaybeLoadMCMSWithTimelockChainState(env.DataStore.Addresses().Filter(datastore.AddressRefByChainSelector(selector)))
 	if err2 != nil {
 		return nil, fmt.Errorf("failed to load solana state: %w", errors.Join(err1, err2))
 	}
@@ -406,8 +403,8 @@ func getSolanaState(env cldf.Environment, selector uint64) (*mcmsstate.MCMSWithT
 // Deprecated: Use extensible AggregateProposalsV2 instead. Which accepts multiple chain families.
 func AggregateProposals(
 	env cldf.Environment,
-	mcmsEVMState map[uint64]mcmsstate.MCMSWithTimelockState,
-	mcmsSolanaState map[uint64]mcmsstate.MCMSWithTimelockStateSolana,
+	mcmsEVMState map[uint64]evmfamily.MCMSWithTimelockState,
+	mcmsSolanaState map[uint64]solanafamily.MCMSWithTimelockState,
 	proposals []mcmslib.TimelockProposal,
 	description string,
 	mcmsConfig *TimelockConfig,
@@ -425,8 +422,8 @@ func AggregateProposals(
 }
 
 type MCMSStates struct {
-	MCMSEVMState    map[uint64]mcmsstate.MCMSWithTimelockState
-	MCMSSolanaState map[uint64]mcmsstate.MCMSWithTimelockStateSolana
+	MCMSEVMState    map[uint64]evmfamily.MCMSWithTimelockState
+	MCMSSolanaState map[uint64]solanafamily.MCMSWithTimelockState
 	MCMSAptosState  map[uint64]aptos.AccountAddress
 }
 
