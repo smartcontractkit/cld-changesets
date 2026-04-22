@@ -119,6 +119,9 @@ func MaybeLoadMCMSWithTimelockStateDataStore(env cldf.Environment, chainSelector
 func MaybeLoadMCMSWithTimelockStateDataStoreWithQualifier(env cldf.Environment, chainSelectors []uint64, qualifier string) (map[uint64]*MCMSWithTimelockState, error) {
 	result := map[uint64]*MCMSWithTimelockState{}
 	ds := env.DataStore
+	if ds == nil {
+		return nil, fmt.Errorf("datastore not available")
+	}
 	for _, chainSelector := range chainSelectors {
 		chain, ok := env.BlockChains.EVMChains()[chainSelector]
 		if !ok {
