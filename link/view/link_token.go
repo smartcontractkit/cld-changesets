@@ -5,11 +5,11 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
+	linkcontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/link"
 
 	"github.com/smartcontractkit/chainlink-evm/gethwrappers/shared/generated/initial/link_token"
 
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
-	cldflink "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/link"
 
 	cldchangesetscommon "github.com/smartcontractkit/cld-changesets/pkg/common"
 )
@@ -46,7 +46,7 @@ func GenerateLinkTokenView(lt *link_token.LinkToken) (LinkTokenView, error) {
 	return LinkTokenView{
 		ContractMetaData: cldchangesetscommon.ContractMetaData{
 			TypeAndVersion: cldf.TypeAndVersion{
-				Type:    cldflink.LinkToken,
+				Type:    linkcontracts.LinkToken,
 				Version: cldchangesetscommon.Version1_0_0,
 			}.String(),
 			Address: lt.Address(),

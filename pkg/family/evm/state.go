@@ -7,10 +7,9 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	bindings "github.com/smartcontractkit/ccip-owner-contracts/pkg/gethwrappers"
-	cldflink "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/link"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
-
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
+	linkcontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/link"
+	mcmscontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/mcms"
 	"github.com/smartcontractkit/chainlink-evm/gethwrappers/generated/link_token_interface"
 	"github.com/smartcontractkit/chainlink-evm/gethwrappers/shared/generated/initial/link_token"
 
@@ -170,11 +169,11 @@ func MaybeLoadMCMSWithTimelockChainStateFromRefs(chain cldf_evm.Chain, refs []da
 	state := MCMSWithTimelockState{}
 	var (
 		// We expect one of each contract on the chain.
-		timelock  = cldf.NewTypeAndVersion(proposalutils.RBACTimelock, common2.Version1_0_0)
-		callProxy = cldf.NewTypeAndVersion(proposalutils.CallProxy, common2.Version1_0_0)
-		proposer  = cldf.NewTypeAndVersion(proposalutils.ProposerManyChainMultisig, common2.Version1_0_0)
-		canceller = cldf.NewTypeAndVersion(proposalutils.CancellerManyChainMultisig, common2.Version1_0_0)
-		bypasser  = cldf.NewTypeAndVersion(proposalutils.BypasserManyChainMultisig, common2.Version1_0_0)
+		timelock  = cldf.NewTypeAndVersion(mcmscontracts.RBACTimelock, common2.Version1_0_0)
+		callProxy = cldf.NewTypeAndVersion(mcmscontracts.CallProxy, common2.Version1_0_0)
+		proposer  = cldf.NewTypeAndVersion(mcmscontracts.ProposerManyChainMultisig, common2.Version1_0_0)
+		canceller = cldf.NewTypeAndVersion(mcmscontracts.CancellerManyChainMultisig, common2.Version1_0_0)
+		bypasser  = cldf.NewTypeAndVersion(mcmscontracts.BypasserManyChainMultisig, common2.Version1_0_0)
 	)
 
 	wantTypes := []cldf.TypeAndVersion{timelock, proposer, canceller, bypasser, callProxy}
@@ -253,7 +252,7 @@ func (s LinkTokenState) GenerateLinkView() (linkview.LinkTokenView, error) {
 
 func MaybeLoadLinkTokenChainState(chain cldf_evm.Chain, addresses map[string]cldf.TypeAndVersion) (*LinkTokenState, error) {
 	state := LinkTokenState{}
-	linkToken := cldf.NewTypeAndVersion(cldflink.LinkToken, common2.Version1_0_0)
+	linkToken := cldf.NewTypeAndVersion(linkcontracts.LinkToken, common2.Version1_0_0)
 
 	// Convert map keys to a slice
 	wantTypes := []cldf.TypeAndVersion{linkToken}
@@ -289,7 +288,7 @@ func (s StaticLinkTokenState) GenerateStaticLinkView() (linkview.StaticLinkToken
 
 func MaybeLoadStaticLinkTokenState(chain cldf_evm.Chain, addresses map[string]cldf.TypeAndVersion) (*StaticLinkTokenState, error) {
 	state := StaticLinkTokenState{}
-	staticLinkToken := cldf.NewTypeAndVersion(cldflink.StaticLinkToken, common2.Version1_0_0)
+	staticLinkToken := cldf.NewTypeAndVersion(linkcontracts.StaticLinkToken, common2.Version1_0_0)
 
 	// Convert map keys to a slice
 	wantTypes := []cldf.TypeAndVersion{staticLinkToken}
