@@ -370,6 +370,9 @@ func GetMCMSWithTimelockState(store datastore.AddressRefStore, chain cldf_evm.Ch
 
 	refs := store.Filter(filters...)
 	if len(refs) == 0 {
+		if qualifier != "" {
+			return nil, fmt.Errorf("no addresses found for chain %d with qualifier %s", chain.Selector, qualifier)
+		}
 		return nil, fmt.Errorf("no addresses found for chain %d", chain.Selector)
 	}
 
