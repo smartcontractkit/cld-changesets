@@ -45,6 +45,20 @@ type MCMSWithTimelockPrograms struct {
 
 type PDASeed [32]byte
 
+// MaybeLoadMCMSWithTimelockState loads MCMSWithTimelockState for each provided chain selector from env.DataStore address refs.
+func MaybeLoadMCMSWithTimelockState(env cldf.Environment, chainSelectors []uint64) (map[uint64]*MCMSWithTimelockState, error) {
+	result := map[uint64]*MCMSWithTimelockState{}
+	for _, chainSelector := range chainSelectors {
+		state, err := MaybeLoadMCMSWithTimelockChainState(env.DataStore.Addresses().Filter(datastore.AddressRefByChainSelector(chainSelector)))
+		if err != nil {
+			return nil, fmt.Errorf("unable to load mcms and timelock solana chain state for chain selector %d: %w", chainSelector, err)
+		}
+		result[chainSelector] = state
+	}
+
+	return result, nil
+}
+
 // MaybeLoadMCMSWithTimelockChainState loads MCMSWithTimelockState from Datastore address refs.
 func MaybeLoadMCMSWithTimelockChainState(refs []datastore.AddressRef) (*MCMSWithTimelockState, error) {
 	state := MCMSWithTimelockState{MCMSWithTimelockPrograms: &MCMSWithTimelockPrograms{}}
