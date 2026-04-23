@@ -6,7 +6,7 @@ import (
 	"github.com/gagliardetto/solana-go"
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
+	mcmscontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/mcms"
 	mcmssolanasdk "github.com/smartcontractkit/mcms/sdk/solana"
 )
 
