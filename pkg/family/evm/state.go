@@ -302,13 +302,14 @@ func AddressesForChain(env cldf.Environment, chainSelector uint64, qualifier str
 		if env.DataStore != nil {
 			return LoadAddressesFromDataStore(env.DataStore, chainSelector, qualifier)
 		}
+
 		return nil, fmt.Errorf("DataStore not available but qualifier %s specified", qualifier)
 	}
 
 	// For backward compatibility without qualifier, merge both sources
 	// Start with addresses from AddressBook
 	addressBookAddresses := make(map[string]cldf.TypeAndVersion)
-	if addresses, err := env.ExistingAddresses.AddressesForChain(chainSelector); err == nil {
+	if addresses, err := env.ExistingAddresses.AddressesForChain(chainSelector); err == nil { // nolint
 		addressBookAddresses = addresses
 	} else if !errors.Is(err, cldf.ErrChainNotFound) {
 		return nil, fmt.Errorf("failed to load addresses from AddressBook: %w", err)
@@ -323,7 +324,7 @@ func AddressesForChain(env cldf.Environment, chainSelector uint64, qualifier str
 	dataStoreAddresses, err := LoadAddressesFromDataStore(env.DataStore, chainSelector, "")
 	if err != nil {
 		// If DataStore has no addresses or returns an error, fall back to AddressBook addresses only
-		return addressBookAddresses, nil
+		return addressBookAddresses, nil // nolint
 	}
 
 	// Merge the two maps - DataStore addresses take precedence
@@ -357,6 +358,7 @@ func MaybeLoadMCMSWithTimelockStateDataStoreWithQualifier(env cldf.Environment, 
 		}
 		result[chainSelector] = state
 	}
+
 	return result, nil
 }
 
@@ -388,6 +390,7 @@ func LoadAddressesFromDataStore(ds datastore.DataStore, chainSelector uint64, qu
 	if err != nil {
 		return nil, err
 	}
+
 	return addressesChain, nil
 }
 
@@ -464,6 +467,7 @@ func MaybeLoadMCMSWithTimelockChainStateFromRefs(chain cldf_evm.Chain, refs []da
 			state.CancellerMcm = mcms
 		}
 	}
+
 	return &state, nil
 }
 
@@ -475,6 +479,7 @@ func (s LinkTokenState) GenerateLinkView() (linkv10.LinkTokenView, error) {
 	if s.LinkToken == nil {
 		return linkv10.LinkTokenView{}, errors.New("link token not found")
 	}
+
 	return linkv10.GenerateLinkTokenView(s.LinkToken)
 }
 
@@ -500,6 +505,7 @@ func MaybeLoadLinkTokenChainState(chain cldf_evm.Chain, addresses map[string]cld
 			state.LinkToken = lt
 		}
 	}
+
 	return &state, nil
 }
 
@@ -511,6 +517,7 @@ func (s StaticLinkTokenState) GenerateStaticLinkView() (linkv10.StaticLinkTokenV
 	if s.StaticLinkToken == nil {
 		return linkv10.StaticLinkTokenView{}, errors.New("static link token not found")
 	}
+
 	return linkv10.GenerateStaticLinkTokenView(s.StaticLinkToken)
 }
 
@@ -536,5 +543,6 @@ func MaybeLoadStaticLinkTokenState(chain cldf_evm.Chain, addresses map[string]cl
 			state.StaticLinkToken = lt
 		}
 	}
+
 	return &state, nil
 }
