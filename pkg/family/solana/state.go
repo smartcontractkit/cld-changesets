@@ -6,13 +6,13 @@ import (
 	"github.com/gagliardetto/solana-go"
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
-	mcmscontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/mcms"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
 	mcmssolanasdk "github.com/smartcontractkit/mcms/sdk/solana"
 )
 
 // GetState loads the MCMSWithTimelockState from the environment
 func GetState(env cldf.Environment, selector uint64) (*MCMSWithTimelockState, error) {
-	solanaState, err := maybeLoadMCMSWithTimelockChainState(env.DataStore.Addresses().Filter(datastore.AddressRefByChainSelector(selector)))
+	solanaState, err := MaybeLoadMCMSWithTimelockChainState(env.DataStore.Addresses().Filter(datastore.AddressRefByChainSelector(selector)))
 	if err != nil {
 		return nil, fmt.Errorf("failed to load solana state: %w", err)
 	}
@@ -45,8 +45,8 @@ type MCMSWithTimelockPrograms struct {
 
 type PDASeed [32]byte
 
-// maybeLoadMCMSWithTimelockChainState loads MCMSWithTimelockState from Datastore address refs.
-func maybeLoadMCMSWithTimelockChainState(refs []datastore.AddressRef) (*MCMSWithTimelockState, error) {
+// MaybeLoadMCMSWithTimelockChainState loads MCMSWithTimelockState from Datastore address refs.
+func MaybeLoadMCMSWithTimelockChainState(refs []datastore.AddressRef) (*MCMSWithTimelockState, error) {
 	state := MCMSWithTimelockState{MCMSWithTimelockPrograms: &MCMSWithTimelockPrograms{}}
 
 	mcmProgram := datastore.ContractType(mcmscontracts.ManyChainMultisigProgram)
