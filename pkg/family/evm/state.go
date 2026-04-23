@@ -3,6 +3,7 @@ package evm
 import (
 	"errors"
 	"fmt"
+	"maps"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/ethereum/go-ethereum/common"
@@ -10,8 +11,13 @@ import (
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	linkcontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/link"
 	mcmscontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/mcms"
+	"github.com/smartcontractkit/chainlink-evm/gethwrappers/generated/link_token_interface"
+	"github.com/smartcontractkit/chainlink-evm/gethwrappers/shared/generated/initial/link_token"
 
+	cldchangesetscommon "github.com/smartcontractkit/cld-changesets/pkg/common"
+	linkv10 "github.com/smartcontractkit/cld-changesets/pkg/contract/link/view/v1_0"
 	"github.com/smartcontractkit/cld-changesets/pkg/contract/mcms/view/v1_0"
 )
 
@@ -56,6 +62,11 @@ func (state MCMSWithTimelockState) GenerateMCMSWithTimelockView() (v1_0.MCMSWith
 
 	return v1_0.GenerateMCMSWithTimelockView(*state.BypasserMcm, *state.CancellerMcm, *state.ProposerMcm,
 		*state.Timelock, *state.CallProxy)
+}
+
+// MaybeLoadMCMSWithTimelockState loads the MCMSWithTimelockState state for each chain in the given environment.
+func MaybeLoadMCMSWithTimelockState(env cldf.Environment, chainSelectors []uint64) (map[uint64]*MCMSWithTimelockState, error) {
+	return MaybeLoadMCMSWithTimelockStateWithQualifier(env, chainSelectors, "")
 }
 
 // MaybeLoadMCMSWithTimelockStateWithQualifier loads the MCMSWithTimelockState state for each chain in the given environment,
@@ -279,4 +290,260 @@ func evmContractAddr(chain cldf_evm.Chain, raw string, tv cldf.TypeAndVersion) (
 	}
 
 	return addr, nil
+}
+
+// AddressesForChain combines addresses from both DataStore and AddressBook making it backward compatible.
+// This version supports qualifiers for filtering DataStore addresses.
+// When a qualifier is specified, only DataStore addresses with that qualifier are returned (no AddressBook merge)
+// to ensure isolation between different deployments.
+func AddressesForChain(env cldf.Environment, chainSelector uint64, qualifier string) (map[string]cldf.TypeAndVersion, error) {
+	// If a qualifier is specified, only use DataStore to ensure isolation between deployments
+	if qualifier != "" {
+		if env.DataStore != nil {
+			return LoadAddressesFromDataStore(env.DataStore, chainSelector, qualifier)
+		}
+
+		return nil, fmt.Errorf("DataStore not available but qualifier %s specified", qualifier)
+	}
+
+	// For backward compatibility without qualifier, merge both sources
+	// Start with addresses from AddressBook
+	addressBookAddresses := make(map[string]cldf.TypeAndVersion)
+	if addresses, err := env.ExistingAddresses.AddressesForChain(chainSelector); err == nil { // nolint
+		addressBookAddresses = addresses
+	} else if !errors.Is(err, cldf.ErrChainNotFound) {
+		return nil, fmt.Errorf("failed to load addresses from AddressBook: %w", err)
+	}
+
+	// If no DataStore, just return AddressBook addresses
+	if env.DataStore == nil {
+		return addressBookAddresses, nil
+	}
+
+	// Try to load addresses from DataStore (without qualifier for general case)
+	dataStoreAddresses, err := LoadAddressesFromDataStore(env.DataStore, chainSelector, "")
+	if err != nil {
+		// If DataStore has no addresses or returns an error, fall back to AddressBook addresses only
+		return addressBookAddresses, nil // nolint
+	}
+
+	// Merge the two maps - DataStore addresses take precedence
+	mergedAddresses := make(map[string]cldf.TypeAndVersion)
+
+	// First add all AddressBook addresses
+	maps.Copy(mergedAddresses, addressBookAddresses)
+
+	// Then add DataStore addresses (overwriting any conflicts)
+	maps.Copy(mergedAddresses, dataStoreAddresses)
+
+	return mergedAddresses, nil
+}
+
+// MaybeLoadMCMSWithTimelockStateDataStore loads the MCMSWithTimelockState state for each chain in the given environment from the DataStore.
+func MaybeLoadMCMSWithTimelockStateDataStore(env cldf.Environment, chainSelectors []uint64) (map[uint64]*MCMSWithTimelockState, error) {
+	return MaybeLoadMCMSWithTimelockStateDataStoreWithQualifier(env, chainSelectors, "")
+}
+
+func MaybeLoadMCMSWithTimelockStateDataStoreWithQualifier(env cldf.Environment, chainSelectors []uint64, qualifier string) (map[uint64]*MCMSWithTimelockState, error) {
+	result := map[uint64]*MCMSWithTimelockState{}
+	ds := env.DataStore
+	for _, chainSelector := range chainSelectors {
+		chain, ok := env.BlockChains.EVMChains()[chainSelector]
+		if !ok {
+			return nil, fmt.Errorf("chain %d not found", chainSelector)
+		}
+		state, err := GetMCMSWithTimelockState(ds.Addresses(), chain, qualifier)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get MCMSWithTimelock state for chain %d, qualifier %s: %w", chainSelector, qualifier, err)
+		}
+		result[chainSelector] = state
+	}
+
+	return result, nil
+}
+
+// GetMCMSWithTimelockState loads the MCMSWithTimelockState for a specific chain and qualifier from the DataStore.
+// It filters AddressRefs to avoid key collisions that occur when multiple contract types share the same address (e.g. bypasser and canceller).
+func GetMCMSWithTimelockState(store datastore.AddressRefStore, chain cldf_evm.Chain, qualifier string) (*MCMSWithTimelockState, error) {
+	filters := []datastore.FilterFunc[datastore.AddressRefKey, datastore.AddressRef]{datastore.AddressRefByChainSelector(chain.Selector)}
+	if qualifier != "" {
+		filters = append(filters, datastore.AddressRefByQualifier(qualifier))
+	}
+
+	refs := store.Filter(filters...)
+	if len(refs) == 0 {
+		if qualifier != "" {
+			return nil, fmt.Errorf("no addresses found for chain %d with qualifier %s", chain.Selector, qualifier)
+		}
+
+		return nil, fmt.Errorf("no addresses found for chain %d", chain.Selector)
+	}
+
+	return MaybeLoadMCMSWithTimelockChainStateFromRefs(chain, refs)
+}
+
+// LoadAddressesFromDataStore loads addresses from DataStore with optional qualifier.
+// This is a public utility function that can be used by other packages to avoid duplication.
+//
+// Deprecated: Use GetAddressTypeVersionByQualifier instead.
+func LoadAddressesFromDataStore(ds datastore.DataStore, chainSelector uint64, qualifier string) (map[string]cldf.TypeAndVersion, error) {
+	addressesChain, err := GetAddressTypeVersionByQualifier(ds.Addresses(), chainSelector, qualifier)
+	if err != nil {
+		return nil, err
+	}
+
+	return addressesChain, nil
+}
+
+// MaybeLoadMCMSWithTimelockChainStateFromRefs is the DataStore-native equivalent of MaybeLoadMCMSWithTimelockChainState.
+// It accepts []datastore.AddressRef directly, to preserve entries when multiple contract types share the same address (e.g. bypasser and canceller).
+func MaybeLoadMCMSWithTimelockChainStateFromRefs(chain cldf_evm.Chain, refs []datastore.AddressRef) (*MCMSWithTimelockState, error) {
+	state := MCMSWithTimelockState{}
+	var (
+		// We expect one of each contract on the chain.
+		timelock  = cldf.NewTypeAndVersion(mcmscontracts.RBACTimelock, cldchangesetscommon.Version1_0_0)
+		callProxy = cldf.NewTypeAndVersion(mcmscontracts.CallProxy, cldchangesetscommon.Version1_0_0)
+		proposer  = cldf.NewTypeAndVersion(mcmscontracts.ProposerManyChainMultisig, cldchangesetscommon.Version1_0_0)
+		canceller = cldf.NewTypeAndVersion(mcmscontracts.CancellerManyChainMultisig, cldchangesetscommon.Version1_0_0)
+		bypasser  = cldf.NewTypeAndVersion(mcmscontracts.BypasserManyChainMultisig, cldchangesetscommon.Version1_0_0)
+	)
+
+	wantTypes := []cldf.TypeAndVersion{timelock, proposer, canceller, bypasser, callProxy}
+
+	dedupMap := make(map[string]cldf.TypeAndVersion, len(refs))
+	for _, ref := range refs {
+		tv := cldf.TypeAndVersion{
+			Type:    cldf.ContractType(ref.Type),
+			Version: *ref.Version,
+		}
+		if !ref.Labels.IsEmpty() {
+			tv.Labels = cldf.NewLabelSet(ref.Labels.List()...)
+		}
+		dedupMap[ref.Key().String()] = tv
+	}
+
+	// Ensure we either have the bundle or not.
+	_, err := cldf.EnsureDeduped(dedupMap, wantTypes)
+	if err != nil {
+		return nil, fmt.Errorf("unable to check MCMS contracts on chain %s error: %w", chain.Name(), err)
+	}
+
+	for _, ref := range refs {
+		addr := common.HexToAddress(ref.Address)
+		tv := cldf.TypeAndVersion{
+			Type:    cldf.ContractType(ref.Type),
+			Version: *ref.Version,
+		}
+
+		switch {
+		case tv.Type == timelock.Type && tv.Version.String() == timelock.Version.String():
+			tl, err := bindings.NewRBACTimelock(addr, chain.Client)
+			if err != nil {
+				return nil, err
+			}
+			state.Timelock = tl
+		case tv.Type == callProxy.Type && tv.Version.String() == callProxy.Version.String():
+			cp, err := bindings.NewCallProxy(addr, chain.Client)
+			if err != nil {
+				return nil, err
+			}
+			state.CallProxy = cp
+		case tv.Type == proposer.Type && tv.Version.String() == proposer.Version.String():
+			mcms, err := bindings.NewManyChainMultiSig(addr, chain.Client)
+			if err != nil {
+				return nil, err
+			}
+			state.ProposerMcm = mcms
+		case tv.Type == bypasser.Type && tv.Version.String() == bypasser.Version.String():
+			mcms, err := bindings.NewManyChainMultiSig(addr, chain.Client)
+			if err != nil {
+				return nil, err
+			}
+			state.BypasserMcm = mcms
+		case tv.Type == canceller.Type && tv.Version.String() == canceller.Version.String():
+			mcms, err := bindings.NewManyChainMultiSig(addr, chain.Client)
+			if err != nil {
+				return nil, err
+			}
+			state.CancellerMcm = mcms
+		}
+	}
+
+	return &state, nil
+}
+
+type LinkTokenState struct {
+	LinkToken *link_token.LinkToken
+}
+
+func (s LinkTokenState) GenerateLinkView() (linkv10.LinkTokenView, error) {
+	if s.LinkToken == nil {
+		return linkv10.LinkTokenView{}, errors.New("link token not found")
+	}
+
+	return linkv10.GenerateLinkTokenView(s.LinkToken)
+}
+
+func MaybeLoadLinkTokenChainState(chain cldf_evm.Chain, addresses map[string]cldf.TypeAndVersion) (*LinkTokenState, error) {
+	state := LinkTokenState{}
+	linkToken := cldf.NewTypeAndVersion(linkcontracts.LinkToken, cldchangesetscommon.Version1_0_0)
+
+	// Convert map keys to a slice
+	wantTypes := []cldf.TypeAndVersion{linkToken}
+
+	// Ensure we either have the bundle or not.
+	_, err := cldf.EnsureDeduped(addresses, wantTypes)
+	if err != nil {
+		return nil, fmt.Errorf("unable to check link token on chain %s error: %w", chain.Name(), err)
+	}
+
+	for address, tvStr := range addresses {
+		if tvStr.Type == linkToken.Type && tvStr.Version.String() == linkToken.Version.String() {
+			lt, err := link_token.NewLinkToken(common.HexToAddress(address), chain.Client)
+			if err != nil {
+				return nil, err
+			}
+			state.LinkToken = lt
+		}
+	}
+
+	return &state, nil
+}
+
+type StaticLinkTokenState struct {
+	StaticLinkToken *link_token_interface.LinkToken
+}
+
+func (s StaticLinkTokenState) GenerateStaticLinkView() (linkv10.StaticLinkTokenView, error) {
+	if s.StaticLinkToken == nil {
+		return linkv10.StaticLinkTokenView{}, errors.New("static link token not found")
+	}
+
+	return linkv10.GenerateStaticLinkTokenView(s.StaticLinkToken)
+}
+
+func MaybeLoadStaticLinkTokenState(chain cldf_evm.Chain, addresses map[string]cldf.TypeAndVersion) (*StaticLinkTokenState, error) {
+	state := StaticLinkTokenState{}
+	staticLinkToken := cldf.NewTypeAndVersion(linkcontracts.StaticLinkToken, cldchangesetscommon.Version1_0_0)
+
+	// Convert map keys to a slice
+	wantTypes := []cldf.TypeAndVersion{staticLinkToken}
+
+	// Ensure we either have the bundle or not.
+	_, err := cldf.EnsureDeduped(addresses, wantTypes)
+	if err != nil {
+		return nil, fmt.Errorf("unable to check static link token on chain %s error: %w", chain.Name(), err)
+	}
+
+	for address, tvStr := range addresses {
+		if tvStr.Type == staticLinkToken.Type && tvStr.Version.String() == staticLinkToken.Version.String() {
+			lt, err := link_token_interface.NewLinkToken(common.HexToAddress(address), chain.Client)
+			if err != nil {
+				return nil, err
+			}
+			state.StaticLinkToken = lt
+		}
+	}
+
+	return &state, nil
 }
