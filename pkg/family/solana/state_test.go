@@ -13,7 +13,7 @@ func TestMaybeLoadMCMSWithTimelockChainState_NoMatchingRefs(t *testing.T) {
 
 	t.Run("nil refs", func(t *testing.T) {
 		t.Parallel()
-		got, err := maybeLoadMCMSWithTimelockChainState(nil)
+		got, err := MaybeLoadMCMSWithTimelockChainState(nil)
 		require.NoError(t, err)
 		require.NotNil(t, got)
 		require.NotNil(t, got.MCMSWithTimelockPrograms)
@@ -22,7 +22,7 @@ func TestMaybeLoadMCMSWithTimelockChainState_NoMatchingRefs(t *testing.T) {
 
 	t.Run("empty refs", func(t *testing.T) {
 		t.Parallel()
-		got, err := maybeLoadMCMSWithTimelockChainState([]datastore.AddressRef{})
+		got, err := MaybeLoadMCMSWithTimelockChainState([]datastore.AddressRef{})
 		require.NoError(t, err)
 		require.NotNil(t, got)
 		require.NotNil(t, got.MCMSWithTimelockPrograms)
