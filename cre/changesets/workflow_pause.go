@@ -32,6 +32,10 @@ func (CREWorkflowPauseChangeset) VerifyPreconditions(e cldf.Environment, input c
 
 // Apply loads CRE config and runs the CRE workflow pause operation.
 func (CREWorkflowPauseChangeset) Apply(e cldf.Environment, input creops.CREWorkflowPauseInput) (cldf.ChangesetOutput, error) {
+	if err := input.Validate(); err != nil {
+		return cldf.ChangesetOutput{}, err
+	}
+
 	envCfg, err := cfgenv.LoadEnv()
 	if err != nil {
 		return cldf.ChangesetOutput{}, fmt.Errorf("load CRE env config: %w", err)

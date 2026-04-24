@@ -33,7 +33,7 @@ func newDeleteTestEnv(t *testing.T, opts ...testenv.LoadOpt) *cldf.Environment {
 func validDeleteInput(t *testing.T) operations.CREWorkflowDeleteInput {
 	t.Helper()
 	projectPath := filepath.Join(t.TempDir(), "project.yaml")
-	require.NoError(t, os.WriteFile(projectPath, []byte("staging-settings:\n  rpcs: []\n"), 0o600))
+	require.NoError(t, os.WriteFile(projectPath, []byte("cld-deploy:\n  rpcs: []\n"), 0o600))
 
 	return operations.CREWorkflowDeleteInput{
 		WorkflowName:       "wf",

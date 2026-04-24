@@ -33,7 +33,7 @@ func newPauseTestEnv(t *testing.T, opts ...testenv.LoadOpt) *cldf.Environment {
 func validPauseInput(t *testing.T) operations.CREWorkflowPauseInput {
 	t.Helper()
 	projectPath := filepath.Join(t.TempDir(), "project.yaml")
-	require.NoError(t, os.WriteFile(projectPath, []byte("staging-settings:\n  rpcs: []\n"), 0o600))
+	require.NoError(t, os.WriteFile(projectPath, []byte("cld-deploy:\n  rpcs: []\n"), 0o600))
 
 	return operations.CREWorkflowPauseInput{
 		WorkflowName:       "wf",

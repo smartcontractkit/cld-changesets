@@ -32,6 +32,10 @@ func (CREWorkflowDeleteChangeset) VerifyPreconditions(e cldf.Environment, input 
 
 // Apply loads CRE config and runs the CRE workflow delete operation.
 func (CREWorkflowDeleteChangeset) Apply(e cldf.Environment, input creops.CREWorkflowDeleteInput) (cldf.ChangesetOutput, error) {
+	if err := input.Validate(); err != nil {
+		return cldf.ChangesetOutput{}, err
+	}
+
 	envCfg, err := cfgenv.LoadEnv()
 	if err != nil {
 		return cldf.ChangesetOutput{}, fmt.Errorf("load CRE env config: %w", err)

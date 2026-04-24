@@ -32,7 +32,7 @@ func TestCREWorkflowDeleteOp(t *testing.T) {
 
 				return CREWorkflowDeleteInput{
 					WorkflowName:       "wf",
-					Project:            creartifacts.NewConfigSourceLocal(writeFile(t, "project.yaml", []byte("staging-settings:\n  rpcs: []\n"))),
+					Project:            creartifacts.NewConfigSourceLocal(writeFile(t, "project.yaml", []byte("cld-deploy:\n  rpcs: []\n"))),
 					DonFamily:          "feeds-zone-a",
 					DeploymentRegistry: "private",
 				}
@@ -83,7 +83,7 @@ func TestCREWorkflowDeleteOp(t *testing.T) {
 
 				return CREWorkflowDeleteInput{
 					WorkflowName:       "wf",
-					Project:            creartifacts.NewConfigSourceLocal(writeFile(t, "project.yaml", []byte("staging-settings:\n  rpcs: []\n"))),
+					Project:            creartifacts.NewConfigSourceLocal(writeFile(t, "project.yaml", []byte("cld-deploy:\n  rpcs: []\n"))),
 					DonFamily:          "feeds-zone-a",
 					DeploymentRegistry: "private",
 				}
