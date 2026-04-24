@@ -33,7 +33,7 @@ func TestGetAddressTypeVersionByQualifier(t *testing.T) {
 
 	chainSel := chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector
 	otherSel := chainSel + 1
-	v := version1_0_0
+	v := cldchangesetscommon.Version1_0_0
 
 	t.Run("no addresses for chain", func(t *testing.T) {
 		t.Parallel()
@@ -217,7 +217,7 @@ func TestMaybeLoadMCMSWithTimelockChainState(t *testing.T) {
 
 	t.Run("duplicate RBACTimelock in bundle", func(t *testing.T) {
 		t.Parallel()
-		tv := cldf.NewTypeAndVersion(mcmscontracts.RBACTimelock, version1_0_0)
+		tv := cldf.NewTypeAndVersion(mcmscontracts.RBACTimelock, cldchangesetscommon.Version1_0_0)
 		addrs := map[string]cldf.TypeAndVersion{
 			"0x0000000000000000000000000000000000000001": tv,
 			"0x0000000000000000000000000000000000000002": tv,
@@ -228,7 +228,7 @@ func TestMaybeLoadMCMSWithTimelockChainState(t *testing.T) {
 
 	t.Run("invalid hex address in bundle", func(t *testing.T) {
 		t.Parallel()
-		tv := cldf.NewTypeAndVersion(mcmscontracts.RBACTimelock, version1_0_0)
+		tv := cldf.NewTypeAndVersion(mcmscontracts.RBACTimelock, cldchangesetscommon.Version1_0_0)
 		_, err := MaybeLoadMCMSWithTimelockChainState(ch, map[string]cldf.TypeAndVersion{
 			"not-a-valid-hex-address": tv,
 		})
@@ -240,7 +240,7 @@ func TestMaybeLoadMCMSWithTimelockStateWithQualifier(t *testing.T) {
 	t.Parallel()
 
 	chainSel := chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector
-	v := version1_0_0
+	v := cldchangesetscommon.Version1_0_0
 
 	t.Run("chain not in environment", func(t *testing.T) {
 		t.Parallel()
@@ -250,15 +250,19 @@ func TestMaybeLoadMCMSWithTimelockStateWithQualifier(t *testing.T) {
 		require.ErrorContains(t, err, "not found")
 	})
 
-	t.Run("no addresses in datastore for chain", func(t *testing.T) {
+	t.Run("empty datastore falls back to address book and yields empty MCMS bindings", func(t *testing.T) {
 		t.Parallel()
 		ds := datastore.NewMemoryDataStore().Seal()
 		evmCh := cldf_evm.Chain{Selector: chainSel, Client: nil}
 		env := testEVMEnv(t, ds, chain.NewBlockChains(map[uint64]chain.BlockChain{
 			chainSel: evmCh,
 		}))
-		_, err := MaybeLoadMCMSWithTimelockStateWithQualifier(env, []uint64{chainSel}, "")
-		require.ErrorContains(t, err, "no addresses found for chain")
+		got, err := MaybeLoadMCMSWithTimelockStateWithQualifier(env, []uint64{chainSel}, "")
+		require.NoError(t, err)
+		require.Len(t, got, 1)
+		st := got[chainSel]
+		require.NotNil(t, st)
+		require.Nil(t, st.Timelock)
 	})
 
 	t.Run("chain present with non MCMS ref succeeds with empty bindings", func(t *testing.T) {
@@ -282,7 +286,7 @@ func TestMaybeLoadMCMSWithTimelockStateWithQualifier(t *testing.T) {
 		require.Nil(t, st.Timelock)
 	})
 
-	t.Run("datastore refs missing version returns error", func(t *testing.T) {
+	t.Run("datastore only nil version refs merge falls back to empty address map", func(t *testing.T) {
 		t.Parallel()
 		ds := datastore.NewMemoryDataStore()
 		require.NoError(t, ds.Addresses().Add(datastore.AddressRef{
@@ -294,8 +298,12 @@ func TestMaybeLoadMCMSWithTimelockStateWithQualifier(t *testing.T) {
 		env := testEVMEnv(t, ds.Seal(), chain.NewBlockChains(map[uint64]chain.BlockChain{
 			chainSel: evmCh,
 		}))
-		_, err := MaybeLoadMCMSWithTimelockStateWithQualifier(env, []uint64{chainSel}, "")
-		require.ErrorContains(t, err, "no address refs with a non-nil contract version")
+		got, err := MaybeLoadMCMSWithTimelockStateWithQualifier(env, []uint64{chainSel}, "")
+		require.NoError(t, err)
+		require.Len(t, got, 1)
+		st := got[chainSel]
+		require.NotNil(t, st)
+		require.Nil(t, st.Timelock)
 	})
 }
 
@@ -698,6 +706,19 @@ func TestAddressesForChain(t *testing.T) {
 		require.True(t, uniqueRef.Labels.Contains("team:unique-entry"))
 		require.True(t, uniqueRef.Labels.Contains("role:timelock"))
 	})
+}
+
+func TestMaybeLoadMCMSWithTimelockStateDataStore_nil(t *testing.T) {
+	t.Parallel()
+
+	chainSel := chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector
+	evmCh := cldf_evm.Chain{Selector: chainSel, Client: nil}
+	env := testEVMEnv(t, nil, chain.NewBlockChains(map[uint64]chain.BlockChain{
+		chainSel: evmCh,
+	}))
+
+	_, err := MaybeLoadMCMSWithTimelockStateDataStore(env, []uint64{chainSel})
+	require.ErrorContains(t, err, "DataStore not available for MCMSWithTimelock state load")
 }
 
 func TestGetMCMSWithTimelockState(t *testing.T) {
