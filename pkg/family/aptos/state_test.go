@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/Masterminds/semver/v3"
 	"github.com/stretchr/testify/require"
 
 	aptoschain "github.com/aptos-labs/aptos-go-sdk"
@@ -15,11 +14,11 @@ import (
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/offchain/ocr"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
+
+	"github.com/smartcontractkit/cld-changesets/pkg/common"
 )
 
 const testAptosMCMSAddr = "0x3"
-
-var version1_6_0 = *semver.MustParse("1.6.0")
 
 func TestLoadMCMSAddresses(t *testing.T) {
 	t.Parallel()
@@ -33,7 +32,7 @@ func TestLoadMCMSAddresses(t *testing.T) {
 		ds := datastore.NewMemoryDataStore().Seal()
 		env := testEnv(t, ab, ds)
 
-		got, err := LoadMCMSAddresses(env, nil, version1_6_0)
+		got, err := LoadMCMSAddresses(env, nil)
 
 		require.NoError(t, err)
 		require.Empty(t, got)
@@ -43,17 +42,11 @@ func TestLoadMCMSAddresses(t *testing.T) {
 		t.Parallel()
 
 		ab := cldf.NewMemoryAddressBook()
-		ds := datastore.NewMemoryDataStore()
-		v := version1_6_0
-		require.NoError(t, ds.Addresses().Add(datastore.AddressRef{
-			Address:       testAptosMCMSAddr,
-			ChainSelector: chainSel,
-			Type:          datastore.ContractType(AptosMCMSType),
-			Version:       &v,
-		}))
-		env := testEnv(t, ab, ds.Seal())
+		require.NoError(t, ab.Save(chainSel, testAptosMCMSAddr, cldf.NewTypeAndVersion(AptosMCMSType, common.Version1_6_0)))
+		ds := datastore.NewMemoryDataStore().Seal()
+		env := testEnv(t, ab, ds)
 
-		got, err := LoadMCMSAddresses(env, []uint64{chainSel}, version1_6_0)
+		got, err := LoadMCMSAddresses(env, []uint64{chainSel})
 
 		require.NoError(t, err)
 		require.Len(t, got, 1)
@@ -62,101 +55,60 @@ func TestLoadMCMSAddresses(t *testing.T) {
 		require.Equal(t, want, got[chainSel])
 	})
 
-	t.Run("success with explicit contract version", func(t *testing.T) {
+	t.Run("no MCMS on chain", func(t *testing.T) {
 		t.Parallel()
 
 		ab := cldf.NewMemoryAddressBook()
-		ds := datastore.NewMemoryDataStore()
-		v := *semver.MustParse("1.5.0")
-		require.NoError(t, ds.Addresses().Add(datastore.AddressRef{
-			Address:       testAptosMCMSAddr,
-			ChainSelector: chainSel,
-			Type:          datastore.ContractType(AptosMCMSType),
-			Version:       &v,
-		}))
-		env := testEnv(t, ab, ds.Seal())
+		other := cldf.NewTypeAndVersion("SomeOtherContract", common.Version1_0_0)
+		require.NoError(t, ab.Save(chainSel, "0x1", other))
+		ds := datastore.NewMemoryDataStore().Seal()
+		env := testEnv(t, ab, ds)
 
-		got, err := LoadMCMSAddresses(env, []uint64{chainSel}, v)
+		_, err := LoadMCMSAddresses(env, []uint64{chainSel})
 
-		require.NoError(t, err)
-		require.Len(t, got, 1)
-		var want aptoschain.AccountAddress
-		require.NoError(t, want.ParseStringRelaxed(testAptosMCMSAddr))
-		require.Equal(t, want, got[chainSel])
+		require.ErrorContains(t, err, fmt.Sprintf("no MCMS address found for Aptos chain: %d", chainSel))
 	})
 
-	t.Run("no MCMS in datastore", func(t *testing.T) {
+	t.Run("chain not in address book", func(t *testing.T) {
 		t.Parallel()
 
 		ab := cldf.NewMemoryAddressBook()
 		ds := datastore.NewMemoryDataStore().Seal()
 		env := testEnv(t, ab, ds)
 
-		_, err := LoadMCMSAddresses(env, []uint64{chainSel}, version1_6_0)
+		_, err := LoadMCMSAddresses(env, []uint64{chainSel})
 
-		require.ErrorContains(t, err, "no MCMS address found for Aptos chain selector")
+		require.ErrorContains(t, err, fmt.Sprintf("failed to load addresses for Aptos chain %d:", chainSel))
+		require.ErrorIs(t, err, cldf.ErrChainNotFound)
 	})
 
 	t.Run("wrong version ignored", func(t *testing.T) {
 		t.Parallel()
 
 		ab := cldf.NewMemoryAddressBook()
-		ds := datastore.NewMemoryDataStore()
-		wrong := semver.MustParse("1.5.0")
-		require.NoError(t, ds.Addresses().Add(datastore.AddressRef{
-			Address:       testAptosMCMSAddr,
-			ChainSelector: chainSel,
-			Type:          datastore.ContractType(AptosMCMSType),
-			Version:       wrong,
-		}))
-		env := testEnv(t, ab, ds.Seal())
+		require.NoError(t, ab.Save(chainSel, testAptosMCMSAddr, cldf.NewTypeAndVersion(AptosMCMSType, common.Version1_5_0)))
+		ds := datastore.NewMemoryDataStore().Seal()
+		env := testEnv(t, ab, ds)
 
-		_, err := LoadMCMSAddresses(env, []uint64{chainSel}, version1_6_0)
+		_, err := LoadMCMSAddresses(env, []uint64{chainSel})
 
-		require.ErrorContains(t, err, "no MCMS address found for Aptos chain selector")
-	})
-
-	t.Run("nil version ignored", func(t *testing.T) {
-		t.Parallel()
-
-		ab := cldf.NewMemoryAddressBook()
-		ds := datastore.NewMemoryDataStore()
-		require.NoError(t, ds.Addresses().Add(datastore.AddressRef{
-			Address:       testAptosMCMSAddr,
-			ChainSelector: chainSel,
-			Type:          datastore.ContractType(AptosMCMSType),
-		}))
-		env := testEnv(t, ab, ds.Seal())
-
-		var err error
-		require.NotPanics(t, func() {
-			_, err = LoadMCMSAddresses(env, []uint64{chainSel}, version1_6_0)
-		})
-
-		require.ErrorContains(t, err, "no MCMS address found for Aptos chain selector")
+		require.ErrorContains(t, err, fmt.Sprintf("no MCMS address found for Aptos chain: %d", chainSel))
 	})
 
 	t.Run("invalid address", func(t *testing.T) {
 		t.Parallel()
 
 		ab := cldf.NewMemoryAddressBook()
-		ds := datastore.NewMemoryDataStore()
-		v := version1_6_0
-		require.NoError(t, ds.Addresses().Add(datastore.AddressRef{
-			Address:       "NotHex",
-			ChainSelector: chainSel,
-			Type:          datastore.ContractType(AptosMCMSType),
-			Version:       &v,
-		}))
-		env := testEnv(t, ab, ds.Seal())
+		require.NoError(t, ab.Save(chainSel, "NotHex", cldf.NewTypeAndVersion(AptosMCMSType, common.Version1_6_0)))
+		ds := datastore.NewMemoryDataStore().Seal()
+		env := testEnv(t, ab, ds)
 
-		_, err := LoadMCMSAddresses(env, []uint64{chainSel}, version1_6_0)
+		_, err := LoadMCMSAddresses(env, []uint64{chainSel})
 
-		wantPrefix := fmt.Sprintf(
-			"failed to parse MCMS address for Aptos chain selector %d (type=%s, version=%s, address=%s): ",
-			chainSel, AptosMCMSType, version1_6_0.String(), "NotHex",
-		)
-		require.ErrorContains(t, err, wantPrefix)
+		require.ErrorContains(t, err, fmt.Sprintf(
+			"failed to parse Aptos MCMS address for chain %d (type=%s, version=%s, address=NotHex)",
+			chainSel, AptosMCMSType, common.Version1_6_0.String(),
+		))
 		var scratch aptoschain.AccountAddress
 		parseErr := scratch.ParseStringRelaxed("NotHex")
 		require.Error(t, parseErr)

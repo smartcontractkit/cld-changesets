@@ -2,35 +2,48 @@ package solana
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/gagliardetto/solana-go"
+	chainsel "github.com/smartcontractkit/chain-selectors"
 	timelockBindings "github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings/v0_1_1/timelock"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
+	cldf_solana "github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	mcmscontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/mcms"
 	"github.com/smartcontractkit/chainlink-deployments-framework/offchain/ocr"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 	"github.com/stretchr/testify/require"
+
+	cldchangesetscommon "github.com/smartcontractkit/cld-changesets/pkg/common"
 )
 
 func TestMaybeLoadMCMSWithTimelockChainState_NoMatchingRefs(t *testing.T) {
 	t.Parallel()
 
-	t.Run("nil refs", func(t *testing.T) {
+	t.Run("V2 nil refs", func(t *testing.T) {
 		t.Parallel()
-		got, err := MaybeLoadMCMSWithTimelockChainState(nil)
+		got, err := MaybeLoadMCMSWithTimelockChainStateV2(nil)
 		require.NoError(t, err)
 		require.NotNil(t, got)
 		require.NotNil(t, got.MCMSWithTimelockPrograms)
 		require.Equal(t, solana.PublicKey{}, got.McmProgram)
 	})
 
-	t.Run("empty refs", func(t *testing.T) {
+	t.Run("V2 empty refs", func(t *testing.T) {
 		t.Parallel()
-		got, err := MaybeLoadMCMSWithTimelockChainState([]datastore.AddressRef{})
+		got, err := MaybeLoadMCMSWithTimelockChainStateV2([]datastore.AddressRef{})
+		require.NoError(t, err)
+		require.NotNil(t, got)
+		require.NotNil(t, got.MCMSWithTimelockPrograms)
+		require.Equal(t, solana.PublicKey{}, got.McmProgram)
+	})
+
+	t.Run("empty address map", func(t *testing.T) {
+		t.Parallel()
+		ch := cldf_solana.Chain{Selector: chainsel.SOLANA_DEVNET.Selector, Client: nil}
+		got, err := MaybeLoadMCMSWithTimelockChainState(ch, map[string]cldf.TypeAndVersion{})
 		require.NoError(t, err)
 		require.NotNil(t, got)
 		require.NotNil(t, got.MCMSWithTimelockPrograms)
@@ -41,14 +54,15 @@ func TestMaybeLoadMCMSWithTimelockChainState_NoMatchingRefs(t *testing.T) {
 func TestMaybeLoadMCMSWithTimelockState(t *testing.T) {
 	t.Parallel()
 
-	const chain1 uint64 = 100_001
-	const chain2 uint64 = 100_002
+	chain1 := chainsel.SOLANA_DEVNET.Selector
+	chain2 := chainsel.SOLANA_TESTNET.Selector
 	const mcmProgramAddr = "11111111111111111111111111111111"
 	const otherProgramAddr = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+	const timelockProgramAddr = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
 
 	t.Run("nil and empty chain selector list", func(t *testing.T) {
 		t.Parallel()
-		env := testSolanaEnv(t, datastore.NewMemoryDataStore().Seal())
+		env := testSolanaEnv(t, cldf.NewMemoryAddressBook(), testSolanaChains())
 
 		got, err := MaybeLoadMCMSWithTimelockState(env, nil)
 		require.NoError(t, err)
@@ -61,8 +75,7 @@ func TestMaybeLoadMCMSWithTimelockState(t *testing.T) {
 
 	t.Run("single chain no refs", func(t *testing.T) {
 		t.Parallel()
-		ds := datastore.NewMemoryDataStore()
-		env := testSolanaEnv(t, ds.Seal())
+		env := testSolanaEnv(t, cldf.NewMemoryAddressBook(), testSolanaChains(chain1))
 		got, err := MaybeLoadMCMSWithTimelockState(env, []uint64{chain1})
 		require.NoError(t, err)
 		require.Len(t, got, 1)
@@ -74,49 +87,66 @@ func TestMaybeLoadMCMSWithTimelockState(t *testing.T) {
 
 	t.Run("two chains isolated by selector", func(t *testing.T) {
 		t.Parallel()
-		ds := datastore.NewMemoryDataStore()
-		require.NoError(t, ds.Addresses().Add(datastore.AddressRef{
-			Address:       mcmProgramAddr,
-			ChainSelector: chain1,
-			Type:          datastore.ContractType(mcmscontracts.ManyChainMultisigProgram),
-		}))
-		require.NoError(t, ds.Addresses().Add(datastore.AddressRef{
-			Address:       otherProgramAddr,
-			ChainSelector: chain2,
-			Type:          datastore.ContractType(mcmscontracts.ManyChainMultisigProgram),
-		}))
-		require.NoError(t, ds.Addresses().Add(datastore.AddressRef{
-			Address:       otherProgramAddr,
-			ChainSelector: chain2,
-			Type:          datastore.ContractType(mcmscontracts.RBACTimelockProgram),
-		}))
-		env := testSolanaEnv(t, ds.Seal())
+		ab := cldf.NewMemoryAddressBook()
+		tv := cldf.NewTypeAndVersion(mcmscontracts.ManyChainMultisigProgram, cldchangesetscommon.Version1_0_0)
+		tlTV := cldf.NewTypeAndVersion(mcmscontracts.RBACTimelockProgram, cldchangesetscommon.Version1_0_0)
+		require.NoError(t, ab.Save(chain1, mcmProgramAddr, tv))
+		require.NoError(t, ab.Save(chain2, otherProgramAddr, tv))
+		require.NoError(t, ab.Save(chain2, timelockProgramAddr, tlTV))
+
+		env := testSolanaEnv(t, ab, testSolanaChains(chain1, chain2))
 		got, err := MaybeLoadMCMSWithTimelockState(env, []uint64{chain1, chain2})
 		require.NoError(t, err)
 		require.Len(t, got, 2)
 
 		wantMcm1 := solana.MustPublicKeyFromBase58(mcmProgramAddr)
 		wantMcm2 := solana.MustPublicKeyFromBase58(otherProgramAddr)
+		wantTL2 := solana.MustPublicKeyFromBase58(timelockProgramAddr)
 		require.Equal(t, wantMcm1, got[chain1].McmProgram)
 		require.Equal(t, solana.PublicKey{}, got[chain1].TimelockProgram)
 
 		require.Equal(t, wantMcm2, got[chain2].McmProgram)
-		require.Equal(t, wantMcm2, got[chain2].TimelockProgram)
+		require.Equal(t, wantTL2, got[chain2].TimelockProgram)
 	})
 
 	t.Run("invalid address returns wrapped error", func(t *testing.T) {
 		t.Parallel()
-		ds := datastore.NewMemoryDataStore()
-		require.NoError(t, ds.Addresses().Add(datastore.AddressRef{
-			Address:       "not-valid-base58",
-			ChainSelector: chain1,
-			Type:          datastore.ContractType(mcmscontracts.ManyChainMultisigProgram),
-		}))
-		env := testSolanaEnv(t, ds.Seal())
+		ab := cldf.NewMemoryAddressBook()
+		require.NoError(t, ab.Save(chain1, "not-valid-base58",
+			cldf.NewTypeAndVersion(mcmscontracts.ManyChainMultisigProgram, cldchangesetscommon.Version1_0_0)))
+		env := testSolanaEnv(t, ab, testSolanaChains(chain1))
 		_, err := MaybeLoadMCMSWithTimelockState(env, []uint64{chain1})
-		require.ErrorContains(t, err, fmt.Sprintf(
-			"unable to load mcms and timelock solana chain state for chain selector %d: unable to parse public key from mcm address",
-			chain1))
+		require.ErrorContains(t, err, "unable to load mcms and timelock solana chain state")
+		require.ErrorContains(t, err, "unable to parse public key from mcm address")
+	})
+}
+
+func TestGetState(t *testing.T) {
+	t.Parallel()
+
+	t.Run("chain not in environment", func(t *testing.T) {
+		t.Parallel()
+		env := testSolanaEnv(t, cldf.NewMemoryAddressBook(), chain.NewBlockChains(nil))
+		_, err := GetState(env, chainsel.SOLANA_DEVNET.Selector)
+		require.ErrorContains(t, err, "chain")
+		require.ErrorContains(t, err, "not found")
+	})
+
+	t.Run("address book miss and no DataStore", func(t *testing.T) {
+		t.Parallel()
+		env := cldf.NewEnvironment(
+			"test",
+			logger.Nop(),
+			cldf.NewMemoryAddressBook(),
+			nil,
+			nil,
+			nil,
+			func() context.Context { return t.Context() },
+			ocr.OCRSecrets{},
+			testSolanaChains(chainsel.SOLANA_DEVNET.Selector),
+		)
+		_, err := GetState(*env, chainsel.SOLANA_DEVNET.Selector)
+		require.ErrorContains(t, err, "no DataStore available")
 	})
 }
 
@@ -314,17 +344,26 @@ func TestMCMSWithTimelockPrograms_RoleAccount(t *testing.T) {
 	require.Equal(t, solana.PublicKey{}, s.RoleAccount(timelockBindings.Role(99)))
 }
 
-func testSolanaEnv(t *testing.T, ds datastore.DataStore) cldf.Environment {
+func testSolanaChains(selectors ...uint64) chain.BlockChains {
+	m := make(map[uint64]chain.BlockChain, len(selectors))
+	for _, sel := range selectors {
+		m[sel] = cldf_solana.Chain{Selector: sel, Client: nil}
+	}
+
+	return chain.NewBlockChains(m)
+}
+
+func testSolanaEnv(t *testing.T, ab cldf.AddressBook, chains chain.BlockChains) cldf.Environment {
 	t.Helper()
 	return *cldf.NewEnvironment(
 		"test",
 		logger.Nop(),
-		cldf.NewMemoryAddressBook(),
-		ds,
+		ab,
+		datastore.NewMemoryDataStore().Seal(),
 		nil,
 		nil,
 		func() context.Context { return t.Context() },
 		ocr.OCRSecrets{},
-		chain.NewBlockChains(nil),
+		chains,
 	)
 }
