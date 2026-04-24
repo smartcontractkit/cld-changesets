@@ -67,6 +67,7 @@ func TestCREWorkflowPauseChangeset_VerifyPreconditions(t *testing.T) {
 			input: func() operations.CREWorkflowPauseInput {
 				in := good
 				in.Project = creartifacts.ConfigSource{}
+
 				return in
 			},
 			wantErr: "project:",
@@ -77,6 +78,7 @@ func TestCREWorkflowPauseChangeset_VerifyPreconditions(t *testing.T) {
 			input: func() operations.CREWorkflowPauseInput {
 				in := good
 				in.DeploymentRegistry = ""
+
 				return in
 			},
 			wantErr: "deploymentRegistry is required",
@@ -87,6 +89,7 @@ func TestCREWorkflowPauseChangeset_VerifyPreconditions(t *testing.T) {
 			input: func() operations.CREWorkflowPauseInput {
 				in := good
 				in.DonFamily = ""
+
 				return in
 			},
 			wantErr: "donFamily is required",
@@ -113,10 +116,12 @@ func TestCREWorkflowPauseChangeset_VerifyPreconditions(t *testing.T) {
 }
 
 func TestCREWorkflowPauseChangeset_Apply(t *testing.T) {
+	t.Parallel()
 	cs := CREWorkflowPauseChangeset{}
 	input := validPauseInput(t)
 
 	t.Run("success returns report", func(t *testing.T) {
+		t.Parallel()
 		mockCLI := cremocks.NewMockCLIRunner(t)
 		mockCLI.EXPECT().ContextRegistries().Return([]fcre.ContextRegistryEntry{{ID: "private", Type: "off-chain"}}).Once()
 		mockCLI.EXPECT().
@@ -135,6 +140,7 @@ func TestCREWorkflowPauseChangeset_Apply(t *testing.T) {
 	})
 
 	t.Run("operation error returns report and error", func(t *testing.T) {
+		t.Parallel()
 		mockCLI := cremocks.NewMockCLIRunner(t)
 		mockCLI.EXPECT().ContextRegistries().Return([]fcre.ContextRegistryEntry{{ID: "private", Type: "off-chain"}}).Once()
 		mockCLI.EXPECT().Run(mock.Anything, mock.Anything, mock.Anything).
