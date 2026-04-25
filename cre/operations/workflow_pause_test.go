@@ -58,10 +58,11 @@ func TestCREWorkflowPauseOp(t *testing.T) {
 			name: "missing project returns resolve error",
 			input: func(t *testing.T) CREWorkflowPauseInput {
 				t.Helper()
+				missingProjectPath := filepath.Join(t.TempDir(), "project.yaml")
 
 				return CREWorkflowPauseInput{
 					WorkflowName:       "wf",
-					Project:            creartifacts.NewConfigSourceLocal("/tmp/definitely-missing-project.yaml"),
+					Project:            creartifacts.NewConfigSourceLocal(missingProjectPath),
 					DonFamily:          "feeds-zone-a",
 					DeploymentRegistry: "private",
 				}

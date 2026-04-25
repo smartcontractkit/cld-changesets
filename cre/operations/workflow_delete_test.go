@@ -58,10 +58,11 @@ func TestCREWorkflowDeleteOp(t *testing.T) {
 			name: "missing project returns resolve error",
 			input: func(t *testing.T) CREWorkflowDeleteInput {
 				t.Helper()
+				missingProjectPath := filepath.Join(t.TempDir(), "project.yaml")
 
 				return CREWorkflowDeleteInput{
 					WorkflowName:       "wf",
-					Project:            creartifacts.NewConfigSourceLocal("/tmp/definitely-missing-project.yaml"),
+					Project:            creartifacts.NewConfigSourceLocal(missingProjectPath),
 					DonFamily:          "feeds-zone-a",
 					DeploymentRegistry: "private",
 				}
