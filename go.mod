@@ -18,6 +18,7 @@ require (
 	github.com/smartcontractkit/chainlink-protos/job-distributor v0.18.0
 	github.com/smartcontractkit/mcms v0.40.1
 	github.com/stretchr/testify v1.11.1
+	golang.org/x/mod v0.33.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
