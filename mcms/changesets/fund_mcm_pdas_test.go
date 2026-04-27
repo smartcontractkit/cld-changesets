@@ -2,14 +2,15 @@ package changesets
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	"github.com/gagliardetto/solana-go"
 	"github.com/gagliardetto/solana-go/programs/system"
 	"github.com/gagliardetto/solana-go/rpc"
+	"github.com/gagliardetto/solana-go/rpc/jsonrpc"
 	chainselectors "github.com/smartcontractkit/chain-selectors"
 	solCommonUtil "github.com/smartcontractkit/chainlink-ccip/chains/solana/utils/common"
 	cldf_chain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
@@ -296,12 +297,34 @@ func testEnvironment(t *testing.T, addressBook cldf.AddressBook, chains cldf_cha
 func rpcWithBalance(t *testing.T, balance uint64) *rpc.Client {
 	t.Helper()
 
-	response := fmt.Sprintf(`{"jsonrpc":"2.0","result":{"context":{"slot":1},"value":%d},"id":1}`, balance)
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(response))
-	}))
-	t.Cleanup(server.Close)
+	return rpc.NewWithCustomRPCClient(fakeRPCClient{balance: balance})
+}
 
-	return rpc.New(server.URL)
+type fakeRPCClient struct {
+	balance uint64
+}
+
+func (f fakeRPCClient) CallForInto(_ context.Context, out interface{}, method string, _ []interface{}) error {
+	if method != "getBalance" {
+		return fmt.Errorf("unexpected RPC method %q", method)
+	}
+
+	switch result := out.(type) {
+	case **rpc.GetBalanceResult:
+		*result = &rpc.GetBalanceResult{Value: f.balance}
+	case *rpc.GetBalanceResult:
+		result.Value = f.balance
+	default:
+		return fmt.Errorf("unexpected RPC output type %T", out)
+	}
+
+	return nil
+}
+
+func (f fakeRPCClient) CallWithCallback(_ context.Context, _ string, _ []interface{}, _ func(*http.Request, *http.Response) error) error {
+	return errors.New("unexpected callback RPC invocation")
+}
+
+func (f fakeRPCClient) CallBatch(_ context.Context, _ jsonrpc.RPCRequests) (jsonrpc.RPCResponses, error) {
+	return nil, errors.New("unexpected batch RPC invocation")
 }
