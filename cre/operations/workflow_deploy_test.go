@@ -178,7 +178,8 @@ func TestCREWorkflowDeployOp(t *testing.T) {
 				CRECfg: cfgenv.CREConfig{},
 			}
 
-			out, err := fwops.ExecuteOperation(bundle, CREWorkflowDeployOp, deps, tc.input(t))
+			out, err := fwops.ExecuteOperation[CREWorkflowDeployInput, CREWorkflowDeployOutput, CREDeployDeps](
+				bundle, CREWorkflowDeployOp, deps, tc.input(t))
 			tc.assert(t, out, err)
 		})
 	}
