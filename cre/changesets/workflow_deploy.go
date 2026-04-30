@@ -53,7 +53,12 @@ func (CREWorkflowDeployChangeset) Apply(e cldf.Environment, input creops.CREWork
 		EVMDeployerKey: envCfg.Onchain.EVM.DeployerKey,
 	}
 
-	report, err := fwops.ExecuteOperation(e.OperationsBundle, creops.CREWorkflowDeployOp, deps, input)
+	report, err := fwops.ExecuteOperation[creops.CREWorkflowDeployInput, creops.CREWorkflowDeployOutput, creops.CREDeployDeps](
+		e.OperationsBundle,
+		creops.CREWorkflowDeployOp,
+		deps,
+		input,
+	)
 	out := cldf.ChangesetOutput{
 		Reports: []fwops.Report[any, any]{report.ToGenericReport()},
 	}
