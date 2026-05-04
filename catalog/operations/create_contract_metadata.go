@@ -10,17 +10,17 @@ import (
 )
 
 // CreateContractMetadataDeps holds non-serializable dependencies for the
-// CatalogCreateContractMetadataOp operation.
+// CreateContractMetadataOp operation.
 type CreateContractMetadataDeps struct {
 	DataStore cldfdatastore.DataStore
 }
 
-// CreateContractMetadataInput is the serializable input of a CatalogCreateContractMetadataOp invocation.
+// CreateContractMetadataInput is the serializable input of a CreateContractMetadataOp invocation.
 type CreateContractMetadataInput struct {
 	ContractMetadata []cldfdatastore.ContractMetadata
 }
 
-// CreateContractMetadataOutput is the serializable output of a CatalogCreateContractMetadataOp invocation.
+// CreateContractMetadataOutput is the serializable output of a CreateContractMetadataOp invocation.
 type CreateContractMetadataOutput struct {
 	DataStore cldfdatastore.MutableDataStore
 }
