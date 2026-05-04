@@ -28,10 +28,10 @@ func (CreateContractMetadataChangeset) VerifyPreconditions(e cldf.Environment, i
 		return errors.New("missing datastore in environment")
 	}
 
-	uniqKeys := lo.UniqBy(input.ContractMetadata, func(cm cldfdatastore.ContractMetadata) cldfdatastore.ContractMetadataKey {
+	uniqContractMetadata := lo.UniqBy(input.ContractMetadata, func(cm cldfdatastore.ContractMetadata) cldfdatastore.ContractMetadataKey {
 		return cm.Key()
 	})
-	if len(uniqKeys) != len(input.ContractMetadata) {
+	if len(uniqContractMetadata) != len(input.ContractMetadata) {
 		return errors.New("duplicate contract metadata entries found in input")
 	}
 
