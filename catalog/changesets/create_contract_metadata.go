@@ -36,7 +36,7 @@ func (CreateContractMetadataChangeset) VerifyPreconditions(e cldf.Environment, i
 	}
 
 	for _, contractMetadata := range input.ContractMetadata {
-		_, err := e.DataStore.ContractMetadata().Get(cldfdatastore.NewContractMetadataKey(contractMetadata.ChainSelector, contractMetadata.Address))
+		_, err := e.DataStore.ContractMetadata().Get(contractMetadata.Key())
 		if err == nil {
 			return fmt.Errorf("contract metadata for chain selector %v and address %v already exists",
 				contractMetadata.ChainSelector, contractMetadata.Address)
