@@ -30,6 +30,41 @@ type GrantRoleTimelockSolanaConfig struct {
 	MCMS     *cldfproposalutils.TimelockConfig
 }
 
+var _ cldf.ChangeSetV2[GrantRoleTimelockSolanaConfig] = GrantRoleTimelockSolana{}
+
+// mergeChainAddressesForGrantRole loads the address book for a selector (when present) and merges DataStore refs.
+func mergeChainAddressesForGrantRole(env cldf.Environment, chainSelector uint64) (map[string]cldf.TypeAndVersion, error) {
+	chainAddresses, err := env.ExistingAddresses.AddressesForChain(chainSelector) //nolint:staticcheck // SA1019: legacy AddressBook merge with DataStore until full migration
+	if err != nil {
+		if !errors.Is(err, cldf.ErrChainNotFound) {
+			return nil, fmt.Errorf("failed to get existing addresses: %w", err)
+		}
+
+		chainAddresses = make(map[string]cldf.TypeAndVersion)
+	}
+
+	if chainAddresses == nil {
+		chainAddresses = make(map[string]cldf.TypeAndVersion)
+	}
+
+	if env.DataStore != nil && env.DataStore.Addresses() != nil {
+		datastoreAddresses := env.DataStore.Addresses().Filter(datastore.AddressRefByChainSelector(chainSelector))
+		for _, address := range datastoreAddresses {
+			if address.Version == nil {
+				return nil, fmt.Errorf("address without Version found in data store: %#v", address)
+			}
+
+			chainAddresses[address.Address] = cldf.TypeAndVersion{
+				Type:    cldf.ContractType(address.Type),
+				Version: *address.Version,
+				Labels:  cldf.NewLabelSet(address.Labels.List()...),
+			}
+		}
+	}
+
+	return chainAddresses, nil
+}
+
 func (t GrantRoleTimelockSolana) VerifyPreconditions(
 	env cldf.Environment, config GrantRoleTimelockSolanaConfig,
 ) error {
@@ -48,24 +83,9 @@ func (t GrantRoleTimelockSolana) VerifyPreconditions(
 			return fmt.Errorf("solana chain not found for selector %d", chainSelector)
 		}
 
-		chainAddresses, err := env.ExistingAddresses.AddressesForChain(chainSelector) //nolint:staticcheck // SA1019: legacy AddressBook merge with DataStore until full migration
+		chainAddresses, err := mergeChainAddressesForGrantRole(env, chainSelector)
 		if err != nil {
-			return fmt.Errorf("failed to get existing addresses: %w", err)
-		}
-
-		if env.DataStore != nil && env.DataStore.Addresses() != nil {
-			datastoreAddresses := env.DataStore.Addresses().Filter(datastore.AddressRefByChainSelector(chainSelector))
-			for _, address := range datastoreAddresses {
-				if address.Version == nil {
-					return fmt.Errorf("address without Version found in data store: %#v", address)
-				}
-
-				chainAddresses[address.Address] = cldf.TypeAndVersion{
-					Type:    cldf.ContractType(address.Type),
-					Version: *address.Version,
-					Labels:  cldf.NewLabelSet(address.Labels.List()...),
-				}
-			}
+			return err
 		}
 
 		mcmState, err := solanastate.MaybeLoadMCMSWithTimelockChainState(solChain, chainAddresses)
@@ -94,11 +114,19 @@ func (t GrantRoleTimelockSolana) Apply(
 	for chainSelector, accountsList := range cfg.Accounts {
 		solChain := env.BlockChains.SolanaChains()[chainSelector]
 
-		addresses, err := env.ExistingAddresses.AddressesForChain(chainSelector) //nolint:staticcheck // SA1019: legacy AddressBook merge with DataStore until full migration
+		addresses, err := mergeChainAddressesForGrantRole(env, chainSelector)
 		if err != nil {
-			return cldf.ChangesetOutput{}, fmt.Errorf("failed to get existing addresses: %w", err)
+			return cldf.ChangesetOutput{}, err
 		}
-		mcmsChainState, _ := solanastate.MaybeLoadMCMSWithTimelockChainState(solChain, addresses)
+
+		mcmsChainState, err := solanastate.MaybeLoadMCMSWithTimelockChainState(solChain, addresses)
+		if err != nil {
+			return cldf.ChangesetOutput{}, fmt.Errorf("failed to load MCMS with timelock chain state for chain %d: %w", chainSelector, err)
+		}
+
+		if mcmsChainState == nil {
+			return cldf.ChangesetOutput{}, fmt.Errorf("missing MCMS with timelock chain state for chain %d", chainSelector)
+		}
 
 		deps := mcops.SeqSolanaGrantRoleTimelockDeps{Chain: solChain}
 		input := mcops.SeqSolanaGrantRoleTimelockInput{
@@ -142,10 +170,8 @@ func validTimelockActionsGrantRole(timelockConfig *cldfproposalutils.TimelockCon
 	}
 
 	switch timelockConfig.MCMSAction {
-	case "", mcmstypes.TimelockActionSchedule, mcmstypes.TimelockActionBypass:
+	case "", mcmstypes.TimelockActionSchedule, mcmstypes.TimelockActionBypass, mcmstypes.TimelockActionCancel:
 		return true
-	case mcmstypes.TimelockActionCancel:
-		return false
 	default:
 		return false
 	}

@@ -38,6 +38,14 @@ var OpSolanaGrantRoleTimelock = fwops.NewOperation(
 	semver.MustParse("1.0.0"),
 	"Grant a role to an account in a Solana Timelock instance",
 	func(b fwops.Bundle, deps OpSolanaGrantRoleTimelockDeps, in OpSolanaGrantRoleTimelockInput) (OpSolanaGrantRoleTimelockOutput, error) {
+		if in.ChainState == nil {
+			return OpSolanaGrantRoleTimelockOutput{}, errors.New("chainState is required")
+		}
+
+		if in.ChainState.TimelockProgram.IsZero() || in.ChainState.AccessControllerProgram.IsZero() {
+			return OpSolanaGrantRoleTimelockOutput{}, errors.New("timelock and access controller program IDs are required")
+		}
+
 		accessController, err := selectAccessControllerGrantRole(in)
 		if err != nil {
 			return OpSolanaGrantRoleTimelockOutput{}, fmt.Errorf("failed to select access controller: %w", err)
@@ -54,7 +62,7 @@ var OpSolanaGrantRoleTimelock = fwops.NewOperation(
 
 		ix, err := accesscontrollerbindings.NewAddAccessInstruction(accessController, signer, in.Account).ValidateAndBuild()
 		if err != nil {
-			return OpSolanaGrantRoleTimelockOutput{}, fmt.Errorf("failed to create update delay instruction: %w", err)
+			return OpSolanaGrantRoleTimelockOutput{}, fmt.Errorf("failed to create add access instruction: %w", err)
 		}
 
 		if in.IsDeployerKeyAdmin {
@@ -76,6 +84,10 @@ var OpSolanaGrantRoleTimelock = fwops.NewOperation(
 )
 
 func selectAccessControllerGrantRole(in OpSolanaGrantRoleTimelockInput) (solana.PublicKey, error) {
+	if in.ChainState == nil {
+		return solana.PublicKey{}, errors.New("chainState is required")
+	}
+
 	switch in.Role {
 	case timelockbindings.Admin_Role:
 		return solana.PublicKey{}, errors.New("admin role not supported")
@@ -112,6 +124,10 @@ var SeqSolanaGrantRoleTimelock = fwops.NewSequence(
 	semver.MustParse("1.0.0"),
 	"Grant a role to multiple accounts in a Solana Timelock instance",
 	func(b fwops.Bundle, deps SeqSolanaGrantRoleTimelockDeps, in SeqSolanaGrantRoleTimelockInput) (SeqSolanaGrantRoleTimelockOutput, error) {
+		if in.ChainState == nil {
+			return SeqSolanaGrantRoleTimelockOutput{}, errors.New("chainState is required")
+		}
+
 		mcmsTxs := make([]mcmstypes.Transaction, 0, len(in.Accounts))
 
 		for _, account := range in.Accounts {
@@ -132,7 +148,9 @@ var SeqSolanaGrantRoleTimelock = fwops.NewSequence(
 				return SeqSolanaGrantRoleTimelockOutput{}, err
 			}
 
-			mcmsTxs = append(mcmsTxs, opReport.Output.MCMSTransaction)
+			if !in.IsDeployerKeyAdmin {
+				mcmsTxs = append(mcmsTxs, opReport.Output.MCMSTransaction)
+			}
 		}
 
 		return SeqSolanaGrantRoleTimelockOutput{McmsTransactions: mcmsTxs}, nil
