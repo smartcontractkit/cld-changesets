@@ -1,11 +1,13 @@
-package mcms
+package proposeutils
 
 import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 	"time"
 
+	"github.com/aptos-labs/aptos-go-sdk"
 	mapset "github.com/deckarep/golang-set/v2"
 	chain_selectors "github.com/smartcontractkit/chain-selectors"
 	mcmslib "github.com/smartcontractkit/mcms"
@@ -14,11 +16,14 @@ import (
 	mcmssolanasdk "github.com/smartcontractkit/mcms/sdk/solana"
 	"github.com/smartcontractkit/mcms/types"
 
-	"github.com/smartcontractkit/cld-changesets/pkg/family/solana"
-
 	cldf_adapters "github.com/smartcontractkit/chainlink-deployments-framework/chain/mcms/adapters"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	cldfproposalutils "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
+	tonstate "github.com/smartcontractkit/chainlink-ton/deployment/state"
+
+	evmstate "github.com/smartcontractkit/cld-changesets/pkg/family/evm"
+	"github.com/smartcontractkit/cld-changesets/pkg/family/solana"
+	solstate "github.com/smartcontractkit/cld-changesets/pkg/family/solana"
 )
 
 const (
@@ -224,4 +229,177 @@ func buildProposalMetadataV2(
 	}
 
 	return proposalChainMetadata, nil
+}
+
+// AggregateProposals aggregates multiple MCMS proposals into a single proposal by combining their operations, and
+// setting up the proposers and inspectors for each chain. It returns a single MCMS proposal that can be executed
+// and signed.
+//
+// Deprecated: Use extensible AggregateProposalsV2 instead. Which accepts multiple chain families.
+func AggregateProposals(
+	env cldf.Environment,
+	mcmsEVMState map[uint64]evmstate.MCMSWithTimelockState,
+	mcmsSolanaState map[uint64]solstate.MCMSWithTimelockState,
+	proposals []mcmslib.TimelockProposal,
+	description string,
+	mcmsConfig *cldfproposalutils.TimelockConfig,
+) (*mcmslib.TimelockProposal, error) {
+	return AggregateProposalsV2(
+		env,
+		MCMSStates{
+			MCMSEVMState:    mcmsEVMState,
+			MCMSSolanaState: mcmsSolanaState,
+		},
+		proposals,
+		description,
+		mcmsConfig,
+	)
+}
+
+type MCMSStates struct {
+	MCMSEVMState    map[uint64]evmstate.MCMSWithTimelockState
+	MCMSSolanaState map[uint64]solstate.MCMSWithTimelockState
+	MCMSAptosState  map[uint64]aptos.AccountAddress
+	MCMSTONState    map[uint64]tonstate.MCMSChainState
+}
+
+// AggregateProposalsV2 aggregates multiple MCMS proposals into a single proposal by combining their operations, and
+// setting up the proposers and inspectors for each chain. It returns a single MCMS proposal that can be executed
+// and signed.
+// It has an extensible signature to allow for future chain families implementations
+func AggregateProposalsV2(
+	env cldf.Environment,
+	mcmsTimelockStates MCMSStates,
+	proposals []mcmslib.TimelockProposal,
+	description string,
+	mcmsConfig *cldfproposalutils.TimelockConfig,
+	opts ...BuildProposalOption,
+) (*mcmslib.TimelockProposal, error) {
+	if mcmsConfig == nil {
+		return nil, nil
+	}
+
+	var batches []types.BatchOperation
+	chainMetadata := make(map[types.ChainSelector]types.ChainMetadata)
+
+	// Add proposals to the aggregate.
+	for _, proposal := range proposals {
+		batches = append(batches, proposal.Operations...)
+
+		for selector, metadata := range proposal.ChainMetadata {
+			existingMetadata, exists := chainMetadata[selector]
+			if exists {
+				if !jsonEqual(existingMetadata.AdditionalFields, metadata.AdditionalFields) {
+					return nil, fmt.Errorf("conflicting metadata for chain selector %d: %#v vs %#v", selector, existingMetadata, metadata)
+				}
+			} else {
+				chainMetadata[selector] = metadata
+			}
+		}
+	}
+
+	// Return early if there are no operations.
+	if len(batches) == 0 {
+		return nil, nil
+	}
+
+	// Store the timelock and mcm addresses for each chain.
+	timelocks := make(map[uint64]string)
+	mcmsPerChain := make(map[uint64]string)
+	for _, op := range batches {
+		chainSel := uint64(op.ChainSelector)
+		var err error
+
+		family, err := chain_selectors.GetSelectorFamily(chainSel)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get family for chain %d: %w", chainSel, err)
+		}
+		switch family {
+		case chain_selectors.FamilyEVM:
+			mcmsEVMState, exists := mcmsTimelockStates.MCMSEVMState[chainSel]
+			if !exists {
+				return nil, fmt.Errorf("missing MCMS state for chain with selector %d", chainSel)
+			}
+			mcmsContract, err := mcmsConfig.MCMBasedOnAction(mcmsEVMState)
+			if err != nil {
+				return &mcmslib.TimelockProposal{}, fmt.Errorf("failed to get MCMS contract for chain with selector %d: %w", chainSel, err)
+			}
+			timelocks[chainSel] = mcmsEVMState.Timelock.Address().Hex()
+			mcmsPerChain[chainSel] = mcmsContract.Address().Hex()
+		case chain_selectors.FamilySolana:
+			solanaState, existsInSolana := mcmsTimelockStates.MCMSSolanaState[chainSel]
+			if !existsInSolana {
+				return nil, fmt.Errorf("missing MCMS state for chain with selector %d", chainSel)
+			}
+			timelocks[chainSel] = mcmssolanasdk.ContractAddress(
+				solanaState.TimelockProgram,
+				mcmssolanasdk.PDASeed(solanaState.TimelockSeed),
+			)
+			mcmsAddr, err := mcmsConfig.MCMBasedOnActionSolana(solanaState)
+			if err != nil {
+				return nil, err
+			}
+			mcmsPerChain[chainSel] = mcmsAddr
+		case chain_selectors.FamilyAptos:
+			// Set MCMS addresses. Aptos uses the same address for MCMS and Timelock
+			aptosMCMSAddress, existsInAptos := mcmsTimelockStates.MCMSAptosState[chainSel]
+			if !existsInAptos {
+				return nil, fmt.Errorf("missing MCMS state for chain with selector %d", chainSel)
+			}
+			timelocks[chainSel] = aptosMCMSAddress.StringLong()
+			mcmsPerChain[chainSel] = aptosMCMSAddress.StringLong()
+		case chain_selectors.FamilyTon:
+			tonMCMS, exists := mcmsTimelockStates.MCMSTONState[chainSel]
+			if !exists {
+				return nil, fmt.Errorf("missing MCMS state for TON chain %d", chainSel)
+			}
+			qualifier := mcmsConfig.TimelockQualifierPerChain[chainSel]
+			// Get the default qualifier suite (or iterate ByQualifier)
+			suite, ok := tonMCMS.ByQualifier[qualifier] // default qualifier?
+			if !ok || suite == nil {
+				return nil, fmt.Errorf("missing TON timelock for chain %d qualifier %q", chainSel, qualifier)
+			}
+			if suite.Timelock == nil {
+				return nil, fmt.Errorf("missing TON timelock address for chain %d", chainSel)
+			}
+			timelocks[chainSel] = suite.Timelock.String()
+			// Select MCMS address based on action
+			mcmsAddr, err := mcmsConfig.MCMBasedOnActionTon(suite)
+			if err != nil {
+				return nil, err
+			}
+			mcmsPerChain[chainSel] = mcmsAddr
+		}
+	}
+
+	return BuildProposalFromBatchesV2(
+		env,
+		timelocks,
+		mcmsPerChain,
+		nil, // inspectors will be set automatically
+		batches,
+		description,
+		*mcmsConfig,
+		opts...,
+	)
+}
+
+func jsonEqual(messageA, messageB json.RawMessage) bool {
+	var unmarshalledA any
+	if len(messageA) > 0 {
+		err := json.Unmarshal(messageA, &unmarshalledA)
+		if err != nil {
+			return false
+		}
+	}
+
+	var unmarshalledB any
+	if len(messageB) > 0 {
+		err := json.Unmarshal(messageB, &unmarshalledB)
+		if err != nil {
+			return false
+		}
+	}
+
+	return reflect.DeepEqual(unmarshalledA, unmarshalledB)
 }

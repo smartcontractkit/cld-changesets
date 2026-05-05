@@ -18,7 +18,7 @@ import (
 	cldfproposalutils "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
 	fwops "github.com/smartcontractkit/chainlink-deployments-framework/operations"
 
-	mcmscontract "github.com/smartcontractkit/cld-changesets/pkg/contract/mcms"
+	mcmscontract "github.com/smartcontractkit/cld-changesets/mcms/proposeutils"
 	evmstate "github.com/smartcontractkit/cld-changesets/pkg/family/evm"
 	solanastate "github.com/smartcontractkit/cld-changesets/pkg/family/solana"
 )
