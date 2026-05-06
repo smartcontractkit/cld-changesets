@@ -3,6 +3,7 @@
     ".": {
       "release-type": "go",
       "package-name": "cld-changesets",
+      "include-component-in-tag": false,
       "bump-minor-pre-major": true
     }
   },
