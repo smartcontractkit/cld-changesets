@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.0](https://github.com/smartcontractkit/cld-changesets/compare/v0.1.0...v0.2.0) (2026-05-06)
+
+
+### Features
+
+* add catalog update chain metadata changeset ([#37](https://github.com/smartcontractkit/cld-changesets/issues/37)) ([9ec54b5](https://github.com/smartcontractkit/cld-changesets/commit/9ec54b5a5b1e1f791fd4c87cb9aa7cbf3afdb676))
+* add catalog update contract metadata changeset ([#29](https://github.com/smartcontractkit/cld-changesets/issues/29)) ([1687d14](https://github.com/smartcontractkit/cld-changesets/commit/1687d144f8f1313735fe469fab3c64fc5a7409fb))
+
 ## [0.1.0](https://github.com/smartcontractkit/cld-changesets/compare/cld-changesets-v0.0.1...cld-changesets-v0.1.0) (2026-05-06)
 
 
