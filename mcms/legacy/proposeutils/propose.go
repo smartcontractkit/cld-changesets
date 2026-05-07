@@ -21,9 +21,8 @@ import (
 	cldfproposalutils "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
 	tonstate "github.com/smartcontractkit/chainlink-ton/deployment/state"
 
-	evmstate "github.com/smartcontractkit/cld-changesets/pkg/family/evm"
-	"github.com/smartcontractkit/cld-changesets/pkg/family/solana"
-	solstate "github.com/smartcontractkit/cld-changesets/pkg/family/solana"
+	evmstate "github.com/smartcontractkit/cld-changesets/pkg/family/evm/legacy"
+	solstate "github.com/smartcontractkit/cld-changesets/pkg/family/solana/legacy"
 )
 
 const (
@@ -149,7 +148,7 @@ func buildProposalMetadataV2(
 
 		switch family {
 		case chain_selectors.FamilySolana:
-			solanaState, err := solana.GetState(env, selector)
+			solanaState, err := solstate.GetState(env, selector)
 			if err != nil {
 				return nil, err
 			}

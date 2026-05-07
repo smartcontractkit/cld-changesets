@@ -1,4 +1,4 @@
-package evm
+package legacy
 
 import (
 	cldfproposalutils "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"

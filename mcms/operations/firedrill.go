@@ -18,9 +18,9 @@ import (
 	cldfproposalutils "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
 	fwops "github.com/smartcontractkit/chainlink-deployments-framework/operations"
 
-	mcmscontract "github.com/smartcontractkit/cld-changesets/mcms/proposeutils"
-	evmstate "github.com/smartcontractkit/cld-changesets/pkg/family/evm"
-	solanastate "github.com/smartcontractkit/cld-changesets/pkg/family/solana"
+	mcmscontract "github.com/smartcontractkit/cld-changesets/mcms/legacy/proposeutils"
+	evmstate "github.com/smartcontractkit/cld-changesets/pkg/family/evm/legacy"
+	solanastate "github.com/smartcontractkit/cld-changesets/pkg/family/solana/legacy"
 )
 
 // FireDrillInput is JSON-serializable input for the MCMS signing fire-drill proposal operation.

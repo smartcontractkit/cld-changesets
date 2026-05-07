@@ -1,4 +1,4 @@
-package solana
+package legacy
 
 import (
 	mcmssolanasdk "github.com/smartcontractkit/mcms/sdk/solana"

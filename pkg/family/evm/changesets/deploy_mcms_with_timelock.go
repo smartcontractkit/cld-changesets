@@ -19,7 +19,7 @@ import (
 	"github.com/spf13/cast"
 
 	"github.com/smartcontractkit/cld-changesets/pkg/contract/mcms/view/v1_0"
-	evmstate "github.com/smartcontractkit/cld-changesets/pkg/family/evm"
+	evmstate "github.com/smartcontractkit/cld-changesets/pkg/family/evm/legacy"
 	opsevm "github.com/smartcontractkit/cld-changesets/pkg/family/evm/operations"
 	seqs "github.com/smartcontractkit/cld-changesets/pkg/family/evm/sequences"
 )

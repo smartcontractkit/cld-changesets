@@ -1,4 +1,4 @@
-package aptos
+package legacy
 
 import (
 	"fmt"

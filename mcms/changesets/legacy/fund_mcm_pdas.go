@@ -1,5 +1,5 @@
 // Package changesets provides reusable MCMS changesets.
-package changesets
+package legacy
 
 import (
 	"errors"
@@ -11,6 +11,7 @@ import (
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 
 	solanastate "github.com/smartcontractkit/cld-changesets/pkg/family/solana"
+	"github.com/smartcontractkit/cld-changesets/pkg/family/solana/legacy"
 )
 
 var _ cldf.ChangeSetV2[FundMCMSignerConfig] = FundMCMSignersChangeset{}
@@ -43,7 +44,7 @@ func (f FundMCMSignersChangeset) VerifyPreconditions(e cldf.Environment, config 
 		if err != nil {
 			return fmt.Errorf("failed to get existing addresses: %w", err)
 		}
-		mcmState, err := solanastate.MaybeLoadMCMSWithTimelockChainState(solChain, addreses)
+		mcmState, err := legacy.MaybeLoadMCMSWithTimelockChainState(solChain, addreses)
 		if err != nil {
 			return fmt.Errorf("failed to load MCMS state: %w", err)
 		}
@@ -77,33 +78,33 @@ func (f FundMCMSignersChangeset) Apply(e cldf.Environment, config FundMCMSignerC
 		if err != nil {
 			return cldf.ChangesetOutput{}, fmt.Errorf("failed to get existing addresses: %w", err)
 		}
-		mcmState, err := solanastate.MaybeLoadMCMSWithTimelockChainState(solChain, addreses)
+		mcmState, err := legacy.MaybeLoadMCMSWithTimelockChainState(solChain, addreses)
 		if err != nil {
 			return cldf.ChangesetOutput{}, fmt.Errorf("failed to load MCMS state: %w", err)
 		}
 
-		err = solanastate.FundFromDeployerKey(
+		err = legacy.FundFromDeployerKey(
 			solChain,
 			[]solana.PublicKey{solanastate.GetTimelockSignerPDA(mcmState.TimelockProgram, mcmState.TimelockSeed)},
 			cfgAmounts.Timelock)
 		if err != nil {
 			return cldf.ChangesetOutput{}, fmt.Errorf("failed to fund timelock signer on chain %d: %w", chainSelector, err)
 		}
-		err = solanastate.FundFromDeployerKey(
+		err = legacy.FundFromDeployerKey(
 			solChain,
 			[]solana.PublicKey{solanastate.GetMCMSignerPDA(mcmState.McmProgram, mcmState.ProposerMcmSeed)},
 			cfgAmounts.ProposeMCM)
 		if err != nil {
 			return cldf.ChangesetOutput{}, fmt.Errorf("failed to fund MCMS proposer on chain %d: %w", chainSelector, err)
 		}
-		err = solanastate.FundFromDeployerKey(
+		err = legacy.FundFromDeployerKey(
 			solChain,
 			[]solana.PublicKey{solanastate.GetMCMSignerPDA(mcmState.McmProgram, mcmState.CancellerMcmSeed)},
 			cfgAmounts.CancellerMCM)
 		if err != nil {
 			return cldf.ChangesetOutput{}, fmt.Errorf("failed to fund MCMS canceller on chain %d: %w", chainSelector, err)
 		}
-		err = solanastate.FundFromDeployerKey(
+		err = legacy.FundFromDeployerKey(
 			solChain,
 			[]solana.PublicKey{solanastate.GetMCMSignerPDA(mcmState.McmProgram, mcmState.BypasserMcmSeed)},
 			cfgAmounts.BypasserMCM)

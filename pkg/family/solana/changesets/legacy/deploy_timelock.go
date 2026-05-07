@@ -1,4 +1,4 @@
-package changesets
+package legacy
 
 import (
 	"errors"
@@ -19,11 +19,12 @@ import (
 
 	cldchangesetscommon "github.com/smartcontractkit/cld-changesets/pkg/common"
 	familysolana "github.com/smartcontractkit/cld-changesets/pkg/family/solana"
-	solutils "github.com/smartcontractkit/cld-changesets/pkg/family/solana/utils"
+	legacy2 "github.com/smartcontractkit/cld-changesets/pkg/family/solana/legacy"
+	"github.com/smartcontractkit/cld-changesets/pkg/family/solana/legacy/utils"
 )
 
 func deployTimelockProgram(
-	e cldf.Environment, chainState *familysolana.MCMSWithTimelockState, chain cldf_solana.Chain,
+	e cldf.Environment, chainState *legacy2.MCMSWithTimelockState, chain cldf_solana.Chain,
 	addressBook cldf.AddressBook,
 ) error {
 	typeAndVersion := cldf.NewTypeAndVersion(mcmscontracts.RBACTimelockProgram, cldchangesetscommon.Version1_0_0)
@@ -53,7 +54,7 @@ func deployTimelockProgram(
 			return fmt.Errorf("failed to save mcm address: %w", err)
 		}
 
-		err = chainState.SetState(mcmscontracts.RBACTimelockProgram, programID, familysolana.PDASeed{})
+		err = chainState.SetState(mcmscontracts.RBACTimelockProgram, programID, legacy2.PDASeed{})
 		if err != nil {
 			return fmt.Errorf("failed to save onchain state: %w", err)
 		}
@@ -67,7 +68,7 @@ func deployTimelockProgram(
 }
 
 func initTimelock(
-	e cldf.Environment, chainState *familysolana.MCMSWithTimelockState, chain cldf_solana.Chain,
+	e cldf.Environment, chainState *legacy2.MCMSWithTimelockState, chain cldf_solana.Chain,
 	addressBook cldf.AddressBook, minDelay *big.Int,
 ) error {
 	if chainState.TimelockProgram.IsZero() {
@@ -82,7 +83,7 @@ func initTimelock(
 		return fmt.Errorf("failed to get timelock state: %w", err)
 	}
 
-	if (timelockSeed != familysolana.PDASeed{}) {
+	if (timelockSeed != legacy2.PDASeed{}) {
 		timelockConfigPDA := familysolana.GetTimelockConfigPDA(timelockProgram, timelockSeed)
 		var timelockConfig timelockBindings.Config
 		err = chain.GetAccountDataBorshInto(e.GetContext(), timelockConfigPDA, &timelockConfig)
@@ -104,7 +105,7 @@ func initTimelock(
 		return fmt.Errorf("failed to initialize timelock: %w", err)
 	}
 
-	timelockAddress := familysolana.EncodeAddressWithSeed(programID, seed)
+	timelockAddress := legacy2.EncodeAddressWithSeed(programID, seed)
 
 	err = addressBook.Save(chain.Selector, timelockAddress, typeAndVersion)
 	if err != nil {
@@ -120,8 +121,8 @@ func initTimelock(
 }
 
 func initializeTimelock(
-	e cldf.Environment, chain cldf_solana.Chain, timelockProgram solana.PublicKey, timelockID familysolana.PDASeed,
-	chainState *familysolana.MCMSWithTimelockState, minDelay *big.Int,
+	e cldf.Environment, chain cldf_solana.Chain, timelockProgram solana.PublicKey, timelockID legacy2.PDASeed,
+	chainState *legacy2.MCMSWithTimelockState, minDelay *big.Int,
 ) error {
 	if minDelay == nil {
 		minDelay = big.NewInt(0)

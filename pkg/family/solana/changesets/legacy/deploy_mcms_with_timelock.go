@@ -1,4 +1,4 @@
-package changesets
+package legacy
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 	mcmscontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/mcms"
 	cldfproposalutils "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
 
+	familysolana "github.com/smartcontractkit/cld-changesets/pkg/family/solana/legacy"
 	solseqs "github.com/smartcontractkit/cld-changesets/pkg/family/solana/sequences"
 
 	cldf_solana "github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
@@ -19,8 +20,6 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 
 	solops "github.com/smartcontractkit/cld-changesets/pkg/family/solana/operations"
-
-	familysolana "github.com/smartcontractkit/cld-changesets/pkg/family/solana"
 )
 
 // DeployMCMSWithTimelockProgramsSolana deploys an MCMS program

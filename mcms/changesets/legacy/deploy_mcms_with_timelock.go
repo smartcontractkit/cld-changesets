@@ -1,4 +1,4 @@
-package changesets
+package legacy
 
 import (
 	"context"
@@ -9,13 +9,13 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	mcmscontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/mcms"
-	"github.com/smartcontractkit/chainlink/deployment/common/opsutils"
 	xerrgroup "golang.org/x/sync/errgroup"
 
-	evmstate "github.com/smartcontractkit/cld-changesets/pkg/family/evm"
 	evmchangesets "github.com/smartcontractkit/cld-changesets/pkg/family/evm/changesets"
+	evmstate "github.com/smartcontractkit/cld-changesets/pkg/family/evm/legacy"
+
 	opsevm "github.com/smartcontractkit/cld-changesets/pkg/family/evm/operations"
-	solchangesets "github.com/smartcontractkit/cld-changesets/pkg/family/solana/changesets"
+	solchangesets "github.com/smartcontractkit/cld-changesets/pkg/family/solana/changesets/legacy"
 
 	cldfproposalutils "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
 
@@ -268,7 +268,7 @@ func grantRoleLogic(e cldf.Environment, cfg GrantRoleInput) (cldf.ChangesetOutpu
 				Timelock:     stateForChain.Timelock,
 				CallProxy:    stateForChain.CallProxy,
 			}, false, gasBoostConfigs[chain])
-		out, err = opsutils.AddEVMCallSequenceToCSOutput(e, out, seqReport, err, mcmsStateForProposal, cfg.MCMS, fmt.Sprintf("GrantRolesForTimelock on %s", evmChains[chain]))
+		out, err = opsevm.AddEVMCallSequenceToCSOutput(e, out, seqReport, err, mcmsStateForProposal, cfg.MCMS, fmt.Sprintf("GrantRolesForTimelock on %s", evmChains[chain]))
 		if err != nil {
 			return out, fmt.Errorf("failed to grant roles for timelock on chain %d: %w", chain, err)
 		}
@@ -277,7 +277,7 @@ func grantRoleLogic(e cldf.Environment, cfg GrantRoleInput) (cldf.ChangesetOutpu
 	return out, nil
 }
 
-func ValidateOwnership(ctx context.Context, mcms bool, deployerKey, timelock common.Address, contract Ownable) error {
+func ValidateOwnership(ctx context.Context, mcms bool, deployerKey, timelock common.Address, contract evmstate.Ownable) error {
 	owner, err := contract.Owner(&bind.CallOpts{Context: ctx})
 	if err != nil {
 		return fmt.Errorf("failed to get owner: %w", err)

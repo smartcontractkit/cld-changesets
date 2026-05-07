@@ -21,15 +21,15 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
-	"github.com/smartcontractkit/chainlink/deployment"
 
 	cldchangesetscommon "github.com/smartcontractkit/cld-changesets/pkg/common"
 	familysolana "github.com/smartcontractkit/cld-changesets/pkg/family/solana"
+	"github.com/smartcontractkit/cld-changesets/pkg/family/solana/legacy"
 )
 
 type Deps struct {
 	Env       cldf.Environment
-	State     *familysolana.MCMSWithTimelockState
+	State     *legacy.MCMSWithTimelockState
 	Datastore datastore.MutableDataStore
 	Chain     cldfsol.Chain
 }
@@ -166,7 +166,7 @@ func initAccessController(b operations.Bundle, deps Deps, in InitAccessControlle
 		"account", account.PublicKey(),
 	)
 
-	err = deps.State.SetState(in.ContractType, account.PublicKey(), familysolana.PDASeed{})
+	err = deps.State.SetState(in.ContractType, account.PublicKey(), legacy.PDASeed{})
 	if err != nil {
 		return out, fmt.Errorf("failed to save onchain state: %w", err)
 	}
@@ -234,13 +234,13 @@ func initMCM(b operations.Bundle, deps Deps, in InitMCMInput) (InitMCMOutput, er
 	programID := deps.State.McmProgram
 	mcmBindings.SetProgramID(programID)
 
-	typeAndVersion := cldf.NewTypeAndVersion(in.ContractType, deployment.Version1_0_0)
+	typeAndVersion := cldf.NewTypeAndVersion(in.ContractType, cldchangesetscommon.Version1_0_0)
 	mcmProgram, mcmSeed, err := deps.State.GetStateFromType(in.ContractType)
 	if err != nil {
 		return out, fmt.Errorf("failed to get mcm state: %w", err)
 	}
 
-	if mcmSeed != (familysolana.PDASeed{}) {
+	if mcmSeed != (legacy.PDASeed{}) {
 		mcmConfigPDA := familysolana.GetMCMConfigPDA(mcmProgram, mcmSeed)
 		var data mcmBindings.MultisigConfig
 		err = solanaUtils.GetAccountDataBorshInto(b.GetContext(), deps.Chain.Client, mcmConfigPDA, rpc.CommitmentConfirmed, &data)
@@ -264,7 +264,7 @@ func initMCM(b operations.Bundle, deps Deps, in InitMCMInput) (InitMCMOutput, er
 		return out, fmt.Errorf("failed to initialize mcm: %w", err)
 	}
 
-	mcmAddress := familysolana.EncodeAddressWithSeed(programID, seed)
+	mcmAddress := legacy.EncodeAddressWithSeed(programID, seed)
 
 	configurer := mcmsSolanaSdk.NewConfigurer(deps.Chain.Client, *deps.Chain.DeployerKey, mcmsTypes.ChainSelector(deps.Chain.ChainSelector()))
 	tx, err := configurer.SetConfig(b.GetContext(), mcmAddress, &in.MCMConfig, false)
@@ -295,7 +295,7 @@ func initMCM(b operations.Bundle, deps Deps, in InitMCMInput) (InitMCMOutput, er
 	return out, nil
 }
 
-func initializeMCM(b operations.Bundle, deps Deps, mcmProgram solana.PublicKey, multisigID familysolana.PDASeed) error {
+func initializeMCM(b operations.Bundle, deps Deps, mcmProgram solana.PublicKey, multisigID legacy.PDASeed) error {
 	var mcmConfig mcmBindings.MultisigConfig
 	err := deps.Chain.GetAccountDataBorshInto(b.GetContext(), familysolana.GetMCMConfigPDA(mcmProgram, multisigID), &mcmConfig)
 	if err == nil {
@@ -350,13 +350,13 @@ func initTimelock(b operations.Bundle, deps Deps, in InitTimelockInput) (InitTim
 	programID := deps.State.TimelockProgram
 	timelockBindings.SetProgramID(programID)
 
-	typeAndVersion := cldf.NewTypeAndVersion(in.ContractType, deployment.Version1_0_0)
+	typeAndVersion := cldf.NewTypeAndVersion(in.ContractType, cldchangesetscommon.Version1_0_0)
 	timelockProgram, timelockSeed, err := deps.State.GetStateFromType(in.ContractType)
 	if err != nil {
 		return out, fmt.Errorf("failed to get timelock state: %w", err)
 	}
 
-	if (timelockSeed != familysolana.PDASeed{}) {
+	if (timelockSeed != legacy.PDASeed{}) {
 		timelockConfigPDA := familysolana.GetTimelockConfigPDA(timelockProgram, timelockSeed)
 		var timelockConfig timelockBindings.Config
 		err = deps.Chain.GetAccountDataBorshInto(b.GetContext(), timelockConfigPDA, &timelockConfig)
@@ -381,7 +381,7 @@ func initTimelock(b operations.Bundle, deps Deps, in InitTimelockInput) (InitTim
 		return out, fmt.Errorf("failed to initialize timelock: %w", err)
 	}
 
-	timelockAddress := familysolana.EncodeAddressWithSeed(programID, seed)
+	timelockAddress := legacy.EncodeAddressWithSeed(programID, seed)
 
 	err = deps.Datastore.Addresses().Add(datastore.AddressRef{
 		Address:       timelockAddress,
@@ -401,7 +401,7 @@ func initTimelock(b operations.Bundle, deps Deps, in InitTimelockInput) (InitTim
 }
 
 func initializeTimelock(b operations.Bundle, deps Deps, timelockProgram solana.PublicKey,
-	timelockID familysolana.PDASeed, minDelay *big.Int) error {
+	timelockID legacy.PDASeed, minDelay *big.Int) error {
 	if minDelay == nil {
 		minDelay = big.NewInt(0)
 	}
@@ -479,10 +479,10 @@ func addAccess(b operations.Bundle, deps Deps, in AddAccessInput) (AddAccessOutp
 	return out, nil
 }
 
-func randomSeed() familysolana.PDASeed {
+func randomSeed() legacy.PDASeed {
 	const alphabet = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-	seed := familysolana.PDASeed{}
+	seed := legacy.PDASeed{}
 	for i := range seed {
 		seed[i] = alphabet[rand.Intn(len(alphabet))]
 	}

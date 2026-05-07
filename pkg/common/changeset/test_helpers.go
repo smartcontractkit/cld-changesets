@@ -10,7 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 
-	evmstate "github.com/smartcontractkit/cld-changesets/pkg/family/evm"
+	evmstate "github.com/smartcontractkit/cld-changesets/pkg/family/evm/legacy"
 
 	cldftesthelpers "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils/testhelpers"
 

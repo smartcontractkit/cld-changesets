@@ -1,4 +1,4 @@
-package changesets
+package legacy
 
 import (
 	"errors"
@@ -16,7 +16,8 @@ import (
 
 	cldchangesetscommon "github.com/smartcontractkit/cld-changesets/pkg/common"
 	familysolana "github.com/smartcontractkit/cld-changesets/pkg/family/solana"
-	solutils "github.com/smartcontractkit/cld-changesets/pkg/family/solana/utils"
+	legacy2 "github.com/smartcontractkit/cld-changesets/pkg/family/solana/legacy"
+	"github.com/smartcontractkit/cld-changesets/pkg/family/solana/legacy/utils"
 
 	mcmBindings "github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings/v0_1_1/mcm"
 	solanaUtils "github.com/smartcontractkit/chainlink-ccip/chains/solana/utils/common"
@@ -24,7 +25,7 @@ import (
 )
 
 func deployMCMProgram(
-	env cldf.Environment, chainState *familysolana.MCMSWithTimelockState,
+	env cldf.Environment, chainState *legacy2.MCMSWithTimelockState,
 	chain cldf_solana.Chain, addressBook cldf.AddressBook,
 ) error {
 	typeAndVersion := cldf.NewTypeAndVersion(mcmscontracts.ManyChainMultisigProgram, cldchangesetscommon.Version1_0_0)
@@ -54,7 +55,7 @@ func deployMCMProgram(
 			return fmt.Errorf("failed to save mcm address: %w", err)
 		}
 
-		err = chainState.SetState(mcmscontracts.ManyChainMultisigProgram, programID, familysolana.PDASeed{})
+		err = chainState.SetState(mcmscontracts.ManyChainMultisigProgram, programID, legacy2.PDASeed{})
 		if err != nil {
 			return fmt.Errorf("failed to save onchain state: %w", err)
 		}
@@ -68,7 +69,7 @@ func deployMCMProgram(
 }
 
 func initMCM(
-	env cldf.Environment, chainState *familysolana.MCMSWithTimelockState, contractType cldf.ContractType,
+	env cldf.Environment, chainState *legacy2.MCMSWithTimelockState, contractType cldf.ContractType,
 	chain cldf_solana.Chain, addressBook cldf.AddressBook, mcmConfig *mcmsTypes.Config,
 ) error {
 	if chainState.McmProgram.IsZero() {
@@ -82,7 +83,7 @@ func initMCM(
 		return fmt.Errorf("failed to get mcm state: %w", err)
 	}
 
-	if mcmSeed != (familysolana.PDASeed{}) {
+	if mcmSeed != (legacy2.PDASeed{}) {
 		mcmConfigPDA := familysolana.GetMCMConfigPDA(mcmProgram, mcmSeed)
 		var data mcmBindings.MultisigConfig
 		err = solanaUtils.GetAccountDataBorshInto(env.GetContext(), chain.Client, mcmConfigPDA, rpc.CommitmentConfirmed, &data)
@@ -104,7 +105,7 @@ func initMCM(
 		return fmt.Errorf("failed to initialize mcm: %w", err)
 	}
 
-	mcmAddress := familysolana.EncodeAddressWithSeed(programID, seed)
+	mcmAddress := legacy2.EncodeAddressWithSeed(programID, seed)
 
 	configurer := mcmsSolanaSdk.NewConfigurer(chain.Client, *chain.DeployerKey, mcmsTypes.ChainSelector(chain.Selector))
 	tx, err := configurer.SetConfig(env.GetContext(), mcmAddress, mcmConfig, false)
@@ -126,7 +127,7 @@ func initMCM(
 	return nil
 }
 
-func initializeMCM(e cldf.Environment, chain cldf_solana.Chain, mcmProgram solana.PublicKey, multisigID familysolana.PDASeed) error {
+func initializeMCM(e cldf.Environment, chain cldf_solana.Chain, mcmProgram solana.PublicKey, multisigID legacy2.PDASeed) error {
 	var mcmConfig mcmBindings.MultisigConfig
 	err := chain.GetAccountDataBorshInto(e.GetContext(), familysolana.GetMCMConfigPDA(mcmProgram, multisigID), &mcmConfig)
 	if err == nil {
@@ -176,10 +177,10 @@ func initializeMCM(e cldf.Environment, chain cldf_solana.Chain, mcmProgram solan
 	return nil
 }
 
-func randomSeed() familysolana.PDASeed {
+func randomSeed() legacy2.PDASeed {
 	const alphabet = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-	seed := familysolana.PDASeed{}
+	seed := legacy2.PDASeed{}
 	for i := range seed {
 		seed[i] = alphabet[rand.Intn(len(alphabet))]
 	}

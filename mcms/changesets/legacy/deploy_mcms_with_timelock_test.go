@@ -1,5 +1,5 @@
 //nolint:testifylint // inverting want and got is more succinct
-package changesets_test
+package legacy_test
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"github.com/gagliardetto/solana-go"
 	"github.com/google/go-cmp/cmp"
 	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	mcmscontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/mcms"
 	cldfproposalutils "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
 	cldftesthelpers "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils/testhelpers"
 	mcmsevmsdk "github.com/smartcontractkit/mcms/sdk/evm"
@@ -18,9 +19,12 @@ import (
 	"github.com/smartcontractkit/quarantine"
 	"github.com/stretchr/testify/require"
 
-	evmstate "github.com/smartcontractkit/cld-changesets/pkg/family/evm"
+	mcmschangesets "github.com/smartcontractkit/cld-changesets/mcms/changesets/legacy"
+	cldchangesetscommon "github.com/smartcontractkit/cld-changesets/pkg/common"
+	evmstate "github.com/smartcontractkit/cld-changesets/pkg/family/evm/legacy"
 	familysolana "github.com/smartcontractkit/cld-changesets/pkg/family/solana"
-	soltestutils "github.com/smartcontractkit/cld-changesets/pkg/family/solana/testutils"
+	"github.com/smartcontractkit/cld-changesets/pkg/family/solana/legacy"
+	soltestutils2 "github.com/smartcontractkit/cld-changesets/pkg/family/solana/legacy/testutils"
 
 	timelockBindings "github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings/v0_1_1/timelock"
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
@@ -34,11 +38,6 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/onchain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/runtime"
 
-	"github.com/smartcontractkit/chainlink/deployment"
-
-	commontypes "github.com/smartcontractkit/chainlink/deployment/common/types"
-
-	mcmschangesets "github.com/smartcontractkit/cld-changesets/mcms/changesets"
 	commonchangeset "github.com/smartcontractkit/cld-changesets/pkg/common/changeset"
 )
 
@@ -68,7 +67,7 @@ func TestGrantRoleInTimeLock(t *testing.T) {
 	existingProposer := mcmsState[selector].ProposerMcm
 	ab := cldf.NewMemoryAddressBook()
 	require.NoError(t, ab.Save(selector, existingProposer.Address().String(),
-		cldf.NewTypeAndVersion(commontypes.ProposerManyChainMultisig, deployment.Version1_0_0)))
+		cldf.NewTypeAndVersion(mcmscontracts.ProposerManyChainMultisig, cldchangesetscommon.Version1_0_0)))
 	require.NoError(t, updatedEnv.ExistingAddresses.Remove(ab))
 
 	// remove from DataStore since deployment now uses DataStore
@@ -82,7 +81,7 @@ func TestGrantRoleInTimeLock(t *testing.T) {
 		// Skip the proposer we want to remove
 		if ref.ChainSelector == selector &&
 			ref.Address == existingProposer.Address().String() &&
-			ref.Type == datastore.ContractType(commontypes.ProposerManyChainMultisig) {
+			ref.Type == datastore.ContractType(mcmscontracts.ProposerManyChainMultisig) {
 			continue
 		}
 		err := newDataStore.Addresses().Add(ref)
@@ -141,17 +140,17 @@ func TestDeployMCMSWithTimelockV2WithFewExistingContracts(t *testing.T) {
 
 	callProxyAddress := utils.RandomAddress()
 	mcmsAddress := utils.RandomAddress()
-	mcmsType := cldf.NewTypeAndVersion(commontypes.ManyChainMultisig, deployment.Version1_0_0)
+	mcmsType := cldf.NewTypeAndVersion(mcmscontracts.ManyChainMultisig, cldchangesetscommon.Version1_0_0)
 	// we use same address for bypasser and canceller
-	mcmsType.AddLabel(commontypes.BypasserRole.String())
-	mcmsType.AddLabel(commontypes.CancellerRole.String())
+	mcmsType.AddLabel(mcmscontracts.BypasserRole.String())
+	mcmsType.AddLabel(mcmscontracts.CancellerRole.String())
 
 	// Add CallProxy for first chain only
 	require.NoError(t, ds.AddressRefStore.Add(datastore.AddressRef{
 		ChainSelector: selector1,
 		Address:       callProxyAddress.String(),
-		Type:          datastore.ContractType(commontypes.CallProxy),
-		Version:       &deployment.Version1_0_0,
+		Type:          datastore.ContractType(mcmscontracts.CallProxy),
+		Version:       &cldchangesetscommon.Version1_0_0,
 	}))
 
 	// Add MCMS contract with both bypasser and canceller labels for first chain only
@@ -265,7 +264,7 @@ func TestDeployMCMSWithTimelockV2(t *testing.T) {
 
 	evmSelector := chain_selectors.TEST_90000001.Selector
 	solSelector := chain_selectors.TEST_22222222222222222222222222222222222222222222.Selector
-	programsPath, programIDs, ab := soltestutils.PreloadMCMS(t, solSelector)
+	programsPath, programIDs, ab := soltestutils2.PreloadMCMS(t, solSelector)
 
 	rt, err := runtime.New(t.Context(), runtime.WithEnvOpts(
 		environment.WithEVMSimulated(t, []uint64{evmSelector}),
@@ -359,7 +358,7 @@ func TestDeployMCMSWithTimelockV2(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, evmMCMSState, 1)
 
-	solMCMSState := soltestutils.GetMCMSStateFromAddressBook(t, rt.State().AddressBook, solChain)
+	solMCMSState := soltestutils2.GetMCMSStateFromAddressBook(t, rt.State().AddressBook, solChain)
 
 	// --- assert ---
 
@@ -454,7 +453,7 @@ func TestDeployMCMSWithTimelockV2SkipInitSolana(t *testing.T) {
 	t.Parallel()
 
 	selector := chain_selectors.TEST_22222222222222222222222222222222222222222222.Selector
-	programsPath, programIDs, ab := soltestutils.PreloadMCMS(t, selector)
+	programsPath, programIDs, ab := soltestutils2.PreloadMCMS(t, selector)
 
 	rt, err := runtime.New(t.Context(), runtime.WithEnvOpts(
 		environment.WithSolanaContainer(t, []uint64{selector}, programsPath, programIDs),
@@ -516,7 +515,7 @@ func TestDeployMCMSWithTimelockV2SkipInitSolana(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	solanaState, err := familysolana.MaybeLoadMCMSWithTimelockState(rt.Environment(), []uint64{selector})
+	solanaState, err := legacy.MaybeLoadMCMSWithTimelockState(rt.Environment(), []uint64{selector})
 	require.NoError(t, err)
 
 	// Call deploy again, seeds and addresses from original state should not change
@@ -525,7 +524,7 @@ func TestDeployMCMSWithTimelockV2SkipInitSolana(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	solanaStateNew, err := familysolana.MaybeLoadMCMSWithTimelockState(rt.Environment(), []uint64{selector})
+	solanaStateNew, err := legacy.MaybeLoadMCMSWithTimelockState(rt.Environment(), []uint64{selector})
 	require.NoError(t, err)
 
 	// --- assert ---
@@ -547,12 +546,12 @@ func TestDeployMCMSWithTimelockV2SkipInitSolana(t *testing.T) {
 
 // ----- helpers -----
 
-func mcmSignerPDA(programID solana.PublicKey, seed familysolana.PDASeed) string {
+func mcmSignerPDA(programID solana.PublicKey, seed legacy.PDASeed) string {
 	return familysolana.GetMCMSignerPDA(programID, seed).String()
 }
 
 func solanaTimelockConfig(
-	ctx context.Context, t *testing.T, chain cldf_solana.Chain, programID solana.PublicKey, seed familysolana.PDASeed,
+	ctx context.Context, t *testing.T, chain cldf_solana.Chain, programID solana.PublicKey, seed legacy.PDASeed,
 ) timelockBindings.Config {
 	t.Helper()
 

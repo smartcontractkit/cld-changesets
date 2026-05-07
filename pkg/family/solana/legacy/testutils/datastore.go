@@ -10,8 +10,8 @@ import (
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 
 	"github.com/smartcontractkit/cld-changesets/pkg/common"
-	familysolana "github.com/smartcontractkit/cld-changesets/pkg/family/solana"
-	solutils "github.com/smartcontractkit/cld-changesets/pkg/family/solana/utils"
+	familysolana "github.com/smartcontractkit/cld-changesets/pkg/family/solana/legacy"
+	"github.com/smartcontractkit/cld-changesets/pkg/family/solana/legacy/utils"
 )
 
 // PreloadAddressBookWithMCMSPrograms creates and returns an address book containing preloaded MCMS

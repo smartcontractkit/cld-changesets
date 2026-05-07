@@ -6,8 +6,8 @@ import (
 	"math/big"
 
 	"github.com/gagliardetto/solana-go"
+	mcmscontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/mcms"
 	cldfproposalutils "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
-	commontypes "github.com/smartcontractkit/chainlink/deployment/common/types"
 	mcmsTypes "github.com/smartcontractkit/mcms/types"
 	"github.com/smartcontractkit/wsrpc/logger"
 
@@ -16,10 +16,10 @@ import (
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 
-	"github.com/smartcontractkit/chainlink/deployment/utils/solutils"
-
 	cldchangesetscommon "github.com/smartcontractkit/cld-changesets/pkg/common"
 	familysolana "github.com/smartcontractkit/cld-changesets/pkg/family/solana"
+	"github.com/smartcontractkit/cld-changesets/pkg/family/solana/legacy"
+	"github.com/smartcontractkit/cld-changesets/pkg/family/solana/legacy/utils"
 	solops "github.com/smartcontractkit/cld-changesets/pkg/family/solana/operations"
 )
 
@@ -84,10 +84,10 @@ func deployMCMSWithTimelock(b operations.Bundle, deps solops.Deps, in DeployMCMS
 }
 
 func deployAccessController(b operations.Bundle, deps solops.Deps) error {
-	typeAndVersion := cldf.NewTypeAndVersion(commontypes.AccessControllerProgram, cldchangesetscommon.Version1_0_0)
+	typeAndVersion := cldf.NewTypeAndVersion(mcmscontracts.AccessControllerProgram, cldchangesetscommon.Version1_0_0)
 	log := logger.With(b.Logger, "chain", deps.Chain.String(), "contract", typeAndVersion.String())
 
-	programID, _, err := deps.State.GetStateFromType(commontypes.AccessControllerProgram)
+	programID, _, err := deps.State.GetStateFromType(mcmscontracts.AccessControllerProgram)
 	if err != nil {
 		return fmt.Errorf("failed to get access controller program state: %w", err)
 	}
@@ -116,13 +116,13 @@ func deployAccessController(b operations.Bundle, deps solops.Deps) error {
 		ChainSelector: deps.Chain.ChainSelector(),
 		Address:       programID.String(),
 		Version:       &cldchangesetscommon.Version1_0_0,
-		Type:          datastore.ContractType(commontypes.AccessControllerProgram),
+		Type:          datastore.ContractType(mcmscontracts.AccessControllerProgram),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to add access controller to datastore: %w", err)
 	}
 
-	err = deps.State.SetState(commontypes.AccessControllerProgram, programID, familysolana.PDASeed{})
+	err = deps.State.SetState(mcmscontracts.AccessControllerProgram, programID, legacy.PDASeed{})
 	if err != nil {
 		return fmt.Errorf("failed to save onchain state: %w", err)
 	}
@@ -131,8 +131,8 @@ func deployAccessController(b operations.Bundle, deps solops.Deps) error {
 }
 
 func initAccessController(b operations.Bundle, deps solops.Deps) error {
-	roles := []cldf.ContractType{commontypes.ProposerAccessControllerAccount, commontypes.ExecutorAccessControllerAccount,
-		commontypes.CancellerAccessControllerAccount, commontypes.BypasserAccessControllerAccount}
+	roles := []cldf.ContractType{mcmscontracts.ProposerAccessControllerAccount, mcmscontracts.ExecutorAccessControllerAccount,
+		mcmscontracts.CancellerAccessControllerAccount, mcmscontracts.BypasserAccessControllerAccount}
 	for _, role := range roles {
 		_, err := operations.ExecuteOperation(b, solops.InitAccessControllerOp, deps,
 			solops.InitAccessControllerInput{
@@ -148,10 +148,10 @@ func initAccessController(b operations.Bundle, deps solops.Deps) error {
 }
 
 func deployMCM(b operations.Bundle, deps solops.Deps) error {
-	typeAndVersion := cldf.NewTypeAndVersion(commontypes.ManyChainMultisigProgram, cldchangesetscommon.Version1_0_0)
+	typeAndVersion := cldf.NewTypeAndVersion(mcmscontracts.ManyChainMultisigProgram, cldchangesetscommon.Version1_0_0)
 	log := logger.With(b.Logger, "chain", deps.Chain.String(), "contract", typeAndVersion.String())
 
-	programID, _, err := deps.State.GetStateFromType(commontypes.ManyChainMultisigProgram)
+	programID, _, err := deps.State.GetStateFromType(mcmscontracts.ManyChainMultisigProgram)
 	if err != nil {
 		return fmt.Errorf("failed to get mcm state: %w", err)
 	}
@@ -179,13 +179,13 @@ func deployMCM(b operations.Bundle, deps solops.Deps) error {
 		ChainSelector: deps.Chain.ChainSelector(),
 		Address:       programID.String(),
 		Version:       &cldchangesetscommon.Version1_0_0,
-		Type:          datastore.ContractType(commontypes.ManyChainMultisig),
+		Type:          datastore.ContractType(mcmscontracts.ManyChainMultisig),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to add mcm to datastore: %w", err)
 	}
 
-	err = deps.State.SetState(commontypes.ManyChainMultisigProgram, programID, familysolana.PDASeed{})
+	err = deps.State.SetState(mcmscontracts.ManyChainMultisigProgram, programID, legacy.PDASeed{})
 	if err != nil {
 		return fmt.Errorf("failed to save onchain state: %w", err)
 	}
@@ -199,15 +199,15 @@ func initMCM(b operations.Bundle, deps solops.Deps, cfg cldfproposalutils.MCMSWi
 		cfg   mcmsTypes.Config
 	}{
 		{
-			commontypes.BypasserManyChainMultisig,
+			mcmscontracts.BypasserManyChainMultisig,
 			cfg.Bypasser,
 		},
 		{
-			commontypes.CancellerManyChainMultisig,
+			mcmscontracts.CancellerManyChainMultisig,
 			cfg.Canceller,
 		},
 		{
-			commontypes.ProposerManyChainMultisig,
+			mcmscontracts.ProposerManyChainMultisig,
 			cfg.Proposer,
 		},
 	}
@@ -223,10 +223,10 @@ func initMCM(b operations.Bundle, deps solops.Deps, cfg cldfproposalutils.MCMSWi
 }
 
 func deployTimelock(b operations.Bundle, deps solops.Deps) error {
-	typeAndVersion := cldf.NewTypeAndVersion(commontypes.RBACTimelockProgram, cldchangesetscommon.Version1_0_0)
+	typeAndVersion := cldf.NewTypeAndVersion(mcmscontracts.RBACTimelockProgram, cldchangesetscommon.Version1_0_0)
 	log := logger.With(b.Logger, "chain", deps.Chain.String(), "contract", typeAndVersion.String())
 
-	programID, _, err := deps.State.GetStateFromType(commontypes.RBACTimelock)
+	programID, _, err := deps.State.GetStateFromType(mcmscontracts.RBACTimelock)
 	if err != nil {
 		return fmt.Errorf("failed to get timelock state: %w", err)
 	}
@@ -257,13 +257,13 @@ func deployTimelock(b operations.Bundle, deps solops.Deps) error {
 		ChainSelector: deps.Chain.ChainSelector(),
 		Address:       programID.String(),
 		Version:       &cldchangesetscommon.Version1_0_0,
-		Type:          datastore.ContractType(commontypes.RBACTimelockProgram),
+		Type:          datastore.ContractType(mcmscontracts.RBACTimelockProgram),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to add timelock to datastore: %w", err)
 	}
 
-	err = deps.State.SetState(commontypes.RBACTimelockProgram, programID, familysolana.PDASeed{})
+	err = deps.State.SetState(mcmscontracts.RBACTimelockProgram, programID, legacy.PDASeed{})
 	if err != nil {
 		return fmt.Errorf("failed to save onchain state: %w", err)
 	}
@@ -277,7 +277,7 @@ func initTimelock(b operations.Bundle, deps solops.Deps, minDelay *big.Int) erro
 	}
 
 	_, err := operations.ExecuteOperation(b, solops.InitTimelockOp, deps, solops.InitTimelockInput{
-		ContractType: commontypes.RBACTimelock,
+		ContractType: mcmscontracts.RBACTimelock,
 		ChainSel:     deps.Chain.ChainSelector(),
 		MinDelay:     minDelay,
 	})

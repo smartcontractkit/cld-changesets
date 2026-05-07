@@ -1,4 +1,4 @@
-package changesets
+package legacy
 
 import (
 	"context"
@@ -23,6 +23,7 @@ import (
 
 	cldchangesetscommon "github.com/smartcontractkit/cld-changesets/pkg/common"
 	solanastate "github.com/smartcontractkit/cld-changesets/pkg/family/solana"
+	"github.com/smartcontractkit/cld-changesets/pkg/family/solana/legacy"
 )
 
 func TestFundMCMSignersChangeset_VerifyPreconditions(t *testing.T) {
@@ -227,29 +228,29 @@ func testFundMCMSignersEnv(t *testing.T, selector uint64, client *rpc.Client, co
 	}))
 }
 
-func saveMCMSAddresses(t *testing.T, addressBook cldf.AddressBook, selector uint64, completeState bool) *solanastate.MCMSWithTimelockState {
+func saveMCMSAddresses(t *testing.T, addressBook cldf.AddressBook, selector uint64, completeState bool) *legacy.MCMSWithTimelockState {
 	t.Helper()
 
 	mcmDummyProgram := solana.NewWallet().PublicKey()
 	timelockProgram := solana.NewWallet().PublicKey()
-	state := &solanastate.MCMSWithTimelockState{
-		MCMSWithTimelockPrograms: &solanastate.MCMSWithTimelockPrograms{
+	state := &legacy.MCMSWithTimelockState{
+		MCMSWithTimelockPrograms: &legacy.MCMSWithTimelockPrograms{
 			McmProgram:       mcmDummyProgram,
 			TimelockProgram:  timelockProgram,
-			ProposerMcmSeed:  solanastate.PDASeed{'t', 'e', 's', 't', '1'},
-			CancellerMcmSeed: solanastate.PDASeed{'t', 'e', 's', 't', '2'},
-			BypasserMcmSeed:  solanastate.PDASeed{'t', 'e', 's', 't', '3'},
-			TimelockSeed:     solanastate.PDASeed{'t', 'e', 's', 't'},
+			ProposerMcmSeed:  legacy.PDASeed{'t', 'e', 's', 't', '1'},
+			CancellerMcmSeed: legacy.PDASeed{'t', 'e', 's', 't', '2'},
+			BypasserMcmSeed:  legacy.PDASeed{'t', 'e', 's', 't', '3'},
+			TimelockSeed:     legacy.PDASeed{'t', 'e', 's', 't'},
 		},
 	}
 
 	if !completeState {
-		state.ProposerMcmSeed = solanastate.PDASeed{}
-		state.CancellerMcmSeed = solanastate.PDASeed{}
-		state.BypasserMcmSeed = solanastate.PDASeed{}
-		state.TimelockSeed = solanastate.PDASeed{}
+		state.ProposerMcmSeed = legacy.PDASeed{}
+		state.CancellerMcmSeed = legacy.PDASeed{}
+		state.BypasserMcmSeed = legacy.PDASeed{}
+		state.TimelockSeed = legacy.PDASeed{}
 
-		require.NoError(t, addressBook.Save(selector, solanastate.EncodeAddressWithSeed(state.McmProgram, state.BypasserMcmSeed), cldf.NewTypeAndVersion(
+		require.NoError(t, addressBook.Save(selector, legacy.EncodeAddressWithSeed(state.McmProgram, state.BypasserMcmSeed), cldf.NewTypeAndVersion(
 			mcmscontracts.BypasserManyChainMultisig,
 			cldchangesetscommon.Version1_0_0,
 		)))
@@ -257,19 +258,19 @@ func saveMCMSAddresses(t *testing.T, addressBook cldf.AddressBook, selector uint
 		return state
 	}
 
-	require.NoError(t, addressBook.Save(selector, solanastate.EncodeAddressWithSeed(state.TimelockProgram, state.TimelockSeed), cldf.NewTypeAndVersion(
+	require.NoError(t, addressBook.Save(selector, legacy.EncodeAddressWithSeed(state.TimelockProgram, state.TimelockSeed), cldf.NewTypeAndVersion(
 		mcmscontracts.RBACTimelock,
 		cldchangesetscommon.Version1_0_0,
 	)))
-	require.NoError(t, addressBook.Save(selector, solanastate.EncodeAddressWithSeed(state.McmProgram, state.ProposerMcmSeed), cldf.NewTypeAndVersion(
+	require.NoError(t, addressBook.Save(selector, legacy.EncodeAddressWithSeed(state.McmProgram, state.ProposerMcmSeed), cldf.NewTypeAndVersion(
 		mcmscontracts.ProposerManyChainMultisig,
 		cldchangesetscommon.Version1_0_0,
 	)))
-	require.NoError(t, addressBook.Save(selector, solanastate.EncodeAddressWithSeed(state.McmProgram, state.CancellerMcmSeed), cldf.NewTypeAndVersion(
+	require.NoError(t, addressBook.Save(selector, legacy.EncodeAddressWithSeed(state.McmProgram, state.CancellerMcmSeed), cldf.NewTypeAndVersion(
 		mcmscontracts.CancellerManyChainMultisig,
 		cldchangesetscommon.Version1_0_0,
 	)))
-	require.NoError(t, addressBook.Save(selector, solanastate.EncodeAddressWithSeed(state.McmProgram, state.BypasserMcmSeed), cldf.NewTypeAndVersion(
+	require.NoError(t, addressBook.Save(selector, legacy.EncodeAddressWithSeed(state.McmProgram, state.BypasserMcmSeed), cldf.NewTypeAndVersion(
 		mcmscontracts.BypasserManyChainMultisig,
 		cldchangesetscommon.Version1_0_0,
 	)))

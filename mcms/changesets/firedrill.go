@@ -14,7 +14,7 @@ import (
 	cldf_chain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
 
 	mcops "github.com/smartcontractkit/cld-changesets/mcms/operations"
-	evmstate "github.com/smartcontractkit/cld-changesets/pkg/family/evm"
+	evmstate "github.com/smartcontractkit/cld-changesets/pkg/family/evm/legacy"
 )
 
 var _ cldf.ChangeSetV2[FireDrillConfig] = MCMSSignFireDrillChangeset{}
