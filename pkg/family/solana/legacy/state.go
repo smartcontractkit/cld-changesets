@@ -60,6 +60,7 @@ func (s *MCMSWithTimelockPrograms) Validate() error {
 	if s.BypasserAccessControllerAccount.IsZero() {
 		return errors.New("bypasser access controller account not found")
 	}
+
 	return nil
 }
 
