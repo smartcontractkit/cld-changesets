@@ -13,8 +13,6 @@ require (
 	github.com/samber/lo v1.52.0
 	github.com/smartcontractkit/ccip-owner-contracts v0.1.0
 	github.com/smartcontractkit/chain-selectors v1.0.98
-	// Pinned to a commit with published localtest program artifacts; see
-	// https://github.com/smartcontractkit/chainlink-ccip/releases/tag/solana-artifacts-localtest-49f23e4d76cc
 	github.com/smartcontractkit/chainlink-ccip/chains/solana v0.0.0-20260415165642-49f23e4d76cc
 	github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings v0.0.0-20260415165642-49f23e4d76cc
 	github.com/smartcontractkit/chainlink-common v0.11.2-0.20260429111145-3667714e0b37
