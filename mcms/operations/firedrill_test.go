@@ -15,7 +15,7 @@ import (
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 	"github.com/stretchr/testify/require"
 
-	evmstate "github.com/smartcontractkit/cld-changesets/pkg/family/evm/legacy"
+	evmstate "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/evm"
 )
 
 func testFireDrillEnv(t *testing.T, chains cldf_chain.BlockChains) cldf.Environment {

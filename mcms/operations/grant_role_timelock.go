@@ -15,8 +15,8 @@ import (
 	cldfsolana "github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
 	fwops "github.com/smartcontractkit/chainlink-deployments-framework/operations"
 
+	solanastate "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana"
 	pdasol "github.com/smartcontractkit/cld-changesets/pkg/family/solana"
-	solanastate "github.com/smartcontractkit/cld-changesets/pkg/family/solana/legacy"
 )
 
 type OpSolanaGrantRoleTimelockDeps struct {

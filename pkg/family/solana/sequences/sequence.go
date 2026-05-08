@@ -16,10 +16,10 @@ import (
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 
+	solana2 "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana"
+	"github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana/solutils"
 	cldchangesetscommon "github.com/smartcontractkit/cld-changesets/pkg/common"
 	familysolana "github.com/smartcontractkit/cld-changesets/pkg/family/solana"
-	"github.com/smartcontractkit/cld-changesets/pkg/family/solana/legacy"
-	"github.com/smartcontractkit/cld-changesets/pkg/family/solana/legacy/solutils"
 	solops "github.com/smartcontractkit/cld-changesets/pkg/family/solana/operations"
 )
 
@@ -122,7 +122,7 @@ func deployAccessController(b operations.Bundle, deps solops.Deps) error {
 		return fmt.Errorf("failed to add access controller to datastore: %w", err)
 	}
 
-	err = deps.State.SetState(mcmscontracts.AccessControllerProgram, programID, legacy.PDASeed{})
+	err = deps.State.SetState(mcmscontracts.AccessControllerProgram, programID, solana2.PDASeed{})
 	if err != nil {
 		return fmt.Errorf("failed to save onchain state: %w", err)
 	}
@@ -185,7 +185,7 @@ func deployMCM(b operations.Bundle, deps solops.Deps) error {
 		return fmt.Errorf("failed to add mcm to datastore: %w", err)
 	}
 
-	err = deps.State.SetState(mcmscontracts.ManyChainMultisigProgram, programID, legacy.PDASeed{})
+	err = deps.State.SetState(mcmscontracts.ManyChainMultisigProgram, programID, solana2.PDASeed{})
 	if err != nil {
 		return fmt.Errorf("failed to save onchain state: %w", err)
 	}
@@ -264,7 +264,7 @@ func deployTimelock(b operations.Bundle, deps solops.Deps) error {
 		return fmt.Errorf("failed to add timelock to datastore: %w", err)
 	}
 
-	err = deps.State.SetState(mcmscontracts.RBACTimelockProgram, programID, legacy.PDASeed{})
+	err = deps.State.SetState(mcmscontracts.RBACTimelockProgram, programID, solana2.PDASeed{})
 	if err != nil {
 		return fmt.Errorf("failed to save onchain state: %w", err)
 	}
