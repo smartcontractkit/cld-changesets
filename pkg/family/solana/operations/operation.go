@@ -22,14 +22,14 @@ import (
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 
+	solana2 "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana"
 	cldchangesetscommon "github.com/smartcontractkit/cld-changesets/pkg/common"
 	familysolana "github.com/smartcontractkit/cld-changesets/pkg/family/solana"
-	"github.com/smartcontractkit/cld-changesets/pkg/family/solana/legacy"
 )
 
 type Deps struct {
 	Env       cldf.Environment
-	State     *legacy.MCMSWithTimelockState
+	State     *solana2.MCMSWithTimelockState
 	Datastore datastore.MutableDataStore
 	Chain     cldfsol.Chain
 }
@@ -166,7 +166,7 @@ func initAccessController(b operations.Bundle, deps Deps, in InitAccessControlle
 		"account", account.PublicKey(),
 	)
 
-	err = deps.State.SetState(in.ContractType, account.PublicKey(), legacy.PDASeed{})
+	err = deps.State.SetState(in.ContractType, account.PublicKey(), solana2.PDASeed{})
 	if err != nil {
 		return out, fmt.Errorf("failed to save onchain state: %w", err)
 	}
@@ -240,7 +240,7 @@ func initMCM(b operations.Bundle, deps Deps, in InitMCMInput) (InitMCMOutput, er
 		return out, fmt.Errorf("failed to get mcm state: %w", err)
 	}
 
-	if mcmSeed != (legacy.PDASeed{}) {
+	if mcmSeed != (solana2.PDASeed{}) {
 		mcmConfigPDA := familysolana.GetMCMConfigPDA(mcmProgram, mcmSeed)
 		var data mcmBindings.MultisigConfig
 		err = solanaUtils.GetAccountDataBorshInto(b.GetContext(), deps.Chain.Client, mcmConfigPDA, rpc.CommitmentConfirmed, &data)
@@ -268,7 +268,7 @@ func initMCM(b operations.Bundle, deps Deps, in InitMCMInput) (InitMCMOutput, er
 		return out, fmt.Errorf("failed to initialize mcm: %w", err)
 	}
 
-	mcmAddress := legacy.EncodeAddressWithSeed(programID, seed)
+	mcmAddress := solana2.EncodeAddressWithSeed(programID, seed)
 
 	configurer := mcmsSolanaSdk.NewConfigurer(deps.Chain.Client, *deps.Chain.DeployerKey, mcmsTypes.ChainSelector(deps.Chain.ChainSelector()))
 	tx, err := configurer.SetConfig(b.GetContext(), mcmAddress, &in.MCMConfig, false)
@@ -299,7 +299,7 @@ func initMCM(b operations.Bundle, deps Deps, in InitMCMInput) (InitMCMOutput, er
 	return out, nil
 }
 
-func initializeMCM(b operations.Bundle, deps Deps, mcmProgram solana.PublicKey, multisigID legacy.PDASeed) error {
+func initializeMCM(b operations.Bundle, deps Deps, mcmProgram solana.PublicKey, multisigID solana2.PDASeed) error {
 	var mcmConfig mcmBindings.MultisigConfig
 	err := deps.Chain.GetAccountDataBorshInto(b.GetContext(), familysolana.GetMCMConfigPDA(mcmProgram, multisigID), &mcmConfig)
 	if err == nil {
@@ -360,7 +360,7 @@ func initTimelock(b operations.Bundle, deps Deps, in InitTimelockInput) (InitTim
 		return out, fmt.Errorf("failed to get timelock state: %w", err)
 	}
 
-	if (timelockSeed != legacy.PDASeed{}) {
+	if (timelockSeed != solana2.PDASeed{}) {
 		timelockConfigPDA := familysolana.GetTimelockConfigPDA(timelockProgram, timelockSeed)
 		var timelockConfig timelockBindings.Config
 		err = deps.Chain.GetAccountDataBorshInto(b.GetContext(), timelockConfigPDA, &timelockConfig)
@@ -389,7 +389,7 @@ func initTimelock(b operations.Bundle, deps Deps, in InitTimelockInput) (InitTim
 		return out, fmt.Errorf("failed to initialize timelock: %w", err)
 	}
 
-	timelockAddress := legacy.EncodeAddressWithSeed(programID, seed)
+	timelockAddress := solana2.EncodeAddressWithSeed(programID, seed)
 
 	err = deps.Datastore.Addresses().Add(datastore.AddressRef{
 		Address:       timelockAddress,
@@ -409,7 +409,7 @@ func initTimelock(b operations.Bundle, deps Deps, in InitTimelockInput) (InitTim
 }
 
 func initializeTimelock(b operations.Bundle, deps Deps, timelockProgram solana.PublicKey,
-	timelockID legacy.PDASeed, minDelay *big.Int) error {
+	timelockID solana2.PDASeed, minDelay *big.Int) error {
 	if minDelay == nil {
 		minDelay = big.NewInt(0)
 	}
@@ -488,14 +488,14 @@ func addAccess(b operations.Bundle, deps Deps, in AddAccessInput) (AddAccessOutp
 	return out, nil
 }
 
-func randomSeed() (legacy.PDASeed, error) {
+func randomSeed() (solana2.PDASeed, error) {
 	const alphabet = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-	seed := legacy.PDASeed{}
+	seed := solana2.PDASeed{}
 	for i := range seed {
 		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(alphabet))))
 		if err != nil {
-			return legacy.PDASeed{}, fmt.Errorf("failed to generate random seed byte: %w", err)
+			return solana2.PDASeed{}, fmt.Errorf("failed to generate random seed byte: %w", err)
 		}
 		seed[i] = alphabet[n.Int64()]
 	}

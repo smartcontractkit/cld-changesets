@@ -16,8 +16,8 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/environment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/runtime"
 
+	evmstate "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/evm"
 	cldchangesetscommon "github.com/smartcontractkit/cld-changesets/pkg/common"
-	evmstate "github.com/smartcontractkit/cld-changesets/pkg/family/evm/legacy"
 )
 
 func TestDeployLinkToken(t *testing.T) {

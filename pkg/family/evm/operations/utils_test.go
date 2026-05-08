@@ -16,8 +16,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	mcmschangesets "github.com/smartcontractkit/cld-changesets/mcms/changesets/legacy"
-	evmstate "github.com/smartcontractkit/cld-changesets/pkg/family/evm/legacy"
+	mcmschangesets "github.com/smartcontractkit/cld-changesets/legacy/mcms/changesets"
+	evmstate "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/evm"
 	opsevm "github.com/smartcontractkit/cld-changesets/pkg/family/evm/operations"
 
 	chain_selectors "github.com/smartcontractkit/chain-selectors"

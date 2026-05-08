@@ -16,9 +16,6 @@ import (
 	"github.com/zksync-sdk/zksync2-go/accounts"
 	"github.com/zksync-sdk/zksync2-go/clients"
 
-	mcmspropose "github.com/smartcontractkit/cld-changesets/mcms/legacy/proposeutils"
-	evmstate "github.com/smartcontractkit/cld-changesets/pkg/family/evm/legacy"
-
 	mcmslib "github.com/smartcontractkit/mcms"
 	mcmssdk "github.com/smartcontractkit/mcms/sdk"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
@@ -27,6 +24,9 @@ import (
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	cldfproposalutils "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
+
+	mcmspropose "github.com/smartcontractkit/cld-changesets/legacy/mcms/proposeutils"
+	evmstate "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/evm"
 )
 
 // EVMCallInput is the input structure for an EVM call operation.
