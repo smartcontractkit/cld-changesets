@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.3.0](https://github.com/smartcontractkit/cld-changesets/compare/v0.2.0...v0.3.0) (2026-05-08)
+
+
+### Features
+
+* add catalog create address refs changeset ([#38](https://github.com/smartcontractkit/cld-changesets/issues/38)) ([c22ad31](https://github.com/smartcontractkit/cld-changesets/commit/c22ad3193d241da813c99df771c813790b2d6334))
+* add catalog update address refs changeset ([#43](https://github.com/smartcontractkit/cld-changesets/issues/43)) ([a9de479](https://github.com/smartcontractkit/cld-changesets/commit/a9de4799ccb8056c8c24a15dee2ba9e2a5c562e0))
+* add catalog update env metadata changeset ([#46](https://github.com/smartcontractkit/cld-changesets/issues/46)) ([5a793ef](https://github.com/smartcontractkit/cld-changesets/commit/5a793ef3149b2e05c0179762838b0025d89a610f))
+* add sonar properties file ([#44](https://github.com/smartcontractkit/cld-changesets/issues/44)) ([cbc2fa5](https://github.com/smartcontractkit/cld-changesets/commit/cbc2fa5874651ff99b07400f9f947d05adafa32f))
+* port deploy mcms with timelock ([#28](https://github.com/smartcontractkit/cld-changesets/issues/28)) ([39a62f2](https://github.com/smartcontractkit/cld-changesets/commit/39a62f2ae67efa2ec8aead9a2d88ea50e723842a))
+
 ## [0.2.0](https://github.com/smartcontractkit/cld-changesets/compare/v0.1.0...v0.2.0) (2026-05-06)
 
 
