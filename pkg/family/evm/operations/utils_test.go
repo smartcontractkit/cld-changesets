@@ -333,6 +333,8 @@ func TestNewEVMCallOperation(t *testing.T) {
 	version, _ := semver.NewVersion("1.0.0")
 
 	t.Run("ChainSelectorMismatch", func(t *testing.T) {
+		t.Parallel()
+
 		op := opsevm.NewEVMCallOperation(
 			"test",
 			version,
@@ -340,10 +342,10 @@ func TestNewEVMCallOperation(t *testing.T) {
 			"abi",
 			cldf.ContractType("TestContract"),
 			func(address common.Address, backend bind.ContractBackend) (any, error) {
-				return nil, nil
+				return struct{}{}, nil
 			},
 			func(contract any, opts *bind.TransactOpts, input string) (*types.Transaction, error) {
-				return nil, nil
+				return types.NewTransaction(0, common.Address{}, big.NewInt(0), 0, big.NewInt(0), nil), nil
 			},
 		)
 
@@ -359,6 +361,8 @@ func TestNewEVMCallOperation(t *testing.T) {
 	})
 
 	t.Run("ConstructorError", func(t *testing.T) {
+		t.Parallel()
+
 		op := opsevm.NewEVMCallOperation[string, any](
 			"test",
 			version,
@@ -369,7 +373,7 @@ func TestNewEVMCallOperation(t *testing.T) {
 				return nil, errors.New("constructor failed")
 			},
 			func(contract any, opts *bind.TransactOpts, input string) (*types.Transaction, error) {
-				return nil, nil
+				return types.NewTransaction(0, common.Address{}, big.NewInt(0), 0, big.NewInt(0), nil), nil
 			},
 		)
 
@@ -386,6 +390,8 @@ func TestNewEVMCallOperation(t *testing.T) {
 	})
 
 	t.Run("NoSendMode", func(t *testing.T) {
+		t.Parallel()
+
 		mockTx := types.NewTransaction(
 			0,                             // nonce
 			common.HexToAddress("0x1234"), // to address
@@ -424,6 +430,8 @@ func TestNewEVMCallOperation(t *testing.T) {
 	})
 
 	t.Run("CustomGasSettings", func(t *testing.T) {
+		t.Parallel()
+
 		var capturedOpts *bind.TransactOpts
 		mockTx := types.NewTransaction(
 			0,                             // nonce
@@ -475,6 +483,8 @@ func TestNewEVMCallOperation(t *testing.T) {
 }
 
 func TestContractOpts_Validate(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		desc       string
 		opts       *opsevm.ContractOpts
@@ -522,6 +532,8 @@ func TestContractOpts_Validate(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
+			t.Parallel()
+
 			err := test.opts.Validate(test.isZkSyncVM)
 			if test.err == "" {
 				require.NoError(t, err)
@@ -538,6 +550,8 @@ func TestNewEVMDeployOperation(t *testing.T) {
 	version, _ := semver.NewVersion("1.0.0")
 
 	t.Run("ChainSelectorMismatch", func(t *testing.T) {
+		t.Parallel()
+
 		op := opsevm.NewEVMDeployOperation(
 			"test",
 			version,
@@ -560,6 +574,8 @@ func TestNewEVMDeployOperation(t *testing.T) {
 	})
 
 	t.Run("ContractMetadata undefined", func(t *testing.T) {
+		t.Parallel()
+
 		op := opsevm.NewEVMDeployOperation(
 			"test",
 			version,
@@ -582,6 +598,8 @@ func TestNewEVMDeployOperation(t *testing.T) {
 	})
 
 	t.Run("ContractOpts not defined", func(t *testing.T) {
+		t.Parallel()
+
 		op := opsevm.NewEVMDeployOperation(
 			"test",
 			version,
@@ -604,6 +622,8 @@ func TestNewEVMDeployOperation(t *testing.T) {
 	})
 
 	t.Run("Default ContractOpts not valid", func(t *testing.T) {
+		t.Parallel()
+
 		op := opsevm.NewEVMDeployOperation(
 			"test",
 			version,
@@ -630,6 +650,8 @@ func TestNewEVMDeployOperation(t *testing.T) {
 	})
 
 	t.Run("Inputted ContractOpts not valid", func(t *testing.T) {
+		t.Parallel()
+
 		op := opsevm.NewEVMDeployOperation(
 			"test",
 			version,
@@ -657,6 +679,8 @@ func TestNewEVMDeployOperation(t *testing.T) {
 	})
 
 	t.Run("ABI parsing failure", func(t *testing.T) {
+		t.Parallel()
+
 		op := opsevm.NewEVMDeployOperation(
 			"test",
 			version,
@@ -684,6 +708,8 @@ func TestNewEVMDeployOperation(t *testing.T) {
 	})
 
 	t.Run("EVM deployment failure", func(t *testing.T) {
+		t.Parallel()
+
 		op := opsevm.NewEVMDeployOperation(
 			"test",
 			version,
@@ -722,6 +748,8 @@ func TestNewEVMDeployOperation(t *testing.T) {
 	})
 
 	t.Run("EVM confirmation failure", func(t *testing.T) {
+		t.Parallel()
+
 		op := opsevm.NewEVMDeployOperation(
 			"test",
 			version,
@@ -763,6 +791,8 @@ func TestNewEVMDeployOperation(t *testing.T) {
 	})
 
 	t.Run("EVM deployment success", func(t *testing.T) {
+		t.Parallel()
+
 		op := opsevm.NewEVMDeployOperation(
 			"test",
 			version,

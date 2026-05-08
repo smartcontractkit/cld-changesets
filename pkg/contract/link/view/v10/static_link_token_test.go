@@ -1,4 +1,4 @@
-package v1_0
+package v10 //nolint:revive // package name mirrors versioned contract view path
 
 import (
 	"testing"

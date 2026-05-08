@@ -92,8 +92,7 @@ func NewEVMCallOperation[IN any, C any](
 			confirmed := false
 			if !input.NoSend {
 				// If the call has actually been sent, we need check the call error and confirm the transaction.
-				_, err := cldf.ConfirmIfNoErrorWithABI(chain, tx, abi, err)
-				if err != nil {
+				if _, err = cldf.ConfirmIfNoErrorWithABI(chain, tx, abi, err); err != nil {
 					return EVMCallOutput{}, fmt.Errorf("failed to confirm %s tx against %s on %s: %w", name, input.Address, chain, err)
 				}
 				b.Logger.Debugw(fmt.Sprintf("Confirmed %s tx against %s on %s", name, input.Address, chain), "hash", tx.Hash().Hex(), "input", input.CallInput)
@@ -101,6 +100,7 @@ func NewEVMCallOperation[IN any, C any](
 			} else {
 				b.Logger.Debugw(fmt.Sprintf("Prepared %s tx against %s on %s", name, input.Address, chain), "input", input.CallInput)
 			}
+
 			return EVMCallOutput{
 				To:           input.Address,
 				Data:         tx.Data(),
@@ -199,12 +199,20 @@ func AddEVMCallSequenceToCSOutput[IN any](
 			builder.WriteString(", ")
 		}
 	}
-	aggProposal, err := mcmspropose.AggregateProposals(e, mcmsStateByChain, nil, csOutput.MCMSTimelockProposals, builder.String(), mcmsCfg)
+	aggProposal, err := mcmspropose.AggregateProposals( //nolint:staticcheck // existing EVM path still uses legacy aggregate helper
+		e,
+		mcmsStateByChain,
+		nil,
+		csOutput.MCMSTimelockProposals,
+		builder.String(),
+		mcmsCfg,
+	)
 	if err != nil {
 		return csOutput, fmt.Errorf("failed to aggregate proposals: %w", err)
 	}
 
 	csOutput.MCMSTimelockProposals = []mcmslib.TimelockProposal{*aggProposal}
+
 	return csOutput, nil
 }
 
@@ -254,6 +262,7 @@ func (c *ContractOpts) Validate(isZkSyncVM bool) error {
 	if !isZkSyncVM && len(c.EVMBytecode) == 0 {
 		return errors.New("evm bytecode must be defined")
 	}
+
 	return nil
 }
 
@@ -326,12 +335,12 @@ func NewEVMDeployOperation[IN any](
 			}
 			// ZkSync transactions are confirmed in deployZkContract
 			if !chain.IsZkSyncVM {
-				_, err := chain.Confirm(tx)
-				if err != nil {
+				if _, err = chain.Confirm(tx); err != nil {
 					b.Logger.Errorw("Failed to confirm deployment", "typeAndVersion", typeAndVersion, "chain", chain.String(), "err", err.Error())
 					return EVMDeployOutput{}, fmt.Errorf("failed to confirm deployment of %s on %s: %w", typeAndVersion, chain, err)
 				}
 			}
+
 			return EVMDeployOutput{
 				Address:        addr,
 				TypeAndVersion: typeAndVersion.String(),
@@ -353,6 +362,7 @@ func CloneTransactOptsWithGas(opts *bind.TransactOpts, gasLimit uint64, gasPrice
 	if gasPrice > 0 {
 		newOpts.GasPrice = new(big.Int).SetUint64(gasPrice)
 	}
+
 	return &newOpts
 }
 

@@ -1,4 +1,4 @@
-package changesets
+package legacy
 
 import (
 	"testing"
@@ -11,14 +11,12 @@ import (
 	cldfproposalutils "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 	"github.com/stretchr/testify/require"
-
-	"github.com/smartcontractkit/cld-changesets/mcms/changesets/legacy"
 )
 
 func TestMCMSSignFireDrillChangeset_VerifyPreconditions_NoChainsResolved(t *testing.T) {
 	t.Parallel()
 
-	env := legacy.testEnvironment(t, cldf.NewMemoryAddressBook(), cldf_chain.NewBlockChains(nil))
+	env := testEnvironment(t, cldf.NewMemoryAddressBook(), cldf_chain.NewBlockChains(nil))
 	cfg := FireDrillConfig{TimelockCfg: cldfproposalutils.TimelockConfig{}}
 
 	err := MCMSSignFireDrillChangeset{}.VerifyPreconditions(env, cfg)
@@ -29,7 +27,7 @@ func TestMCMSSignFireDrillChangeset_VerifyPreconditions_UnknownChain(t *testing.
 	t.Parallel()
 
 	sel := uint64(999991)
-	env := legacy.testEnvironment(t, cldf.NewMemoryAddressBook(), cldf_chain.NewBlockChains(nil))
+	env := testEnvironment(t, cldf.NewMemoryAddressBook(), cldf_chain.NewBlockChains(nil))
 	cfg := FireDrillConfig{
 		TimelockCfg: cldfproposalutils.TimelockConfig{},
 		Selectors:   []uint64{sel},
@@ -49,7 +47,7 @@ func TestMCMSSignFireDrillChangeset_VerifyPreconditions_unsupportedChainFamily(t
 	t.Parallel()
 
 	sel := chainselectors.APTOS_MAINNET.Selector
-	env := legacy.testEnvironment(t, cldf.NewMemoryAddressBook(), cldf_chain.NewBlockChains(nil))
+	env := testEnvironment(t, cldf.NewMemoryAddressBook(), cldf_chain.NewBlockChains(nil))
 	cfg := FireDrillConfig{
 		TimelockCfg: cldfproposalutils.TimelockConfig{MCMSAction: mcmstypes.TimelockActionSchedule},
 		Selectors:   []uint64{sel},
@@ -64,7 +62,7 @@ func TestMCMSSignFireDrillChangeset_VerifyPreconditions_evmChainNotInEnvironment
 
 	evmSel := chainselectors.TEST_90000002.Selector
 	solSel := chainselectors.TEST_22222222222222222222222222222222222222222222.Selector
-	env := legacy.testEnvironment(t, cldf.NewMemoryAddressBook(), cldf_chain.NewBlockChains(map[uint64]cldf_chain.BlockChain{
+	env := testEnvironment(t, cldf.NewMemoryAddressBook(), cldf_chain.NewBlockChains(map[uint64]cldf_chain.BlockChain{
 		solSel: cldf_solana.Chain{Selector: solSel},
 	}))
 	cfg := FireDrillConfig{
@@ -82,7 +80,7 @@ func TestMCMSSignFireDrillChangeset_VerifyPreconditions_solanaChainNotInEnvironm
 
 	evmSel := chainselectors.TEST_90000002.Selector
 	solSel := chainselectors.TEST_22222222222222222222222222222222222222222222.Selector
-	env := legacy.testEnvironment(t, cldf.NewMemoryAddressBook(), cldf_chain.NewBlockChains(map[uint64]cldf_chain.BlockChain{
+	env := testEnvironment(t, cldf.NewMemoryAddressBook(), cldf_chain.NewBlockChains(map[uint64]cldf_chain.BlockChain{
 		evmSel: cldf_evm.Chain{Selector: evmSel},
 	}))
 	cfg := FireDrillConfig{
@@ -99,7 +97,7 @@ func TestMCMSSignFireDrillChangeset_VerifyPreconditions_missingAddressBookEntry(
 	t.Parallel()
 
 	evmSel := chainselectors.TEST_90000002.Selector
-	env := legacy.testEnvironment(t, cldf.NewMemoryAddressBook(), cldf_chain.NewBlockChains(map[uint64]cldf_chain.BlockChain{
+	env := testEnvironment(t, cldf.NewMemoryAddressBook(), cldf_chain.NewBlockChains(map[uint64]cldf_chain.BlockChain{
 		evmSel: cldf_evm.Chain{Selector: evmSel},
 	}))
 	cfg := FireDrillConfig{
@@ -116,7 +114,7 @@ func TestFireDrillConfig_ResolvedSelectors_defaultOrderSolanaBeforeEVM(t *testin
 
 	evmSel := chainselectors.TEST_90000002.Selector
 	solSel := chainselectors.TEST_22222222222222222222222222222222222222222222.Selector
-	env := legacy.testEnvironment(t, cldf.NewMemoryAddressBook(), cldf_chain.NewBlockChains(map[uint64]cldf_chain.BlockChain{
+	env := testEnvironment(t, cldf.NewMemoryAddressBook(), cldf_chain.NewBlockChains(map[uint64]cldf_chain.BlockChain{
 		evmSel: cldf_evm.Chain{Selector: evmSel},
 		solSel: cldf_solana.Chain{Selector: solSel},
 	}))
@@ -130,7 +128,7 @@ func TestFireDrillConfig_ResolvedSelectors_explicitPreservesInputOrder(t *testin
 
 	evmSel := chainselectors.TEST_90000002.Selector
 	solSel := chainselectors.TEST_22222222222222222222222222222222222222222222.Selector
-	env := legacy.testEnvironment(t, cldf.NewMemoryAddressBook(), cldf_chain.NewBlockChains(map[uint64]cldf_chain.BlockChain{
+	env := testEnvironment(t, cldf.NewMemoryAddressBook(), cldf_chain.NewBlockChains(map[uint64]cldf_chain.BlockChain{
 		evmSel: cldf_evm.Chain{Selector: evmSel},
 		solSel: cldf_solana.Chain{Selector: solSel},
 	}))
@@ -145,7 +143,7 @@ func TestFireDrillConfig_ResolvedSelectors_explicitPreservesInputOrder(t *testin
 func TestMCMSSignFireDrillChangeset_Apply_returnsReportOnFailure(t *testing.T) {
 	t.Parallel()
 
-	env := legacy.testEnvironment(t, cldf.NewMemoryAddressBook(), cldf_chain.NewBlockChains(nil))
+	env := testEnvironment(t, cldf.NewMemoryAddressBook(), cldf_chain.NewBlockChains(nil))
 	cfg := FireDrillConfig{
 		TimelockCfg: cldfproposalutils.TimelockConfig{MCMSAction: mcmstypes.TimelockActionSchedule},
 	}

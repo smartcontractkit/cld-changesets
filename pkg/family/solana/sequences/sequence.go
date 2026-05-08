@@ -19,7 +19,7 @@ import (
 	cldchangesetscommon "github.com/smartcontractkit/cld-changesets/pkg/common"
 	familysolana "github.com/smartcontractkit/cld-changesets/pkg/family/solana"
 	"github.com/smartcontractkit/cld-changesets/pkg/family/solana/legacy"
-	"github.com/smartcontractkit/cld-changesets/pkg/family/solana/legacy/utils"
+	"github.com/smartcontractkit/cld-changesets/pkg/family/solana/legacy/solutils"
 	solops "github.com/smartcontractkit/cld-changesets/pkg/family/solana/operations"
 )
 
@@ -219,6 +219,7 @@ func initMCM(b operations.Bundle, deps solops.Deps, cfg cldfproposalutils.MCMSWi
 			return fmt.Errorf("failed to init config type:%q, err:%w", cfg.ctype, err)
 		}
 	}
+
 	return nil
 }
 

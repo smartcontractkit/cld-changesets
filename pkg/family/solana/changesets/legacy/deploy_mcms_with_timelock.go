@@ -32,7 +32,7 @@ func DeployMCMSWithTimelockProgramsSolana(
 	addressBook cldf.AddressBook,
 	config cldfproposalutils.MCMSWithTimelockConfig,
 ) (*familysolana.MCMSWithTimelockState, error) {
-	addresses, err := e.ExistingAddresses.AddressesForChain(chain.Selector)
+	addresses, err := e.ExistingAddresses.AddressesForChain(chain.Selector) //nolint:staticcheck // legacy deployment path still accepts AddressBook input
 	if err != nil && !errors.Is(err, cldf.ErrChainNotFound) {
 		return nil, fmt.Errorf("failed to get addresses for chain %v from environment: %w", chain.Selector, err)
 	}

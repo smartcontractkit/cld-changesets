@@ -1,6 +1,7 @@
 package changesets
 
 import (
+	"fmt"
 	"testing"
 
 	chain_selectors "github.com/smartcontractkit/chain-selectors"
@@ -17,8 +18,49 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/runtime"
 
 	cldchangesetscommon "github.com/smartcontractkit/cld-changesets/pkg/common"
-	evmstate "github.com/smartcontractkit/cld-changesets/pkg/family/evm"
+	evmstate "github.com/smartcontractkit/cld-changesets/pkg/family/evm/legacy"
 )
+
+type addressRefStoreStub struct {
+	refs []datastore.AddressRef
+}
+
+func (s addressRefStoreStub) Fetch() ([]datastore.AddressRef, error) {
+	refs := make([]datastore.AddressRef, len(s.refs))
+	copy(refs, s.refs)
+
+	return refs, nil
+}
+
+func (s addressRefStoreStub) Get(key datastore.AddressRefKey) (datastore.AddressRef, error) {
+	for _, ref := range s.refs {
+		refKey := ref.Key()
+		if refKey.Equals(key) {
+			return ref, nil
+		}
+	}
+
+	return datastore.AddressRef{}, fmt.Errorf("address ref not found: %s", key)
+}
+
+func (s addressRefStoreStub) Filter(filters ...datastore.FilterFunc[datastore.AddressRefKey, datastore.AddressRef]) []datastore.AddressRef {
+	refs := make([]datastore.AddressRef, len(s.refs))
+	copy(refs, s.refs)
+	for _, filter := range filters {
+		refs = filter(refs)
+	}
+
+	return refs
+}
+
+type dataStoreWithAddressRefs struct {
+	datastore.DataStore
+	addresses datastore.AddressRefStore
+}
+
+func (s dataStoreWithAddressRefs) Addresses() datastore.AddressRefStore {
+	return s.addresses
+}
 
 func TestDeployLinkToken(t *testing.T) {
 	t.Parallel()
@@ -242,15 +284,15 @@ func datastoreWith(t *testing.T, selector uint64, address string, tv cldf.TypeAn
 func datastoreWithNilVersion(t *testing.T, selector uint64, address string, contractType cldf.ContractType, qualifier string) datastore.DataStore {
 	t.Helper()
 
-	ds := datastore.NewMemoryDataStore()
-	require.NoError(t, ds.Addresses().Add(datastore.AddressRef{
-		ChainSelector: selector,
-		Address:       address,
-		Type:          datastore.ContractType(contractType.String()),
-		Qualifier:     qualifier,
-	}))
-
-	return ds.Seal()
+	return dataStoreWithAddressRefs{
+		DataStore: datastore.NewMemoryDataStore().Seal(),
+		addresses: addressRefStoreStub{refs: []datastore.AddressRef{{
+			ChainSelector: selector,
+			Address:       address,
+			Type:          datastore.ContractType(contractType.String()),
+			Qualifier:     qualifier,
+		}}},
+	}
 }
 
 func typeAndVersionWithLabels(tv cldf.TypeAndVersion, labels ...string) cldf.TypeAndVersion {

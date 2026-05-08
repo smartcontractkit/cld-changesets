@@ -11,7 +11,7 @@ import (
 
 	"github.com/smartcontractkit/cld-changesets/pkg/common"
 	familysolana "github.com/smartcontractkit/cld-changesets/pkg/family/solana/legacy"
-	"github.com/smartcontractkit/cld-changesets/pkg/family/solana/legacy/utils"
+	"github.com/smartcontractkit/cld-changesets/pkg/family/solana/legacy/solutils"
 )
 
 // PreloadAddressBookWithMCMSPrograms creates and returns an address book containing preloaded MCMS

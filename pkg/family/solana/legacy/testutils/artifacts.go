@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/smartcontractkit/cld-changesets/pkg/family/solana/legacy/utils"
+	"github.com/smartcontractkit/cld-changesets/pkg/family/solana/legacy/solutils"
 )
 
 var (

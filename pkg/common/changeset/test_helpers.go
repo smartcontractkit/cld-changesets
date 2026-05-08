@@ -27,10 +27,6 @@ import (
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 )
 
-type testMetadata struct {
-	Data string `json:"data"`
-}
-
 type ConfiguredChangeSet interface {
 	Apply(e cldf.Environment) (cldf.ChangesetOutput, error)
 }
@@ -55,6 +51,7 @@ func (ca configuredChangeSetImpl[C]) Apply(e cldf.Environment) (cldf.ChangesetOu
 	if err != nil {
 		return cldf.ChangesetOutput{}, err
 	}
+
 	return ca.changeset.Apply(e, ca.config)
 }
 
@@ -62,7 +59,10 @@ func (ca configuredChangeSetImpl[C]) Apply(e cldf.Environment) (cldf.ChangesetOu
 // variadic function equivalent of ApplyChangesets, but allowing you to simply pass in one or more changesets as
 // parameters at the end of the function. e.g. `changeset.Apply(t, e, nil, configuredCS1, configuredCS2)` etc.
 func Apply(t *testing.T, e cldf.Environment, first ConfiguredChangeSet, rest ...ConfiguredChangeSet) (cldf.Environment, error) {
+	t.Helper()
+
 	env, _, err := ApplyChangesets(t, e, append([]ConfiguredChangeSet{first}, rest...))
+
 	return env, err
 }
 
@@ -81,6 +81,8 @@ func WithRealBackend() ApplyChangesetsOptions {
 
 // ApplyChangesets applies the changeset applications to the environment and returns the updated environment.
 func ApplyChangesets(t *testing.T, e cldf.Environment, changesetApplications []ConfiguredChangeSet, opts ...ApplyChangesetsOptions) (cldf.Environment, []cldf.ChangesetOutput, error) {
+	t.Helper()
+
 	opt := applyChangesetOptions{}
 	for _, o := range opts {
 		opt = *o(&opt)
@@ -95,14 +97,13 @@ func ApplyChangesets(t *testing.T, e cldf.Environment, changesetApplications []C
 		}
 		outputs = append(outputs, out)
 		var addresses cldf.AddressBook
-		if out.AddressBook != nil {
-			addresses = out.AddressBook
-			err := addresses.Merge(currentEnv.ExistingAddresses)
-			if err != nil {
+		if out.AddressBook != nil { //nolint:staticcheck // legacy AddressBook is still supported by test helper while changesets migrate to DataStore
+			addresses = out.AddressBook                                          //nolint:staticcheck // legacy AddressBook is still supported by test helper while changesets migrate to DataStore
+			if err = addresses.Merge(currentEnv.ExistingAddresses); err != nil { //nolint:staticcheck // merge legacy addresses for compatibility
 				return e, nil, fmt.Errorf("failed to merge address book: %w", err)
 			}
 		} else {
-			addresses = currentEnv.ExistingAddresses
+			addresses = currentEnv.ExistingAddresses //nolint:staticcheck // preserve legacy AddressBook state in test helper
 		}
 
 		// Collect expected DataStore state after changeset is applied
@@ -110,8 +111,7 @@ func ApplyChangesets(t *testing.T, e cldf.Environment, changesetApplications []C
 		if out.DataStore != nil {
 			ds1 := datastore.NewMemoryDataStore()
 			// New Addresses
-			err := ds1.Merge(out.DataStore.Seal())
-			if err != nil {
+			if err = ds1.Merge(out.DataStore.Seal()); err != nil {
 				return e, nil, fmt.Errorf("failed to merge new addresses into datastore: %w", err)
 			}
 			// Existing Addresses
@@ -133,7 +133,7 @@ func ApplyChangesets(t *testing.T, e cldf.Environment, changesetApplications []C
 		currentEnv = cldf.Environment{
 			Name:              e.Name,
 			Logger:            e.Logger,
-			ExistingAddresses: addresses,
+			ExistingAddresses: addresses, //nolint:staticcheck // preserve legacy AddressBook state in test helper
 			DataStore:         ds,
 			NodeIDs:           e.NodeIDs,
 			Offchain:          e.Offchain,
@@ -187,11 +187,14 @@ func ApplyChangesets(t *testing.T, e cldf.Environment, changesetApplications []C
 			}
 		}
 	}
+
 	return currentEnv, outputs, nil
 }
 
 func MustFundAddressWithLink(t *testing.T, e cldf.Environment, chain cldf_evm.Chain, to common.Address, amount int64) {
-	addresses, err := e.ExistingAddresses.AddressesForChain(chain.Selector)
+	t.Helper()
+
+	addresses, err := e.ExistingAddresses.AddressesForChain(chain.Selector) //nolint:staticcheck // legacy helper still loads LINK from AddressBook
 	require.NoError(t, err)
 
 	linkState, err := evmstate.MaybeLoadLinkTokenChainState(chain, addresses)
@@ -221,11 +224,14 @@ func MustFundAddressWithLink(t *testing.T, e cldf.Environment, chain cldf_evm.Ch
 
 // MaybeGetLinkBalance returns the LINK balance of the given address on the given chain.
 func MaybeGetLinkBalance(t *testing.T, e cldf.Environment, chain cldf_evm.Chain, linkAddr common.Address) *big.Int {
-	addresses, err := e.ExistingAddresses.AddressesForChain(chain.Selector)
+	t.Helper()
+
+	addresses, err := e.ExistingAddresses.AddressesForChain(chain.Selector) //nolint:staticcheck // legacy helper still loads LINK from AddressBook
 	require.NoError(t, err)
 	linkState, err := evmstate.MaybeLoadLinkTokenChainState(chain, addresses)
 	require.NoError(t, err)
 	endBalance, err := linkState.LinkToken.BalanceOf(&bind.CallOpts{Context: chain.DeployerKey.Context}, linkAddr)
 	require.NoError(t, err)
+
 	return endBalance
 }

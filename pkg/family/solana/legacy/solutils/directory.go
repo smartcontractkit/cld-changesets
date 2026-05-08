@@ -1,4 +1,4 @@
-package solutils
+package solutils //nolint:revive // legacy package name is part of the existing public layout
 
 // Program names
 const (

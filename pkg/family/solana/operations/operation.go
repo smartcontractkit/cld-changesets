@@ -1,10 +1,10 @@
 package operation
 
 import (
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"math/big"
-	"math/rand"
 
 	binary "github.com/gagliardetto/binary"
 	"github.com/gagliardetto/solana-go"
@@ -248,11 +248,15 @@ func initMCM(b operations.Bundle, deps Deps, in InitMCMInput) (InitMCMOutput, er
 			b.Logger.Infow("mcm config already initialized, skipping initialization", "chain", deps.Chain.String())
 			return out, nil
 		}
+
 		return out, fmt.Errorf("unable to read mcm ConfigPDA account config %q", mcmConfigPDA.String())
 	}
 
 	b.Logger.Infow("mcm config not initialized, initializing", "chain", deps.Chain.String())
-	seed := randomSeed()
+	seed, err := randomSeed()
+	if err != nil {
+		return out, fmt.Errorf("failed to generate MCM seed: %w", err)
+	}
 	b.Logger.Infow(
 		"generated MCM seed",
 		"chain", deps.Chain.String(),
@@ -364,11 +368,15 @@ func initTimelock(b operations.Bundle, deps Deps, in InitTimelockInput) (InitTim
 			b.Logger.Infow("timelock config already initialized, skipping initialization", "chain", deps.Chain.String())
 			return out, nil
 		}
+
 		return out, fmt.Errorf("unable to read timelock ConfigPDA account config %s", timelockConfigPDA.String())
 	}
 
 	b.Logger.Infow("timelock config not initialized, initializing", "chain", deps.Chain.String())
-	seed := randomSeed()
+	seed, err := randomSeed()
+	if err != nil {
+		return out, fmt.Errorf("failed to generate timelock seed: %w", err)
+	}
 	b.Logger.Infow(
 		"generated Timelock seed",
 		"chain", deps.Chain.String(),
@@ -476,16 +484,21 @@ func addAccess(b operations.Bundle, deps Deps, in AddAccessInput) (AddAccessOutp
 	if err != nil {
 		return out, fmt.Errorf("failed to confirm BatchAddAccess instruction: %w", err)
 	}
+
 	return out, nil
 }
 
-func randomSeed() legacy.PDASeed {
+func randomSeed() (legacy.PDASeed, error) {
 	const alphabet = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 	seed := legacy.PDASeed{}
 	for i := range seed {
-		seed[i] = alphabet[rand.Intn(len(alphabet))]
+		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(alphabet))))
+		if err != nil {
+			return legacy.PDASeed{}, fmt.Errorf("failed to generate random seed byte: %w", err)
+		}
+		seed[i] = alphabet[n.Int64()]
 	}
 
-	return seed
+	return seed, nil
 }

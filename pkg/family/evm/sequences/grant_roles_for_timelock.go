@@ -75,6 +75,7 @@ var SeqGrantRolesTimelock = operations.NewSequence(
 					"Role", roleAndAddress.Name,
 					"Error", err2,
 				)
+
 				return nil, err2
 			}
 			for _, addressToGrantRole := range roleAndAddress.Addresses {
@@ -100,6 +101,7 @@ var SeqGrantRolesTimelock = operations.NewSequence(
 							"Role Name", roleAndAddress.Name,
 							"Address", addressToGrantRole.Hex(),
 						)
+
 						return nil, err
 					}
 					out = append(out, opReport.Output)

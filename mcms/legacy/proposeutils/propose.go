@@ -29,6 +29,11 @@ const (
 	DefaultValidUntil = 72 * time.Hour
 )
 
+var (
+	errNoMCMSConfig         = errors.New("mcms config is required")
+	errNoProposalOperations = errors.New("no proposal operations")
+)
+
 type ChainMetadata map[uint64]map[string]any
 
 func (c *ChainMetadata) Set(chainSelector uint64, key string, value any) *ChainMetadata {
@@ -275,7 +280,7 @@ func AggregateProposalsV2(
 	opts ...BuildProposalOption,
 ) (*mcmslib.TimelockProposal, error) {
 	if mcmsConfig == nil {
-		return nil, nil
+		return nil, errNoMCMSConfig
 	}
 
 	var batches []types.BatchOperation
@@ -299,7 +304,7 @@ func AggregateProposalsV2(
 
 	// Return early if there are no operations.
 	if len(batches) == 0 {
-		return nil, nil
+		return nil, errNoProposalOperations
 	}
 
 	// Store the timelock and mcm addresses for each chain.

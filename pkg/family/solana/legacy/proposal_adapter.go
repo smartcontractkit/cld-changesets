@@ -8,7 +8,6 @@ import (
 
 // TimelockPrograms implements [cldfproposalutils.SolanaMCMSWithTimelock] for MCMS timelock proposal helpers.
 func (s MCMSWithTimelockState) TimelockPrograms() cldfproposalutils.MCMSWithTimelockPrograms {
-
 	p := s.MCMSWithTimelockPrograms
 
 	return cldfproposalutils.MCMSWithTimelockPrograms{

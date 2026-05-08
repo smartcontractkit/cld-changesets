@@ -6,7 +6,6 @@ import (
 
 // TimelockContracts implements [cldfproposalutils.EVMMCMSWithTimelock] for MCMS timelock proposal helpers.
 func (s MCMSWithTimelockState) TimelockContracts() cldfproposalutils.MCMSWithTimelockContracts {
-
 	return cldfproposalutils.MCMSWithTimelockContracts{
 		CancellerMcm: s.CancellerMcm,
 		BypasserMcm:  s.BypasserMcm,

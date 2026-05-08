@@ -70,6 +70,7 @@ func migrateAddressBookWithQualifiers(ab cldf.AddressBook, cfgByChain map[uint64
 			}
 		}
 	}
+
 	return ds, nil
 }
 
@@ -165,6 +166,7 @@ func DeployMCMSWithTimelockV2(
 	if err != nil {
 		return cldf.ChangesetOutput{Reports: allReports, AddressBook: newAddresses}, fmt.Errorf("failed to migrate address book to data store: %w", err)
 	}
+
 	return cldf.ChangesetOutput{Reports: allReports, AddressBook: newAddresses, DataStore: ds}, nil
 }
 
@@ -207,6 +209,7 @@ func grantRolePreconditions(e cldf.Environment, cfg GrantRoleInput) error {
 			return fmt.Errorf("callProxy contract not found for chain %s", chain.String())
 		}
 	}
+
 	return nil
 }
 
@@ -224,6 +227,7 @@ func loadMCMSStatePerChainWithQualifier(e cldf.Environment, cfg GrantRoleInput) 
 		}
 		result[selector] = chainState[selector]
 	}
+
 	return result, nil
 }
 
@@ -287,6 +291,7 @@ func ValidateOwnership(ctx context.Context, mcms bool, deployerKey, timelock com
 	} else if !mcms && owner != deployerKey {
 		return fmt.Errorf("%s not owned by deployer key, Owner: %s", contract.Address(), owner.Hex())
 	}
+
 	return nil
 }
 
@@ -300,5 +305,6 @@ func ValidateOwnershipSolanaCommon(mcms bool, deployerKey solana.PublicKey, time
 			return fmt.Errorf("timelock signer PDA %s does not match owner %s", timelockSignerPDA.String(), programOwner.String())
 		}
 	}
+
 	return nil
 }

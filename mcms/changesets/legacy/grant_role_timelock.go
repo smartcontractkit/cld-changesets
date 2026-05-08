@@ -1,4 +1,4 @@
-package changesets
+package legacy
 
 import (
 	"errors"
@@ -16,9 +16,9 @@ import (
 	cldfproposalutils "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
 	fwops "github.com/smartcontractkit/chainlink-deployments-framework/operations"
 
+	mcmscontract "github.com/smartcontractkit/cld-changesets/mcms/legacy/proposeutils"
 	mcops "github.com/smartcontractkit/cld-changesets/mcms/operations"
-	cldmcms "github.com/smartcontractkit/cld-changesets/pkg/contract/mcms"
-	solanastate "github.com/smartcontractkit/cld-changesets/pkg/family/solana"
+	solanastate "github.com/smartcontractkit/cld-changesets/pkg/family/solana/legacy"
 )
 
 // GrantRoleTimelockSolana grants the given accounts access to the given role on the timelock
@@ -155,7 +155,7 @@ func (t GrantRoleTimelockSolana) Apply(
 		return cldf.ChangesetOutput{}, nil
 	}
 
-	proposal, err := cldmcms.BuildProposalFromBatchesV2(env, timelocks, proposers, inspectors,
+	proposal, err := mcmscontract.BuildProposalFromBatchesV2(env, timelocks, proposers, inspectors,
 		batchOps, "proposal to grant role in timelock", *cfg.MCMS)
 	if err != nil {
 		return cldf.ChangesetOutput{}, fmt.Errorf("failed to build proposal: %w", err)

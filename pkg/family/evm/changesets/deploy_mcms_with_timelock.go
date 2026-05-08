@@ -321,6 +321,7 @@ func getAdminAddresses(ctx context.Context, timelock *bindings.RBACTimelock) ([]
 		}
 		adminAddresses = append(adminAddresses, address.String())
 	}
+
 	return adminAddresses, nil
 }
 

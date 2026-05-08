@@ -1,9 +1,10 @@
 package legacy
 
 import (
+	"crypto/rand"
 	"errors"
 	"fmt"
-	"math/rand"
+	"math/big"
 
 	binary "github.com/gagliardetto/binary"
 	"github.com/gagliardetto/solana-go"
@@ -14,14 +15,13 @@ import (
 	mcmsSolanaSdk "github.com/smartcontractkit/mcms/sdk/solana"
 	mcmsTypes "github.com/smartcontractkit/mcms/types"
 
+	mcmBindings "github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings/v0_1_1/mcm"
+	solanaUtils "github.com/smartcontractkit/chainlink-ccip/chains/solana/utils/common"
+
 	cldchangesetscommon "github.com/smartcontractkit/cld-changesets/pkg/common"
 	familysolana "github.com/smartcontractkit/cld-changesets/pkg/family/solana"
 	legacy2 "github.com/smartcontractkit/cld-changesets/pkg/family/solana/legacy"
-	"github.com/smartcontractkit/cld-changesets/pkg/family/solana/legacy/utils"
-
-	mcmBindings "github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings/v0_1_1/mcm"
-	solanaUtils "github.com/smartcontractkit/chainlink-ccip/chains/solana/utils/common"
-	"github.com/smartcontractkit/chainlink-common/pkg/logger"
+	"github.com/smartcontractkit/cld-changesets/pkg/family/solana/legacy/solutils"
 )
 
 func deployMCMProgram(
@@ -29,7 +29,6 @@ func deployMCMProgram(
 	chain cldf_solana.Chain, addressBook cldf.AddressBook,
 ) error {
 	typeAndVersion := cldf.NewTypeAndVersion(mcmscontracts.ManyChainMultisigProgram, cldchangesetscommon.Version1_0_0)
-	log := logger.With(env.Logger, "chain", chain.String(), "contract", typeAndVersion.String())
 
 	programID, _, err := chainState.GetStateFromType(mcmscontracts.ManyChainMultisigProgram)
 	if err != nil {
@@ -37,7 +36,7 @@ func deployMCMProgram(
 	}
 
 	if programID.IsZero() {
-		deployedProgramID, err := chain.DeployProgram(log, cldf_solana.ProgramInfo{
+		deployedProgramID, err := chain.DeployProgram(env.Logger, cldf_solana.ProgramInfo{
 			Name:  solutils.ProgMCM,
 			Bytes: solutils.GetProgramBufferBytes(solutils.ProgMCM),
 		}, false, true)
@@ -60,9 +59,11 @@ func deployMCMProgram(
 			return fmt.Errorf("failed to save onchain state: %w", err)
 		}
 
-		log.Infow("deployed mcm contract", "programId", deployedProgramID)
+		env.Logger.Infow("deployed mcm contract",
+			"chain", chain.String(), "contract", typeAndVersion.String(), "programId", deployedProgramID)
 	} else {
-		log.Infow("using existing MCM program", "programId", programID.String())
+		env.Logger.Infow("using existing MCM program",
+			"chain", chain.String(), "contract", typeAndVersion.String(), "programId", programID.String())
 	}
 
 	return nil
@@ -91,14 +92,18 @@ func initMCM(
 			env.Logger.Infow("mcm config already initialized, skipping initialization", "chain", chain.String())
 			return nil
 		}
+
 		return fmt.Errorf("unable to read mcm ConfigPDA account config %s", mcmConfigPDA.String())
 	}
 
 	env.Logger.Infow("mcm config not initialized, initializing", "chain", chain.String())
-	log := logger.With(env.Logger, "chain", chain.String(), "contract", typeAndVersion.String())
 
-	seed := randomSeed()
-	log.Infow("generated MCM seed", "seed", string(seed[:]))
+	seed, err := randomSeed()
+	if err != nil {
+		return fmt.Errorf("failed to generate MCM seed: %w", err)
+	}
+	env.Logger.Infow("generated MCM seed",
+		"chain", chain.String(), "contract", typeAndVersion.String(), "seed", string(seed[:]))
 
 	err = initializeMCM(env, chain, programID, seed)
 	if err != nil {
@@ -112,7 +117,8 @@ func initMCM(
 	if err != nil {
 		return fmt.Errorf("failed to set config on mcm: %w", err)
 	}
-	log.Infow("called SetConfig on MCM", "transaction", tx.Hash)
+	env.Logger.Infow("called SetConfig on MCM",
+		"chain", chain.String(), "contract", typeAndVersion.String(), "transaction", tx.Hash)
 
 	err = addressBook.Save(chain.Selector, mcmAddress, typeAndVersion)
 	if err != nil {
@@ -177,13 +183,17 @@ func initializeMCM(e cldf.Environment, chain cldf_solana.Chain, mcmProgram solan
 	return nil
 }
 
-func randomSeed() legacy2.PDASeed {
+func randomSeed() (legacy2.PDASeed, error) {
 	const alphabet = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 	seed := legacy2.PDASeed{}
 	for i := range seed {
-		seed[i] = alphabet[rand.Intn(len(alphabet))]
+		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(alphabet))))
+		if err != nil {
+			return legacy2.PDASeed{}, fmt.Errorf("failed to generate random seed byte: %w", err)
+		}
+		seed[i] = alphabet[n.Int64()]
 	}
 
-	return seed
+	return seed, nil
 }

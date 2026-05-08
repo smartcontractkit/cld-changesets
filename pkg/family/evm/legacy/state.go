@@ -16,7 +16,7 @@ import (
 	"github.com/smartcontractkit/chainlink-evm/gethwrappers/shared/generated/initial/link_token"
 
 	cldchangesetscommon "github.com/smartcontractkit/cld-changesets/pkg/common"
-	linkv10 "github.com/smartcontractkit/cld-changesets/pkg/contract/link/view/v1_0"
+	linkv10 "github.com/smartcontractkit/cld-changesets/pkg/contract/link/view/v10"
 	"github.com/smartcontractkit/cld-changesets/pkg/contract/mcms/view/v1_0"
 )
 

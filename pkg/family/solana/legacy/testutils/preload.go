@@ -10,7 +10,7 @@ import (
 
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 
-	"github.com/smartcontractkit/cld-changesets/pkg/family/solana/legacy/utils"
+	"github.com/smartcontractkit/cld-changesets/pkg/family/solana/legacy/solutils"
 )
 
 // LoadMCMSPrograms loads the MCMS program artifacts into the given directory.

@@ -14,15 +14,13 @@ import (
 	accessControllerBindings "github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings/v0_1_1/access_controller"
 	timelockBindings "github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings/v0_1_1/timelock"
 	solanaUtils "github.com/smartcontractkit/chainlink-ccip/chains/solana/utils/common"
-	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 
-	legacy2 "github.com/smartcontractkit/cld-changesets/pkg/family/solana/legacy"
-	"github.com/smartcontractkit/cld-changesets/pkg/family/solana/legacy/utils"
-
 	cldchangesetscommon "github.com/smartcontractkit/cld-changesets/pkg/common"
 	familysolana "github.com/smartcontractkit/cld-changesets/pkg/family/solana"
+	legacy2 "github.com/smartcontractkit/cld-changesets/pkg/family/solana/legacy"
+	"github.com/smartcontractkit/cld-changesets/pkg/family/solana/legacy/solutils"
 )
 
 func deployAccessControllerProgram(
@@ -30,7 +28,6 @@ func deployAccessControllerProgram(
 	chain cldf_solana.Chain, addressBook cldf.AddressBook,
 ) error {
 	typeAndVersion := cldf.NewTypeAndVersion(mcmscontracts.AccessControllerProgram, cldchangesetscommon.Version1_0_0)
-	log := logger.With(e.Logger, "chain", chain.String(), "contract", typeAndVersion.String())
 
 	programID, _, err := chainState.GetStateFromType(mcmscontracts.AccessControllerProgram)
 	if err != nil {
@@ -61,9 +58,11 @@ func deployAccessControllerProgram(
 			return fmt.Errorf("failed to save onchain state: %w", err)
 		}
 
-		log.Infow("deployed access controller contract", "programId", programID)
+		e.Logger.Infow("deployed access controller contract",
+			"chain", chain.String(), "contract", typeAndVersion.String(), "programId", programID)
 	} else {
-		log.Infow("using existing AccessController program", "programId", programID)
+		e.Logger.Infow("using existing AccessController program",
+			"chain", chain.String(), "contract", typeAndVersion.String(), "programId", programID)
 	}
 
 	return nil
@@ -99,8 +98,6 @@ func initAccessController(
 	programID := chainState.AccessControllerProgram
 	accessControllerBindings.SetProgramID(programID)
 
-	log := logger.With(e.Logger, "chain", chain.String(), "contract", typeAndVersion.String(), "programID", programID)
-
 	account, err := solana.NewRandomPrivateKey() // FIXME: what should we do with the account private key?
 	if err != nil {
 		return fmt.Errorf("failed to generate new random private key for access controller account: %w", err)
@@ -110,7 +107,9 @@ func initAccessController(
 	if err != nil {
 		return fmt.Errorf("failed to initialize access controller: %w", err)
 	}
-	log.Infow("initialized access controller", "account", account.PublicKey())
+	e.Logger.Infow("initialized access controller",
+		"chain", chain.String(), "contract", typeAndVersion.String(),
+		"programID", programID, "account", account.PublicKey())
 
 	err = addressBook.Save(chain.Selector, account.PublicKey().String(), typeAndVersion)
 	if err != nil {

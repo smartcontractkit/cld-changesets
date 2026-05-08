@@ -27,8 +27,8 @@ import (
 	soltestutils2 "github.com/smartcontractkit/cld-changesets/pkg/family/solana/legacy/testutils"
 
 	timelockBindings "github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings/v0_1_1/timelock"
-	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 	"github.com/smartcontractkit/chainlink-common/pkg/utils/tests"
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 	"github.com/smartcontractkit/chainlink-evm/pkg/utils"
 
 	cldf_solana "github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
@@ -42,6 +42,8 @@ import (
 )
 
 func TestGrantRoleInTimeLock(t *testing.T) {
+	t.Parallel()
+
 	selector := chain_selectors.TEST_90000001.Selector
 	env, err := environment.New(t.Context(),
 		environment.WithEVMSimulatedWithConfig(t, []uint64{selector}, onchain.EVMSimLoaderConfig{
@@ -68,7 +70,7 @@ func TestGrantRoleInTimeLock(t *testing.T) {
 	ab := cldf.NewMemoryAddressBook()
 	require.NoError(t, ab.Save(selector, existingProposer.Address().String(),
 		cldf.NewTypeAndVersion(mcmscontracts.ProposerManyChainMultisig, cldchangesetscommon.Version1_0_0)))
-	require.NoError(t, updatedEnv.ExistingAddresses.Remove(ab))
+	require.NoError(t, updatedEnv.ExistingAddresses.Remove(ab)) //nolint:staticcheck // test removes legacy AddressBook entry while verifying DataStore migration behavior
 
 	// remove from DataStore since deployment now uses DataStore
 	// Since DataStore is immutable, create a new one without the proposer
@@ -84,8 +86,7 @@ func TestGrantRoleInTimeLock(t *testing.T) {
 			ref.Type == datastore.ContractType(mcmscontracts.ProposerManyChainMultisig) {
 			continue
 		}
-		err := newDataStore.Addresses().Add(ref)
-		require.NoError(t, err)
+		require.NoError(t, newDataStore.Addresses().Add(ref))
 	}
 
 	// Replace the DataStore in the environment
@@ -127,6 +128,8 @@ func TestGrantRoleInTimeLock(t *testing.T) {
 }
 
 func TestDeployMCMSWithTimelockV2WithFewExistingContracts(t *testing.T) {
+	t.Parallel()
+
 	ctx := t.Context()
 
 	selector1 := chain_selectors.TEST_90000001.Selector

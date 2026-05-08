@@ -13,14 +13,13 @@ import (
 	cldf_solana "github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
 
 	timelockBindings "github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings/v0_1_1/timelock"
-	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 
 	cldchangesetscommon "github.com/smartcontractkit/cld-changesets/pkg/common"
 	familysolana "github.com/smartcontractkit/cld-changesets/pkg/family/solana"
 	legacy2 "github.com/smartcontractkit/cld-changesets/pkg/family/solana/legacy"
-	"github.com/smartcontractkit/cld-changesets/pkg/family/solana/legacy/utils"
+	"github.com/smartcontractkit/cld-changesets/pkg/family/solana/legacy/solutils"
 )
 
 func deployTimelockProgram(
@@ -28,7 +27,6 @@ func deployTimelockProgram(
 	addressBook cldf.AddressBook,
 ) error {
 	typeAndVersion := cldf.NewTypeAndVersion(mcmscontracts.RBACTimelockProgram, cldchangesetscommon.Version1_0_0)
-	log := logger.With(e.Logger, "chain", chain.String(), "contract", typeAndVersion.String())
 
 	programID, _, err := chainState.GetStateFromType(mcmscontracts.RBACTimelock)
 	if err != nil {
@@ -36,7 +34,7 @@ func deployTimelockProgram(
 	}
 
 	if programID.IsZero() {
-		deployedProgramID, err := chain.DeployProgram(log, cldf_solana.ProgramInfo{
+		deployedProgramID, err := chain.DeployProgram(e.Logger, cldf_solana.ProgramInfo{
 			Name:  solutils.ProgTimelock,
 			Bytes: solutils.GetProgramBufferBytes(solutils.ProgTimelock),
 		}, false, true)
@@ -59,9 +57,11 @@ func deployTimelockProgram(
 			return fmt.Errorf("failed to save onchain state: %w", err)
 		}
 
-		log.Infow("deployed timelock contract", "programId", programID)
+		e.Logger.Infow("deployed timelock contract",
+			"chain", chain.String(), "contract", typeAndVersion.String(), "programId", programID)
 	} else {
-		log.Infow("using existing Timelock program", "programId", programID.String())
+		e.Logger.Infow("using existing Timelock program",
+			"chain", chain.String(), "contract", typeAndVersion.String(), "programId", programID.String())
 	}
 
 	return nil
@@ -91,14 +91,18 @@ func initTimelock(
 			e.Logger.Infow("timelock config already initialized, skipping initialization", "chain", chain.String())
 			return nil
 		}
+
 		return fmt.Errorf("unable to read timelock ConfigPDA account config %s", timelockConfigPDA.String())
 	}
 
 	e.Logger.Infow("timelock config not initialized, initializing", "chain", chain.String())
-	log := logger.With(e.Logger, "chain", chain.String(), "contract", typeAndVersion.String())
 
-	seed := randomSeed()
-	log.Infow("generated Timelock seed", "seed", string(seed[:]))
+	seed, err := randomSeed()
+	if err != nil {
+		return fmt.Errorf("failed to generate timelock seed: %w", err)
+	}
+	e.Logger.Infow("generated Timelock seed",
+		"chain", chain.String(), "contract", typeAndVersion.String(), "seed", string(seed[:]))
 
 	err = initializeTimelock(e, chain, programID, seed, chainState, minDelay)
 	if err != nil {
