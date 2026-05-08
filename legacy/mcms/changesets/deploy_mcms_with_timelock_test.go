@@ -22,7 +22,7 @@ import (
 	mcmschangesets "github.com/smartcontractkit/cld-changesets/legacy/mcms/changesets"
 	evmstate "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/evm"
 	solana2 "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana"
-	"github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana/testutils"
+	soltestutils "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana/testutils"
 	cldchangesetscommon "github.com/smartcontractkit/cld-changesets/pkg/common"
 	familysolana "github.com/smartcontractkit/cld-changesets/pkg/family/solana"
 
