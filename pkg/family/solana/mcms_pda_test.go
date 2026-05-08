@@ -5,6 +5,8 @@ import (
 
 	"github.com/gagliardetto/solana-go"
 	"github.com/stretchr/testify/require"
+
+	solana2 "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana"
 )
 
 func TestMCMSPDA(t *testing.T) {
@@ -15,7 +17,7 @@ func TestMCMSPDA(t *testing.T) {
 	tests := []struct {
 		name   string
 		prefix string
-		fn     func(programID solana.PublicKey, seed PDASeed) solana.PublicKey
+		fn     func(programID solana.PublicKey, seed solana2.PDASeed) solana.PublicKey
 	}{
 		{name: "GetMCMSignerPDA", prefix: pdaPrefixMultisigSigner, fn: GetMCMSignerPDA},
 		{name: "GetMCMConfigPDA", prefix: pdaPrefixMultisigConfig, fn: GetMCMConfigPDA},
@@ -65,9 +67,9 @@ func mustFindPDA(t *testing.T, seeds [][]byte, programID solana.PublicKey) solan
 	return pda
 }
 
-func testPDASeed(t *testing.T) PDASeed {
+func testPDASeed(t *testing.T) solana2.PDASeed {
 	t.Helper()
-	var s PDASeed
+	var s solana2.PDASeed
 	for i := range s {
 		s[i] = byte(i + 1)
 	}
