@@ -133,35 +133,33 @@ func TestGetAddressTypeVersionByQualifier(t *testing.T) {
 		require.True(t, tv.Labels.Contains(mcmscontracts.ProposerRole.String()))
 	})
 
-	t.Run("nil version only returns error without panic", func(t *testing.T) {
+	t.Run("memory datastore rejects nil version refs", func(t *testing.T) {
 		t.Parallel()
 		ds := datastore.NewMemoryDataStore()
-		require.NoError(t, ds.Addresses().Add(datastore.AddressRef{
+		err := ds.Addresses().Add(datastore.AddressRef{
 			Address:       "0x0000000000000000000000000000000000000001",
 			ChainSelector: chainSel,
 			Type:          datastore.ContractType(linkcontracts.LinkToken),
-		}))
-		var err error
-		require.NotPanics(t, func() {
-			_, err = GetAddressTypeVersionByQualifier(ds.Seal().Addresses(), chainSel, "")
 		})
-		require.ErrorContains(t, err, "no address refs with a non-nil contract version")
+		require.ErrorContains(t, err, "version is required")
 	})
 
-	t.Run("nil version skipped when another ref has version", func(t *testing.T) {
+	t.Run("memory datastore rejects nil version before mixed refs can be queried", func(t *testing.T) {
 		t.Parallel()
 		ds := datastore.NewMemoryDataStore()
-		require.NoError(t, ds.Addresses().Add(datastore.AddressRef{
-			Address:       "0x0000000000000000000000000000000000000001",
-			ChainSelector: chainSel,
-			Type:          datastore.ContractType(linkcontracts.LinkToken),
-		}))
 		require.NoError(t, ds.Addresses().Add(datastore.AddressRef{
 			Address:       "0x0000000000000000000000000000000000000002",
 			ChainSelector: chainSel,
 			Type:          datastore.ContractType(mcmscontracts.CallProxy),
 			Version:       &v,
 		}))
+		err := ds.Addresses().Add(datastore.AddressRef{
+			Address:       "0x0000000000000000000000000000000000000001",
+			ChainSelector: chainSel,
+			Type:          datastore.ContractType(linkcontracts.LinkToken),
+		})
+		require.ErrorContains(t, err, "version is required")
+
 		got, err := GetAddressTypeVersionByQualifier(ds.Seal().Addresses(), chainSel, "")
 		require.NoError(t, err)
 		require.Len(t, got, 1)
@@ -286,24 +284,15 @@ func TestMaybeLoadMCMSWithTimelockStateWithQualifier(t *testing.T) {
 		require.Nil(t, st.Timelock)
 	})
 
-	t.Run("datastore only nil version refs merge falls back to empty address map", func(t *testing.T) {
+	t.Run("memory datastore rejects nil version refs before state loading", func(t *testing.T) {
 		t.Parallel()
 		ds := datastore.NewMemoryDataStore()
-		require.NoError(t, ds.Addresses().Add(datastore.AddressRef{
+		err := ds.Addresses().Add(datastore.AddressRef{
 			Address:       "0x0000000000000000000000000000000000000001",
 			ChainSelector: chainSel,
 			Type:          datastore.ContractType(linkcontracts.LinkToken),
-		}))
-		evmCh := cldf_evm.Chain{Selector: chainSel, Client: nil}
-		env := testEVMEnv(t, ds.Seal(), chain.NewBlockChains(map[uint64]chain.BlockChain{
-			chainSel: evmCh,
-		}))
-		got, err := MaybeLoadMCMSWithTimelockStateWithQualifier(env, []uint64{chainSel}, "")
-		require.NoError(t, err)
-		require.Len(t, got, 1)
-		st := got[chainSel]
-		require.NotNil(t, st)
-		require.Nil(t, st.Timelock)
+		})
+		require.ErrorContains(t, err, "version is required")
 	})
 }
 
