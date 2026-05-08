@@ -2,6 +2,8 @@ package solana
 
 import (
 	"github.com/gagliardetto/solana-go"
+
+	solana2 "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana"
 )
 
 const (
@@ -14,37 +16,37 @@ const (
 )
 
 // GetMCMSignerPDA returns the PDA for the MCMS signer
-func GetMCMSignerPDA(programID solana.PublicKey, seed PDASeed) solana.PublicKey {
+func GetMCMSignerPDA(programID solana.PublicKey, seed solana2.PDASeed) solana.PublicKey {
 	seeds := [][]byte{[]byte(pdaPrefixMultisigSigner), seed[:]}
 	return getPDA(programID, seeds)
 }
 
 // GetMCMConfigPDA returns the PDA for the MCMS config
-func GetMCMConfigPDA(programID solana.PublicKey, seed PDASeed) solana.PublicKey {
+func GetMCMConfigPDA(programID solana.PublicKey, seed solana2.PDASeed) solana.PublicKey {
 	seeds := [][]byte{[]byte(pdaPrefixMultisigConfig), seed[:]}
 	return getPDA(programID, seeds)
 }
 
 // GetMCMRootMetadataPDA returns the PDA for the MCMS root metadata
-func GetMCMRootMetadataPDA(programID solana.PublicKey, seed PDASeed) solana.PublicKey {
+func GetMCMRootMetadataPDA(programID solana.PublicKey, seed solana2.PDASeed) solana.PublicKey {
 	seeds := [][]byte{[]byte(pdaPrefixRootMetadata), seed[:]}
 	return getPDA(programID, seeds)
 }
 
 // GetMCMExpiringRootAndOpCountPDA returns the PDA for the MCMS expiring root and op count
-func GetMCMExpiringRootAndOpCountPDA(programID solana.PublicKey, seed PDASeed) solana.PublicKey {
+func GetMCMExpiringRootAndOpCountPDA(programID solana.PublicKey, seed solana2.PDASeed) solana.PublicKey {
 	seeds := [][]byte{[]byte(pdaPrefixExpiringRootAndOpCount), seed[:]}
 	return getPDA(programID, seeds)
 }
 
 // GetTimelockConfigPDA returns the PDA for the Timelock config
-func GetTimelockConfigPDA(programID solana.PublicKey, seed PDASeed) solana.PublicKey {
+func GetTimelockConfigPDA(programID solana.PublicKey, seed solana2.PDASeed) solana.PublicKey {
 	seeds := [][]byte{[]byte(pdaPrefixTimelockConfig), seed[:]}
 	return getPDA(programID, seeds)
 }
 
 // GetTimelockSignerPDA returns the PDA for the Timelock signer
-func GetTimelockSignerPDA(programID solana.PublicKey, seed PDASeed) solana.PublicKey {
+func GetTimelockSignerPDA(programID solana.PublicKey, seed solana2.PDASeed) solana.PublicKey {
 	seeds := [][]byte{[]byte(pdaPrefixTimelockSigner), seed[:]}
 	return getPDA(programID, seeds)
 }

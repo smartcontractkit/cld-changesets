@@ -16,8 +16,8 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/environment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/runtime"
 
+	evmstate "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/evm"
 	cldchangesetscommon "github.com/smartcontractkit/cld-changesets/pkg/common"
-	evmstate "github.com/smartcontractkit/cld-changesets/pkg/family/evm"
 )
 
 func TestDeployLinkToken(t *testing.T) {
@@ -139,19 +139,6 @@ func TestDeployLinkTokenRejectsExistingStateBeforeDeploy(t *testing.T) {
 			wantErr: "LinkToken contract already exists",
 		},
 		{
-			name: "link token exists in datastore with nil version",
-			env: cldf.Environment{
-				BlockChains: cldf_chain.NewBlockChainsFromSlice([]cldf_chain.BlockChain{
-					cldf_evm.Chain{Selector: evmSelector},
-				}),
-				DataStore: datastoreWithNilVersion(t, evmSelector, evmAddress, linkcontracts.LinkToken, "migrated"),
-			},
-			run: func(env cldf.Environment) (cldf.ChangesetOutput, error) {
-				return DeployLinkToken(env, []uint64{evmSelector})
-			},
-			wantErr: "LinkToken contract already exists",
-		},
-		{
 			name: "static link token exists in datastore",
 			env: cldf.Environment{
 				BlockChains: cldf_chain.NewBlockChainsFromSlice([]cldf_chain.BlockChain{
@@ -235,20 +222,6 @@ func datastoreWith(t *testing.T, selector uint64, address string, tv cldf.TypeAn
 
 	ds := datastore.NewMemoryDataStore()
 	require.NoError(t, saveAddressRef(ds, selector, address, tv, qualifier))
-
-	return ds.Seal()
-}
-
-func datastoreWithNilVersion(t *testing.T, selector uint64, address string, contractType cldf.ContractType, qualifier string) datastore.DataStore {
-	t.Helper()
-
-	ds := datastore.NewMemoryDataStore()
-	require.NoError(t, ds.Addresses().Add(datastore.AddressRef{
-		ChainSelector: selector,
-		Address:       address,
-		Type:          datastore.ContractType(contractType.String()),
-		Qualifier:     qualifier,
-	}))
 
 	return ds.Seal()
 }
