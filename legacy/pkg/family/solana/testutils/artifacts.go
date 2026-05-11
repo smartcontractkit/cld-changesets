@@ -37,5 +37,5 @@ func programsCacheDir() string {
 	if err != nil {
 		root = os.TempDir()
 	}
-	return filepath.Join(root, "cld-changesets", "solana-test-programs")
+	return filepath.Join(root, "cld-changesets", "programs_cache")
 }

@@ -11,6 +11,6 @@ import (
 func TestProgramsCacheDir(t *testing.T) {
 	got := programsCacheDir()
 	require.True(t, filepath.IsAbs(got), "got %q", got)
-	require.True(t, strings.HasSuffix(got, filepath.Join("cld-changesets", "solana-test-programs")), "got %q", got)
+	require.True(t, strings.HasSuffix(got, filepath.Join("cld-changesets", "programs_cache")), "got %q", got)
 	require.NotContains(t, got, filepath.Join("pkg", "mod"))
 }
