@@ -31,12 +31,12 @@ func downloadChainlinkCCIPProgramArtifacts(t *testing.T) string {
 	return cachePath
 }
 
-// programsCacheDir returns a writable directory for cached .so files (avoids pkg/mod when loaded as a module).
+// programsCacheDir returns where to store downloaded .so files. Leaf dir is solana_programs
+// (under UserCacheDir/TempDir, so "cache" is implied; avoids read-only pkg/mod paths).
 func programsCacheDir() string {
 	root, err := os.UserCacheDir()
 	if err != nil {
 		root = os.TempDir()
 	}
-
-	return filepath.Join(root, "cld-changesets", "programs_cache")
+	return filepath.Join(root, "cld-changesets", "solana_programs")
 }
