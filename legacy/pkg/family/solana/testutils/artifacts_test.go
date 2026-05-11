@@ -9,6 +9,8 @@ import (
 )
 
 func TestProgramsCacheDir(t *testing.T) {
+	t.Parallel()
+
 	got := programsCacheDir()
 	require.True(t, filepath.IsAbs(got), "got %q", got)
 	require.True(t, strings.HasSuffix(got, filepath.Join("cld-changesets", "programs_cache")), "got %q", got)
