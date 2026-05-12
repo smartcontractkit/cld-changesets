@@ -20,8 +20,7 @@ require (
 	github.com/smartcontractkit/chainlink-evm v0.3.4-0.20260429160308-91a892a60171
 	github.com/smartcontractkit/chainlink-evm/gethwrappers v0.0.0-20260421142741-9c7fbaf7c828
 	github.com/smartcontractkit/chainlink-protos/job-distributor v0.18.0
-	github.com/smartcontractkit/chainlink-ton/deployment v0.0.0-20260430134932-681b7a7fe426
-	github.com/smartcontractkit/mcms v0.41.1
+	github.com/smartcontractkit/mcms v0.42.0
 	github.com/smartcontractkit/quarantine v0.0.0-20251203215908-fd0551c6adf9
 	github.com/smartcontractkit/wsrpc v0.8.5-0.20250502134807-c57d3d995945
 	github.com/spf13/cast v1.10.0
@@ -247,6 +246,7 @@ require (
 	github.com/smartcontractkit/chainlink-testing-framework/framework v0.15.19 // indirect
 	github.com/smartcontractkit/chainlink-testing-framework/seth v1.51.5 // indirect
 	github.com/smartcontractkit/chainlink-ton v1.0.5-0.20260430134932-681b7a7fe426 // indirect
+	github.com/smartcontractkit/chainlink-ton/deployment v0.0.0-20260430134932-681b7a7fe426 // indirect
 	github.com/smartcontractkit/chainlink-tron/relayer v0.0.11-0.20260408092456-3c6369888d4a // indirect
 	github.com/smartcontractkit/freeport v0.1.3-0.20250828155247-add56fa28aad // indirect
 	github.com/smartcontractkit/grpc-proxy v0.0.0-20240830132753-a7e17fec5ab7 // indirect

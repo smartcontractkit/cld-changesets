@@ -2,6 +2,7 @@ package operations
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -163,6 +164,76 @@ func TestCREWorkflowDeployOp(t *testing.T) {
 				require.Equal(t, 7, out.Output.ExitCode)
 				require.Equal(t, "out", out.Output.Stdout)
 				require.Equal(t, "err", out.Output.Stderr)
+			},
+		},
+		{
+			name: "APIKeyName selects cli before run",
+			input: func(t *testing.T) CREWorkflowDeployInput {
+				t.Helper()
+
+				return CREWorkflowDeployInput{
+					WorkflowBundle: creartifacts.WorkflowBundle{
+						WorkflowName:       "wf",
+						Binary:             creartifacts.NewBinarySourceLocal(writeFile(t, "x.wasm", []byte("wasm"))),
+						Config:             creartifacts.NewConfigSourceLocal(writeFile(t, "cfg.json", []byte(`{}`))),
+						DonFamily:          "feeds-zone-a",
+						DeploymentRegistry: "private",
+					},
+					Project:    creartifacts.NewConfigSourceLocal(writeFile(t, "project.yaml", []byte("cld-deploy: {}\n"))),
+					APIKeyName: "prod-1",
+				}
+			},
+			setupCLI: func(t *testing.T) *cremocks.MockCLIRunner {
+				t.Helper()
+				// The outer mock receives WithNamedAPIKey; the inner mock receives
+				// the deploy traffic. Strict mockery assertions in NewMockCLIRunner
+				// guarantee the outer mock's Run/ContextRegistries are never called.
+				inner := cremocks.NewMockCLIRunner(t)
+				inner.EXPECT().ContextRegistries().Return(testRegistries()).Once()
+				inner.EXPECT().Run(mock.Anything, mock.Anything, matchCLIArgs("workflow", "deploy")).Return(
+					&fcre.CallResult{ExitCode: 0, Stdout: []byte("ok")}, nil,
+				).Once()
+
+				outer := cremocks.NewMockCLIRunner(t)
+				outer.EXPECT().WithNamedAPIKey("prod-1").Return(inner, nil).Once()
+
+				return outer
+			},
+			assert: func(t *testing.T, _ fwops.Report[CREWorkflowDeployInput, CREWorkflowDeployOutput], err error) {
+				t.Helper()
+				require.NoError(t, err)
+			},
+		},
+		{
+			name: "unknown APIKeyName short-circuits before CLI work",
+			input: func(t *testing.T) CREWorkflowDeployInput {
+				t.Helper()
+
+				return CREWorkflowDeployInput{
+					WorkflowBundle: creartifacts.WorkflowBundle{
+						WorkflowName:       "wf",
+						Binary:             creartifacts.NewBinarySourceLocal(writeFile(t, "x.wasm", []byte("wasm"))),
+						Config:             creartifacts.NewConfigSourceLocal(writeFile(t, "cfg.json", []byte(`{}`))),
+						DonFamily:          "feeds-zone-a",
+						DeploymentRegistry: "private",
+					},
+					Project:    creartifacts.NewConfigSourceLocal(writeFile(t, "project.yaml", []byte("cld-deploy: {}\n"))),
+					APIKeyName: "missing",
+				}
+			},
+			setupCLI: func(t *testing.T) *cremocks.MockCLIRunner {
+				t.Helper()
+				// Inner deploy work must never run; strict mock expectations enforce this
+				// because no EXPECT().Run/ContextRegistries is registered on this mock.
+				outer := cremocks.NewMockCLIRunner(t)
+				outer.EXPECT().WithNamedAPIKey("missing").Return(nil, errors.New(`API key "missing" not configured`)).Once()
+
+				return outer
+			},
+			assert: func(t *testing.T, _ fwops.Report[CREWorkflowDeployInput, CREWorkflowDeployOutput], err error) {
+				t.Helper()
+				require.ErrorContains(t, err, `select cre api key "missing"`)
+				require.ErrorContains(t, err, "not configured")
 			},
 		},
 	}

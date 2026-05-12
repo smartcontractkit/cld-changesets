@@ -59,6 +59,10 @@ type CREWorkflowDeployInput struct {
 	// Optional - TargetName is the CRE CLI target key that must match a top-level key
 	// in project.yaml. Defaults to CREDeployTargetName ("cld-deploy") when empty.
 	TargetName string `json:"targetName,omitempty" yaml:"targetName,omitempty"`
+	// Optional - APIKeyName selects which CRE API key to use when the runner is
+	// configured with multiple named keys (e.g. CRE_API_KEY={"prod":"...","stg":"..."}).
+	// Leave empty when the runner is configured with a single key.
+	APIKeyName string `json:"apiKeyName,omitempty" yaml:"apiKeyName,omitempty"`
 }
 
 // resolveTargetName returns the user-specified target name, falling back to [CREDeployTargetName].
@@ -72,14 +76,27 @@ func (in CREWorkflowDeployInput) resolveTargetName() string {
 }
 
 // CREWorkflowDeployOp deploys a workflow via the CRE CLI (single side effect: CLI invocation).
+//
+// Version history:
+//   - 1.1.0: input gained APIKeyName for selecting among named CRE API keys.
+//   - 1.0.0: initial release.
 var CREWorkflowDeployOp = fwops.NewOperation(
 	"cre-workflow-deploy",
-	semver.MustParse("1.0.0"),
+	semver.MustParse("1.1.0"),
 	"Deploys a CRE workflow via the CRE CLI subprocess",
 	func(b fwops.Bundle, deps CREDeployDeps, input CREWorkflowDeployInput) (CREWorkflowDeployOutput, error) {
 		ctx := b.GetContext()
 		if deps.CLI == nil {
 			return CREWorkflowDeployOutput{}, errors.New("cre CLIRunner is nil")
+		}
+
+		cli := deps.CLI
+		if input.APIKeyName != "" {
+			selected, err := deps.CLI.WithNamedAPIKey(input.APIKeyName)
+			if err != nil {
+				return CREWorkflowDeployOutput{}, fmt.Errorf("select cre api key %q: %w", input.APIKeyName, err)
+			}
+			cli = selected
 		}
 
 		workDir, err := os.MkdirTemp("", "cre-workflow-artifacts-*")
@@ -136,7 +153,7 @@ var CREWorkflowDeployOp = fwops.NewOperation(
 			return CREWorkflowDeployOutput{}, fmt.Errorf("write workflow.yaml: %w", err)
 		}
 
-		ctxCfg, err := crecli.BuildContextConfig(input.DonFamily, input.Context, deps.CRECfg, deps.CLI.ContextRegistries())
+		ctxCfg, err := crecli.BuildContextConfig(input.DonFamily, input.Context, deps.CRECfg, cli.ContextRegistries())
 		if err != nil {
 			return CREWorkflowDeployOutput{}, err
 		}
@@ -163,7 +180,7 @@ var CREWorkflowDeployOp = fwops.NewOperation(
 				"CRE_ETH_PRIVATE_KEY": deps.EVMDeployerKey,
 			}
 		}
-		res, runErr := deps.CLI.Run(ctx, runEnv, args...)
+		res, runErr := cli.Run(ctx, runEnv, args...)
 		if runErr != nil {
 			var exitErr *fcre.ExitError
 			if errors.As(runErr, &exitErr) {
