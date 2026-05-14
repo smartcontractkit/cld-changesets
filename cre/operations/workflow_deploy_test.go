@@ -185,9 +185,6 @@ func TestCREWorkflowDeployOp(t *testing.T) {
 			},
 			setupCLI: func(t *testing.T) *cremocks.MockCLIRunner {
 				t.Helper()
-				// The outer mock receives WithNamedAPIKey; the inner mock receives
-				// the deploy traffic. Strict mockery assertions in NewMockCLIRunner
-				// guarantee the outer mock's Run/ContextRegistries are never called.
 				inner := cremocks.NewMockCLIRunner(t)
 				inner.EXPECT().ContextRegistries().Return(testRegistries()).Once()
 				inner.EXPECT().Run(mock.Anything, mock.Anything, matchCLIArgs("workflow", "deploy")).Return(
@@ -223,8 +220,6 @@ func TestCREWorkflowDeployOp(t *testing.T) {
 			},
 			setupCLI: func(t *testing.T) *cremocks.MockCLIRunner {
 				t.Helper()
-				// Inner deploy work must never run; strict mock expectations enforce this
-				// because no EXPECT().Run/ContextRegistries is registered on this mock.
 				outer := cremocks.NewMockCLIRunner(t)
 				outer.EXPECT().WithNamedAPIKey("missing").Return(nil, errors.New(`API key "missing" not configured`)).Once()
 

@@ -76,10 +76,6 @@ func (in CREWorkflowDeployInput) resolveTargetName() string {
 }
 
 // CREWorkflowDeployOp deploys a workflow via the CRE CLI (single side effect: CLI invocation).
-//
-// Version history:
-//   - 1.1.0: input gained APIKeyName for selecting among named CRE API keys.
-//   - 1.0.0: initial release.
 var CREWorkflowDeployOp = fwops.NewOperation(
 	"cre-workflow-deploy",
 	semver.MustParse("1.1.0"),
