@@ -75,6 +75,27 @@ func (in CREWorkflowDeployInput) resolveTargetName() string {
 	return CREDeployTargetName
 }
 
+// usesNamedAPIKeys reports whether apiKeyRaw matches the CRE CLI multi-key layout used when
+// CRE_API_KEY is a JSON object of {name: secret} entries (see chainlink-deployments-framework/cre/cli
+// named-keys parsing). In that mode the CLI runner requires WithNamedAPIKey before Run, so workflow
+// deploy input must set apiKeyName when this returns true.
+func usesNamedAPIKeys(apiKeyRaw string) bool {
+	var m map[string]string
+	if err := json.Unmarshal([]byte(apiKeyRaw), &m); err != nil {
+		return false
+	}
+	if len(m) == 0 {
+		return false
+	}
+	for name, value := range m {
+		if name == "" || value == "" {
+			return false
+		}
+	}
+
+	return true
+}
+
 // CREWorkflowDeployOp deploys a workflow via the CRE CLI (single side effect: CLI invocation).
 var CREWorkflowDeployOp = fwops.NewOperation(
 	"cre-workflow-deploy",
@@ -84,6 +105,10 @@ var CREWorkflowDeployOp = fwops.NewOperation(
 		ctx := b.GetContext()
 		if deps.CLI == nil {
 			return CREWorkflowDeployOutput{}, errors.New("cre CLIRunner is nil")
+		}
+
+		if usesNamedAPIKeys(deps.CRECfg.Auth.APIKey) && strings.TrimSpace(input.APIKeyName) == "" {
+			return CREWorkflowDeployOutput{}, errors.New("cre workflow deploy: apiKeyName is required when CRE_API_KEY is configured as a JSON object of named API keys")
 		}
 
 		cli := deps.CLI

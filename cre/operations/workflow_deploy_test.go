@@ -37,6 +37,7 @@ func TestCREWorkflowDeployOp(t *testing.T) {
 		name     string
 		input    func(t *testing.T) CREWorkflowDeployInput
 		setupCLI func(t *testing.T) *cremocks.MockCLIRunner
+		creCfg   cfgenv.CREConfig
 		assert   func(t *testing.T, out fwops.Report[CREWorkflowDeployInput, CREWorkflowDeployOutput], err error)
 	}{
 		{
@@ -231,6 +232,38 @@ func TestCREWorkflowDeployOp(t *testing.T) {
 				require.ErrorContains(t, err, "not configured")
 			},
 		},
+		{
+			name: "named API keys in CRE config without apiKeyName errors before resolver work",
+			input: func(t *testing.T) CREWorkflowDeployInput {
+				t.Helper()
+
+				return CREWorkflowDeployInput{
+					WorkflowBundle: creartifacts.WorkflowBundle{
+						WorkflowName:       "wf",
+						Binary:             creartifacts.NewBinarySourceLocal(writeFile(t, "x.wasm", []byte("wasm"))),
+						Config:             creartifacts.NewConfigSourceLocal(writeFile(t, "cfg.json", []byte(`{}`))),
+						DonFamily:          "feeds-zone-a",
+						DeploymentRegistry: "private",
+					},
+					Project: creartifacts.NewConfigSourceLocal(writeFile(t, "project.yaml", []byte("cld-deploy: {}\n"))),
+				}
+			},
+			setupCLI: func(t *testing.T) *cremocks.MockCLIRunner {
+				t.Helper()
+
+				return cremocks.NewMockCLIRunner(t)
+			},
+			creCfg: cfgenv.CREConfig{
+				Auth: cfgenv.CREAuthConfig{
+					APIKey: `{"prod-1":"k1","prod-2":"k2"}`,
+				},
+			},
+			assert: func(t *testing.T, _ fwops.Report[CREWorkflowDeployInput, CREWorkflowDeployOutput], err error) {
+				t.Helper()
+				require.ErrorContains(t, err, "apiKeyName is required")
+				require.ErrorContains(t, err, "named API keys")
+			},
+		},
 	}
 
 	for _, tc := range tests {
@@ -241,7 +274,7 @@ func TestCREWorkflowDeployOp(t *testing.T) {
 			bundle := fwops.NewBundle(func() context.Context { return t.Context() }, logger.Test(t), fwops.NewMemoryReporter())
 			deps := CREDeployDeps{
 				CLI:    mockCLI,
-				CRECfg: cfgenv.CREConfig{},
+				CRECfg: tc.creCfg,
 			}
 
 			out, err := fwops.ExecuteOperation[CREWorkflowDeployInput, CREWorkflowDeployOutput, CREDeployDeps](
@@ -284,6 +317,32 @@ func TestResolveTargetName(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			require.Equal(t, tc.expect, tc.input.resolveTargetName())
+		})
+	}
+}
+
+func TestCREAuthUsesNamedAPIKeys(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		raw  string
+		want bool
+	}{
+		{name: "empty", raw: "", want: false},
+		{name: "plain secret", raw: "not-json", want: false},
+		{name: "json string", raw: `"x"`, want: false},
+		{name: "json array", raw: `["a"]`, want: false},
+		{name: "empty object", raw: `{}`, want: false},
+		{name: "empty key", raw: `{"":"v"}`, want: false},
+		{name: "empty value", raw: `{"a":""}`, want: false},
+		{name: "single named entry", raw: `{"prod":"secret"}`, want: true},
+		{name: "multiple named entries", raw: `{"a":"1","b":"2"}`, want: true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, tc.want, usesNamedAPIKeys(tc.raw))
 		})
 	}
 }
