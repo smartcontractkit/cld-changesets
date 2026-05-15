@@ -200,6 +200,28 @@ func TestCREWorkflowDeployChangeset_Apply(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, out.Reports, 1)
 	})
+
+	t.Run("APIKeyName propagates through changeset to selected CLI", func(t *testing.T) { //nolint:paralleltest
+		inner := cremocks.NewMockCLIRunner(t)
+		inner.EXPECT().ContextRegistries().Return([]fcre.ContextRegistryEntry{
+			{ID: "private", Type: "off-chain"},
+		}).Once()
+		inner.EXPECT().
+			Run(mock.Anything, (map[string]string)(nil), matchCLIArgs("workflow", "deploy")).
+			Return(&fcre.CallResult{ExitCode: 0, Stdout: []byte("ok")}, nil).
+			Once()
+
+		outer := cremocks.NewMockCLIRunner(t)
+		outer.EXPECT().WithNamedAPIKey("prod-1").Return(inner, nil).Once()
+
+		env := newTestEnv(t, testenv.WithCRERunner(fcre.NewRunner(fcre.WithCLI(outer))))
+
+		namedInput := input
+		namedInput.APIKeyName = "prod-1"
+		out, err := cs.Apply(*env, namedInput)
+		require.NoError(t, err)
+		require.Len(t, out.Reports, 1)
+	})
 }
 
 func matchCLIArgs(wantArgs ...string) any {
