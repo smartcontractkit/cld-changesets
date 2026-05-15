@@ -19,7 +19,6 @@ import (
 	cldf_adapters "github.com/smartcontractkit/chainlink-deployments-framework/chain/mcms/adapters"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	cldfproposalutils "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
-	tonstate "github.com/smartcontractkit/chainlink-ton/deployment/state"
 
 	evmstate "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/evm"
 	solstate "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana"
@@ -264,7 +263,7 @@ type MCMSStates struct {
 	MCMSEVMState    map[uint64]evmstate.MCMSWithTimelockState
 	MCMSSolanaState map[uint64]solstate.MCMSWithTimelockState
 	MCMSAptosState  map[uint64]aptos.AccountAddress
-	MCMSTONState    map[uint64]tonstate.MCMSChainState
+	MCMSTONState    map[uint64]cldfproposalutils.TonMCMSChainState
 }
 
 // AggregateProposalsV2 aggregates multiple MCMS proposals into a single proposal by combining their operations, and

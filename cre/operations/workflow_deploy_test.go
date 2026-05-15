@@ -2,8 +2,10 @@ package operations
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/mock"
@@ -36,6 +38,7 @@ func TestCREWorkflowDeployOp(t *testing.T) {
 		name     string
 		input    func(t *testing.T) CREWorkflowDeployInput
 		setupCLI func(t *testing.T) *cremocks.MockCLIRunner
+		creCfg   cfgenv.CREConfig
 		assert   func(t *testing.T, out fwops.Report[CREWorkflowDeployInput, CREWorkflowDeployOutput], err error)
 	}{
 		{
@@ -91,7 +94,7 @@ func TestCREWorkflowDeployOp(t *testing.T) {
 				m := cremocks.NewMockCLIRunner(t)
 				m.EXPECT().ContextRegistries().Return(testRegistries()).Once()
 				m.EXPECT().Run(mock.Anything, mock.Anything, mock.MatchedBy(func(args []string) bool {
-					tIdx := indexOf(args, "-T")
+					tIdx := slices.Index(args, "-T")
 					return tIdx >= 0 && tIdx+1 < len(args) && args[tIdx+1] == "production-settings"
 				})).Return(
 					&fcre.CallResult{ExitCode: 0, Stdout: []byte("ok"), Stderr: nil}, nil,
@@ -165,6 +168,104 @@ func TestCREWorkflowDeployOp(t *testing.T) {
 				require.Equal(t, "err", out.Output.Stderr)
 			},
 		},
+		{
+			name: "APIKeyName selects cli before run",
+			input: func(t *testing.T) CREWorkflowDeployInput {
+				t.Helper()
+
+				return CREWorkflowDeployInput{
+					WorkflowBundle: creartifacts.WorkflowBundle{
+						WorkflowName:       "wf",
+						Binary:             creartifacts.NewBinarySourceLocal(writeFile(t, "x.wasm", []byte("wasm"))),
+						Config:             creartifacts.NewConfigSourceLocal(writeFile(t, "cfg.json", []byte(`{}`))),
+						DonFamily:          "feeds-zone-a",
+						DeploymentRegistry: "private",
+					},
+					Project:    creartifacts.NewConfigSourceLocal(writeFile(t, "project.yaml", []byte("cld-deploy: {}\n"))),
+					APIKeyName: "prod-1",
+				}
+			},
+			setupCLI: func(t *testing.T) *cremocks.MockCLIRunner {
+				t.Helper()
+				inner := cremocks.NewMockCLIRunner(t)
+				inner.EXPECT().ContextRegistries().Return(testRegistries()).Once()
+				inner.EXPECT().Run(mock.Anything, mock.Anything, matchCLIArgs("workflow", "deploy")).Return(
+					&fcre.CallResult{ExitCode: 0, Stdout: []byte("ok")}, nil,
+				).Once()
+
+				outer := cremocks.NewMockCLIRunner(t)
+				outer.EXPECT().WithNamedAPIKey("prod-1").Return(inner, nil).Once()
+
+				return outer
+			},
+			assert: func(t *testing.T, _ fwops.Report[CREWorkflowDeployInput, CREWorkflowDeployOutput], err error) {
+				t.Helper()
+				require.NoError(t, err)
+			},
+		},
+		{
+			name: "unknown APIKeyName short-circuits before CLI work",
+			input: func(t *testing.T) CREWorkflowDeployInput {
+				t.Helper()
+
+				return CREWorkflowDeployInput{
+					WorkflowBundle: creartifacts.WorkflowBundle{
+						WorkflowName:       "wf",
+						Binary:             creartifacts.NewBinarySourceLocal(writeFile(t, "x.wasm", []byte("wasm"))),
+						Config:             creartifacts.NewConfigSourceLocal(writeFile(t, "cfg.json", []byte(`{}`))),
+						DonFamily:          "feeds-zone-a",
+						DeploymentRegistry: "private",
+					},
+					Project:    creartifacts.NewConfigSourceLocal(writeFile(t, "project.yaml", []byte("cld-deploy: {}\n"))),
+					APIKeyName: "missing",
+				}
+			},
+			setupCLI: func(t *testing.T) *cremocks.MockCLIRunner {
+				t.Helper()
+				outer := cremocks.NewMockCLIRunner(t)
+				outer.EXPECT().WithNamedAPIKey("missing").Return(nil, errors.New(`API key "missing" not configured`)).Once()
+
+				return outer
+			},
+			assert: func(t *testing.T, _ fwops.Report[CREWorkflowDeployInput, CREWorkflowDeployOutput], err error) {
+				t.Helper()
+				require.ErrorContains(t, err, `select cre api key "missing"`)
+				require.ErrorContains(t, err, "not configured")
+			},
+		},
+		{
+			name: "named API keys in CRE config without apiKeyName errors before resolver work",
+			input: func(t *testing.T) CREWorkflowDeployInput {
+				t.Helper()
+
+				return CREWorkflowDeployInput{
+					WorkflowBundle: creartifacts.WorkflowBundle{
+						WorkflowName:       "wf",
+						Binary:             creartifacts.NewBinarySourceLocal(writeFile(t, "x.wasm", []byte("wasm"))),
+						Config:             creartifacts.NewConfigSourceLocal(writeFile(t, "cfg.json", []byte(`{}`))),
+						DonFamily:          "feeds-zone-a",
+						DeploymentRegistry: "private",
+					},
+					Project: creartifacts.NewConfigSourceLocal(writeFile(t, "project.yaml", []byte("cld-deploy: {}\n"))),
+				}
+			},
+			setupCLI: func(t *testing.T) *cremocks.MockCLIRunner {
+				t.Helper()
+
+				return cremocks.NewMockCLIRunner(t)
+			},
+			creCfg: cfgenv.CREConfig{
+				//nolint:gosec // G101: named-keys JSON test fixture in Auth.APIKey, not real credentials
+				Auth: cfgenv.CREAuthConfig{
+					APIKey: `{"prod-1":"k1","prod-2":"k2"}`,
+				},
+			},
+			assert: func(t *testing.T, _ fwops.Report[CREWorkflowDeployInput, CREWorkflowDeployOutput], err error) {
+				t.Helper()
+				require.ErrorContains(t, err, "apiKeyName is required")
+				require.ErrorContains(t, err, "named API keys")
+			},
+		},
 	}
 
 	for _, tc := range tests {
@@ -175,7 +276,7 @@ func TestCREWorkflowDeployOp(t *testing.T) {
 			bundle := fwops.NewBundle(func() context.Context { return t.Context() }, logger.Test(t), fwops.NewMemoryReporter())
 			deps := CREDeployDeps{
 				CLI:    mockCLI,
-				CRECfg: cfgenv.CREConfig{},
+				CRECfg: tc.creCfg,
 			}
 
 			out, err := fwops.ExecuteOperation[CREWorkflowDeployInput, CREWorkflowDeployOutput, CREDeployDeps](
@@ -222,6 +323,32 @@ func TestResolveTargetName(t *testing.T) {
 	}
 }
 
+func TestCREAuthUsesNamedAPIKeys(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		raw  string
+		want bool
+	}{
+		{name: "empty", raw: "", want: false},
+		{name: "plain secret", raw: "not-json", want: false},
+		{name: "json string", raw: `"x"`, want: false},
+		{name: "json array", raw: `["a"]`, want: false},
+		{name: "empty object", raw: `{}`, want: false},
+		{name: "empty key", raw: `{"":"v"}`, want: false},
+		{name: "empty value", raw: `{"a":""}`, want: false},
+		{name: "single named entry", raw: `{"prod":"secret"}`, want: true},
+		{name: "multiple named entries", raw: `{"a":"1","b":"2"}`, want: true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, tc.want, usesNamedAPIKeys(tc.raw))
+		})
+	}
+}
+
 // ---------------------------------------------------------------------------
 // BuildWorkflowDeployArgs
 // ---------------------------------------------------------------------------
@@ -264,7 +391,7 @@ func TestBuildWorkflowDeployArgs(t *testing.T) {
 			check: func(t *testing.T, args []string) {
 				t.Helper()
 				require.NotContains(t, args, "-e")
-				tIdx := indexOf(args, "-T")
+				tIdx := slices.Index(args, "-T")
 				require.NotEqual(t, -1, tIdx)
 				require.Greater(t, len(args), tIdx+1)
 				require.Equal(t, "production-settings", args[tIdx+1])
@@ -305,14 +432,4 @@ func matchCLIArgs(wantArgs ...string) any {
 
 		return true
 	})
-}
-
-func indexOf(sl []string, s string) int {
-	for i, v := range sl {
-		if v == s {
-			return i
-		}
-	}
-
-	return -1
 }
