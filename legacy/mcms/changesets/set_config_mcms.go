@@ -122,6 +122,7 @@ func (cfg MCMSConfigV2) Validate(e cldf.Environment, selectors []uint64) error {
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -147,6 +148,7 @@ func setConfigOrTxDataV2(ctx context.Context, lggr logger.Logger, chain cldf_evm
 		}
 		lggr.Infow("SetConfigMCMS tx confirmed", "txHash", res.Hash)
 	}
+
 	return transaction, nil
 }
 
@@ -273,6 +275,7 @@ func SetConfigMCMSV2(e cldf.Environment, cfg MCMSConfigV2) (cldf.ChangesetOutput
 			return cldf.ChangesetOutput{}, fmt.Errorf("failed to build proposal from batch: %w", err)
 		}
 		lggr.Infow("SetConfigMCMS proposal created", "proposal", proposal)
+
 		return cldf.ChangesetOutput{MCMSTimelockProposals: []mcmslib.TimelockProposal{*proposal}}, nil
 	}
 
@@ -302,6 +305,7 @@ func addTxsToProposalBatchV2(setConfigTxsChain setConfigTxs, chainSelector uint6
 			evm.NewTransaction(state.BypasserMcm.Address(),
 				setConfigTxsChain.bypasserTx.Data(), big.NewInt(0), string(mcmscontracts.BypasserManyChainMultisig), nil))
 	}
+
 	return result
 }
 
@@ -391,6 +395,7 @@ func setConfigForRoleSolana(e cldf.Environment, chain cldf_solana.Chain, cfg mcm
 	}
 
 	e.Logger.Infow("SetConfig tx confirmed", "txHash", res.Hash)
+
 	return mcmstypes.BatchOperation{}, nil
 }
 
@@ -452,5 +457,6 @@ func setConfigForRoleAptos(ctx context.Context, mcmsAddress aptos.AccountAddress
 	if err != nil {
 		return mcmstypes.Transaction{}, fmt.Errorf("failed to set config for role %v: %w", role.String(), err)
 	}
+
 	return result.RawData.(mcmstypes.Transaction), nil
 }

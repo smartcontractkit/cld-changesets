@@ -262,6 +262,7 @@ func GenericTransferOwnership(env cldf.Environment, req *TransferOwnershipReques
 	env.Logger.Debugw("created timelock proposal", "# batches", len(execOut.Output.Batches))
 
 	out.MCMSTimelockProposals = []mcms.TimelockProposal{*proposal}
+
 	return out, nil
 }
 
@@ -385,6 +386,7 @@ func (t TransferMCMSToTimelockSolana) VerifyPreconditions(
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -460,6 +462,7 @@ func transferOwnershipInstruction(
 	if (seed == state.PDASeed{}) {
 		return newSeedlessTransferOwnershipInstruction(programID, proposedOwner, ownerPDA, auth)
 	}
+
 	return newSeededTransferOwnershipInstruction(programID, seed, proposedOwner, ownerPDA, auth)
 }
 
@@ -484,6 +487,7 @@ func acceptOwnershipInstruction(programID solana.PublicKey, seed state.PDASeed, 
 	if (seed == state.PDASeed{}) {
 		return newSeedlessAcceptOwnershipInstruction(programID, ownerPDA, auth)
 	}
+
 	return newSeededAcceptOwnershipInstruction(programID, seed, ownerPDA, auth)
 }
 
@@ -540,6 +544,7 @@ func addressBookContains(addressBook cldf.AddressBook, chainSelector uint64, cty
 			return fmt.Errorf("address book does not contain a %s contract for chain %d", ctype, chainSelector)
 		}
 	}
+
 	return nil
 }
 
