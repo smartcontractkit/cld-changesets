@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/mock"
@@ -71,7 +72,7 @@ func TestCREWorkflowDeleteOp(t *testing.T) {
 				m := cremocks.NewMockCLIRunner(t)
 				m.EXPECT().ContextRegistries().Return(testRegistries()).Once()
 				m.EXPECT().Run(mock.Anything, mock.Anything, mock.MatchedBy(func(args []string) bool {
-					tIdx := -1
+					tIdx := slices.Index(args, "-T")
 					return tIdx >= 0 && tIdx+1 < len(args) && args[tIdx+1] == "production-settings"
 				})).Return(
 					&fcre.CallResult{ExitCode: 0, Stdout: []byte("ok"), Stderr: nil}, nil,
@@ -204,7 +205,7 @@ func TestBuildWorkflowDeleteArgs(t *testing.T) {
 			check: func(t *testing.T, args []string) {
 				t.Helper()
 				require.NotContains(t, args, "-e")
-				tIdx := -1
+				tIdx := slices.Index(args, "-T")
 				require.NotEqual(t, -1, tIdx)
 				require.Greater(t, len(args), tIdx+1)
 				require.Equal(t, "production-settings", args[tIdx+1])
