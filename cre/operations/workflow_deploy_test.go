@@ -255,8 +255,9 @@ func TestCREWorkflowDeployOp(t *testing.T) {
 				return cremocks.NewMockCLIRunner(t)
 			},
 			creCfg: cfgenv.CREConfig{
+				//nolint:gosec // G101: named-keys JSON test fixture in Auth.APIKey, not real credentials
 				Auth: cfgenv.CREAuthConfig{
-					APIKey: `{"prod-1":"k1","prod-2":"k2"}`, //nolint:gosec // test fixture, not real credentials
+					APIKey: `{"prod-1":"k1","prod-2":"k2"}`,
 				},
 			},
 			assert: func(t *testing.T, _ fwops.Report[CREWorkflowDeployInput, CREWorkflowDeployOutput], err error) {
