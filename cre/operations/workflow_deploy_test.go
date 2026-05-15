@@ -93,7 +93,7 @@ func TestCREWorkflowDeployOp(t *testing.T) {
 				m := cremocks.NewMockCLIRunner(t)
 				m.EXPECT().ContextRegistries().Return(testRegistries()).Once()
 				m.EXPECT().Run(mock.Anything, mock.Anything, mock.MatchedBy(func(args []string) bool {
-					tIdx := indexOf(args, "-T")
+					tIdx := -1
 					return tIdx >= 0 && tIdx+1 < len(args) && args[tIdx+1] == "production-settings"
 				})).Return(
 					&fcre.CallResult{ExitCode: 0, Stdout: []byte("ok"), Stderr: nil}, nil,
@@ -389,7 +389,7 @@ func TestBuildWorkflowDeployArgs(t *testing.T) {
 			check: func(t *testing.T, args []string) {
 				t.Helper()
 				require.NotContains(t, args, "-e")
-				tIdx := indexOf(args, "-T")
+				tIdx := -1
 				require.NotEqual(t, -1, tIdx)
 				require.Greater(t, len(args), tIdx+1)
 				require.Equal(t, "production-settings", args[tIdx+1])
@@ -430,14 +430,4 @@ func matchCLIArgs(wantArgs ...string) any {
 
 		return true
 	})
-}
-
-func indexOf(sl []string, s string) int {
-	for i, v := range sl {
-		if v == s {
-			return i
-		}
-	}
-
-	return -1
 }
