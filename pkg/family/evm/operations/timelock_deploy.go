@@ -11,7 +11,7 @@ import (
 
 	zkbindings "github.com/smartcontractkit/mcms/sdk/zksync/bindings"
 
-	cldchangesetscommon "github.com/smartcontractkit/cld-changesets/pkg/common"
+	"github.com/smartcontractkit/cld-changesets/pkg/cldfutil"
 )
 
 type OpEVMDeployTimelockInput struct {
@@ -30,7 +30,7 @@ var OpEVMDeployTimelock = NewEVMDeployOperation(
 	mcmscontracts.RBACTimelock,
 	bindings.RBACTimelockMetaData,
 	&ContractOpts{
-		Version:          &cldchangesetscommon.Version1_0_0,
+		Version:          &cldfutil.Version1_0_0,
 		EVMBytecode:      common.FromHex(bindings.RBACTimelockBin),
 		ZkSyncVMBytecode: zkbindings.RBACTimelockZkBytecode,
 	},

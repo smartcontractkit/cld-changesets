@@ -33,7 +33,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations/optest"
 
-	commonchangeset "github.com/smartcontractkit/cld-changesets/pkg/common/changeset"
+	cldfchangesetutil "github.com/smartcontractkit/cld-changesets/pkg/cldfutil/changeset"
 )
 
 func TestCloneTransactOptsWithGas(t *testing.T) {
@@ -201,7 +201,7 @@ func TestAddEVMCallSequenceToCSOutput_ProposalCombination(t *testing.T) {
 
 	// Deploy MCMS+Timelock to both chains. Real deployments are required because
 	// AddEVMCallSequenceToCSOutput → BuildProposalFromBatchesV2 reads OpCount from
-	env, err := commonchangeset.Apply(t, rt.Environment(), commonchangeset.Configure(
+	env, err := cldfchangesetutil.Apply(t, rt.Environment(), cldfchangesetutil.Configure(
 		cldf.CreateLegacyChangeSet(mcmschangesets.DeployMCMSWithTimelockV2),
 		map[uint64]cldfproposalutils.MCMSWithTimelockConfig{
 			selector1: cldftesthelpers.SingleGroupTimelockConfig(t),

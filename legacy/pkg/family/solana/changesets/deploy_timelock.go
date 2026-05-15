@@ -18,7 +18,7 @@ import (
 
 	legacy2 "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana"
 	"github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana/solutils"
-	cldchangesetscommon "github.com/smartcontractkit/cld-changesets/pkg/common"
+	"github.com/smartcontractkit/cld-changesets/pkg/cldfutil"
 	familysolana "github.com/smartcontractkit/cld-changesets/pkg/family/solana"
 )
 
@@ -26,7 +26,7 @@ func deployTimelockProgram(
 	e cldf.Environment, chainState *legacy2.MCMSWithTimelockState, chain cldf_solana.Chain,
 	addressBook cldf.AddressBook,
 ) error {
-	typeAndVersion := cldf.NewTypeAndVersion(mcmscontracts.RBACTimelockProgram, cldchangesetscommon.Version1_0_0)
+	typeAndVersion := cldf.NewTypeAndVersion(mcmscontracts.RBACTimelockProgram, cldfutil.Version1_0_0)
 
 	programID, _, err := chainState.GetStateFromType(mcmscontracts.RBACTimelock)
 	if err != nil {
@@ -77,7 +77,7 @@ func initTimelock(
 	programID := chainState.TimelockProgram
 	timelockBindings.SetProgramID(programID)
 
-	typeAndVersion := cldf.NewTypeAndVersion(mcmscontracts.RBACTimelock, cldchangesetscommon.Version1_0_0)
+	typeAndVersion := cldf.NewTypeAndVersion(mcmscontracts.RBACTimelock, cldfutil.Version1_0_0)
 	timelockProgram, timelockSeed, err := chainState.GetStateFromType(mcmscontracts.RBACTimelock)
 	if err != nil {
 		return fmt.Errorf("failed to get timelock state: %w", err)

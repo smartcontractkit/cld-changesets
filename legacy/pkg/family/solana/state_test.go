@@ -16,7 +16,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 	"github.com/stretchr/testify/require"
 
-	cldchangesetscommon "github.com/smartcontractkit/cld-changesets/pkg/common"
+	"github.com/smartcontractkit/cld-changesets/pkg/cldfutil"
 )
 
 func TestMaybeLoadMCMSWithTimelockChainState_NoMatchingRefs(t *testing.T) {
@@ -88,8 +88,8 @@ func TestMaybeLoadMCMSWithTimelockState(t *testing.T) {
 	t.Run("two chains isolated by selector", func(t *testing.T) {
 		t.Parallel()
 		ab := cldf.NewMemoryAddressBook()
-		tv := cldf.NewTypeAndVersion(mcmscontracts.ManyChainMultisigProgram, cldchangesetscommon.Version1_0_0)
-		tlTV := cldf.NewTypeAndVersion(mcmscontracts.RBACTimelockProgram, cldchangesetscommon.Version1_0_0)
+		tv := cldf.NewTypeAndVersion(mcmscontracts.ManyChainMultisigProgram, cldfutil.Version1_0_0)
+		tlTV := cldf.NewTypeAndVersion(mcmscontracts.RBACTimelockProgram, cldfutil.Version1_0_0)
 		require.NoError(t, ab.Save(chain1, mcmProgramAddr, tv))
 		require.NoError(t, ab.Save(chain2, otherProgramAddr, tv))
 		require.NoError(t, ab.Save(chain2, timelockProgramAddr, tlTV))
@@ -113,7 +113,7 @@ func TestMaybeLoadMCMSWithTimelockState(t *testing.T) {
 		t.Parallel()
 		ab := cldf.NewMemoryAddressBook()
 		require.NoError(t, ab.Save(chain1, "not-valid-base58",
-			cldf.NewTypeAndVersion(mcmscontracts.ManyChainMultisigProgram, cldchangesetscommon.Version1_0_0)))
+			cldf.NewTypeAndVersion(mcmscontracts.ManyChainMultisigProgram, cldfutil.Version1_0_0)))
 		env := testSolanaEnv(t, ab, testSolanaChains(chain1))
 		_, err := MaybeLoadMCMSWithTimelockState(env, []uint64{chain1})
 		require.ErrorContains(t, err, "unable to load mcms and timelock solana chain state")

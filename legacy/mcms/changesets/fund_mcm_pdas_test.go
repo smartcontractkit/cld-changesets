@@ -22,7 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	solana2 "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana"
-	cldchangesetscommon "github.com/smartcontractkit/cld-changesets/pkg/common"
+	"github.com/smartcontractkit/cld-changesets/pkg/cldfutil"
 	solanastate "github.com/smartcontractkit/cld-changesets/pkg/family/solana"
 )
 
@@ -252,7 +252,7 @@ func saveMCMSAddresses(t *testing.T, addressBook cldf.AddressBook, selector uint
 
 		require.NoError(t, addressBook.Save(selector, solana2.EncodeAddressWithSeed(state.McmProgram, state.BypasserMcmSeed), cldf.NewTypeAndVersion(
 			mcmscontracts.BypasserManyChainMultisig,
-			cldchangesetscommon.Version1_0_0,
+			cldfutil.Version1_0_0,
 		)))
 
 		return state
@@ -260,19 +260,19 @@ func saveMCMSAddresses(t *testing.T, addressBook cldf.AddressBook, selector uint
 
 	require.NoError(t, addressBook.Save(selector, solana2.EncodeAddressWithSeed(state.TimelockProgram, state.TimelockSeed), cldf.NewTypeAndVersion(
 		mcmscontracts.RBACTimelock,
-		cldchangesetscommon.Version1_0_0,
+		cldfutil.Version1_0_0,
 	)))
 	require.NoError(t, addressBook.Save(selector, solana2.EncodeAddressWithSeed(state.McmProgram, state.ProposerMcmSeed), cldf.NewTypeAndVersion(
 		mcmscontracts.ProposerManyChainMultisig,
-		cldchangesetscommon.Version1_0_0,
+		cldfutil.Version1_0_0,
 	)))
 	require.NoError(t, addressBook.Save(selector, solana2.EncodeAddressWithSeed(state.McmProgram, state.CancellerMcmSeed), cldf.NewTypeAndVersion(
 		mcmscontracts.CancellerManyChainMultisig,
-		cldchangesetscommon.Version1_0_0,
+		cldfutil.Version1_0_0,
 	)))
 	require.NoError(t, addressBook.Save(selector, solana2.EncodeAddressWithSeed(state.McmProgram, state.BypasserMcmSeed), cldf.NewTypeAndVersion(
 		mcmscontracts.BypasserManyChainMultisig,
-		cldchangesetscommon.Version1_0_0,
+		cldfutil.Version1_0_0,
 	)))
 
 	return state

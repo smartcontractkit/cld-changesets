@@ -18,7 +18,7 @@ import (
 
 	solana2 "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana"
 	"github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana/solutils"
-	cldchangesetscommon "github.com/smartcontractkit/cld-changesets/pkg/common"
+	"github.com/smartcontractkit/cld-changesets/pkg/cldfutil"
 	familysolana "github.com/smartcontractkit/cld-changesets/pkg/family/solana"
 	solops "github.com/smartcontractkit/cld-changesets/pkg/family/solana/operations"
 )
@@ -26,7 +26,7 @@ import (
 var (
 	DeployMCMSWithTimelockSeq = operations.NewSequence(
 		"deploy-access-controller-seq",
-		&cldchangesetscommon.Version1_0_0,
+		&cldfutil.Version1_0_0,
 		"Deploy AccessController,MCM and Timelock programs, Initialize them, set up role",
 		deployMCMSWithTimelock,
 	)
@@ -84,7 +84,7 @@ func deployMCMSWithTimelock(b operations.Bundle, deps solops.Deps, in DeployMCMS
 }
 
 func deployAccessController(b operations.Bundle, deps solops.Deps) error {
-	typeAndVersion := cldf.NewTypeAndVersion(mcmscontracts.AccessControllerProgram, cldchangesetscommon.Version1_0_0)
+	typeAndVersion := cldf.NewTypeAndVersion(mcmscontracts.AccessControllerProgram, cldfutil.Version1_0_0)
 	log := logger.With(b.Logger, "chain", deps.Chain.String(), "contract", typeAndVersion.String())
 
 	programID, _, err := deps.State.GetStateFromType(mcmscontracts.AccessControllerProgram)
@@ -115,7 +115,7 @@ func deployAccessController(b operations.Bundle, deps solops.Deps) error {
 	err = deps.Datastore.Addresses().Add(datastore.AddressRef{
 		ChainSelector: deps.Chain.ChainSelector(),
 		Address:       programID.String(),
-		Version:       &cldchangesetscommon.Version1_0_0,
+		Version:       &cldfutil.Version1_0_0,
 		Type:          datastore.ContractType(mcmscontracts.AccessControllerProgram),
 	})
 	if err != nil {
@@ -148,7 +148,7 @@ func initAccessController(b operations.Bundle, deps solops.Deps) error {
 }
 
 func deployMCM(b operations.Bundle, deps solops.Deps) error {
-	typeAndVersion := cldf.NewTypeAndVersion(mcmscontracts.ManyChainMultisigProgram, cldchangesetscommon.Version1_0_0)
+	typeAndVersion := cldf.NewTypeAndVersion(mcmscontracts.ManyChainMultisigProgram, cldfutil.Version1_0_0)
 	log := logger.With(b.Logger, "chain", deps.Chain.String(), "contract", typeAndVersion.String())
 
 	programID, _, err := deps.State.GetStateFromType(mcmscontracts.ManyChainMultisigProgram)
@@ -178,7 +178,7 @@ func deployMCM(b operations.Bundle, deps solops.Deps) error {
 	err = deps.Datastore.Addresses().Add(datastore.AddressRef{
 		ChainSelector: deps.Chain.ChainSelector(),
 		Address:       programID.String(),
-		Version:       &cldchangesetscommon.Version1_0_0,
+		Version:       &cldfutil.Version1_0_0,
 		Type:          datastore.ContractType(mcmscontracts.ManyChainMultisig),
 	})
 	if err != nil {
@@ -224,7 +224,7 @@ func initMCM(b operations.Bundle, deps solops.Deps, cfg cldfproposalutils.MCMSWi
 }
 
 func deployTimelock(b operations.Bundle, deps solops.Deps) error {
-	typeAndVersion := cldf.NewTypeAndVersion(mcmscontracts.RBACTimelockProgram, cldchangesetscommon.Version1_0_0)
+	typeAndVersion := cldf.NewTypeAndVersion(mcmscontracts.RBACTimelockProgram, cldfutil.Version1_0_0)
 	log := logger.With(b.Logger, "chain", deps.Chain.String(), "contract", typeAndVersion.String())
 
 	programID, _, err := deps.State.GetStateFromType(mcmscontracts.RBACTimelock)
@@ -257,7 +257,7 @@ func deployTimelock(b operations.Bundle, deps solops.Deps) error {
 	err = deps.Datastore.Addresses().Add(datastore.AddressRef{
 		ChainSelector: deps.Chain.ChainSelector(),
 		Address:       programID.String(),
-		Version:       &cldchangesetscommon.Version1_0_0,
+		Version:       &cldfutil.Version1_0_0,
 		Type:          datastore.ContractType(mcmscontracts.RBACTimelockProgram),
 	})
 	if err != nil {

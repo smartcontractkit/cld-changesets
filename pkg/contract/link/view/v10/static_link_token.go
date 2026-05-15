@@ -9,11 +9,11 @@ import (
 
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 
-	"github.com/smartcontractkit/cld-changesets/pkg/common"
+	"github.com/smartcontractkit/cld-changesets/pkg/cldfutil"
 )
 
 type StaticLinkTokenView struct {
-	common.ContractMetaData
+	cldfutil.ContractMetaData
 	Decimals uint8    `json:"decimals"`
 	Supply   *big.Int `json:"supply"`
 }
@@ -29,10 +29,10 @@ func GenerateStaticLinkTokenView(lt *link_token_interface.LinkToken) (StaticLink
 	}
 
 	return StaticLinkTokenView{
-		ContractMetaData: common.ContractMetaData{
+		ContractMetaData: cldfutil.ContractMetaData{
 			TypeAndVersion: cldf.TypeAndVersion{
 				Type:    linkcontracts.StaticLinkToken,
-				Version: common.Version1_0_0,
+				Version: cldfutil.Version1_0_0,
 			}.String(),
 			Address: lt.Address(),
 			// No owner.

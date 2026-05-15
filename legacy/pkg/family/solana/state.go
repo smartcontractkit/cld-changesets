@@ -13,7 +13,7 @@ import (
 	mcmscontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/mcms"
 	mcmssolanasdk "github.com/smartcontractkit/mcms/sdk/solana"
 
-	cldchangesetscommon "github.com/smartcontractkit/cld-changesets/pkg/common"
+	"github.com/smartcontractkit/cld-changesets/pkg/cldfutil"
 	"github.com/smartcontractkit/cld-changesets/pkg/contract/mcms/view/v1_0"
 )
 
@@ -247,17 +247,17 @@ func MaybeLoadMCMSWithTimelockState(env cldf.Environment, chainSelectors []uint6
 func MaybeLoadMCMSWithTimelockChainState(chain cldf_solana.Chain, addresses map[string]cldf.TypeAndVersion) (*MCMSWithTimelockState, error) {
 	state := MCMSWithTimelockState{MCMSWithTimelockPrograms: &MCMSWithTimelockPrograms{}}
 
-	mcmProgram := cldf.NewTypeAndVersion(mcmscontracts.ManyChainMultisigProgram, cldchangesetscommon.Version1_0_0)
-	timelockProgram := cldf.NewTypeAndVersion(mcmscontracts.RBACTimelockProgram, cldchangesetscommon.Version1_0_0)
-	accessControllerProgram := cldf.NewTypeAndVersion(mcmscontracts.AccessControllerProgram, cldchangesetscommon.Version1_0_0)
-	proposerMCM := cldf.NewTypeAndVersion(mcmscontracts.ProposerManyChainMultisig, cldchangesetscommon.Version1_0_0)
-	cancellerMCM := cldf.NewTypeAndVersion(mcmscontracts.CancellerManyChainMultisig, cldchangesetscommon.Version1_0_0)
-	bypasserMCM := cldf.NewTypeAndVersion(mcmscontracts.BypasserManyChainMultisig, cldchangesetscommon.Version1_0_0)
-	timelock := cldf.NewTypeAndVersion(mcmscontracts.RBACTimelock, cldchangesetscommon.Version1_0_0)
-	proposerAccessControllerAccount := cldf.NewTypeAndVersion(mcmscontracts.ProposerAccessControllerAccount, cldchangesetscommon.Version1_0_0)
-	executorAccessControllerAccount := cldf.NewTypeAndVersion(mcmscontracts.ExecutorAccessControllerAccount, cldchangesetscommon.Version1_0_0)
-	cancellerAccessControllerAccount := cldf.NewTypeAndVersion(mcmscontracts.CancellerAccessControllerAccount, cldchangesetscommon.Version1_0_0)
-	bypasserAccessControllerAccount := cldf.NewTypeAndVersion(mcmscontracts.BypasserAccessControllerAccount, cldchangesetscommon.Version1_0_0)
+	mcmProgram := cldf.NewTypeAndVersion(mcmscontracts.ManyChainMultisigProgram, cldfutil.Version1_0_0)
+	timelockProgram := cldf.NewTypeAndVersion(mcmscontracts.RBACTimelockProgram, cldfutil.Version1_0_0)
+	accessControllerProgram := cldf.NewTypeAndVersion(mcmscontracts.AccessControllerProgram, cldfutil.Version1_0_0)
+	proposerMCM := cldf.NewTypeAndVersion(mcmscontracts.ProposerManyChainMultisig, cldfutil.Version1_0_0)
+	cancellerMCM := cldf.NewTypeAndVersion(mcmscontracts.CancellerManyChainMultisig, cldfutil.Version1_0_0)
+	bypasserMCM := cldf.NewTypeAndVersion(mcmscontracts.BypasserManyChainMultisig, cldfutil.Version1_0_0)
+	timelock := cldf.NewTypeAndVersion(mcmscontracts.RBACTimelock, cldfutil.Version1_0_0)
+	proposerAccessControllerAccount := cldf.NewTypeAndVersion(mcmscontracts.ProposerAccessControllerAccount, cldfutil.Version1_0_0)
+	executorAccessControllerAccount := cldf.NewTypeAndVersion(mcmscontracts.ExecutorAccessControllerAccount, cldfutil.Version1_0_0)
+	cancellerAccessControllerAccount := cldf.NewTypeAndVersion(mcmscontracts.CancellerAccessControllerAccount, cldfutil.Version1_0_0)
+	bypasserAccessControllerAccount := cldf.NewTypeAndVersion(mcmscontracts.BypasserAccessControllerAccount, cldfutil.Version1_0_0)
 
 	// Convert map keys to a slice
 	wantTypes := []cldf.TypeAndVersion{

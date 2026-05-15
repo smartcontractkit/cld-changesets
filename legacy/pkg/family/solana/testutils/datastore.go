@@ -11,7 +11,7 @@ import (
 
 	familysolana "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana"
 	"github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana/solutils"
-	"github.com/smartcontractkit/cld-changesets/pkg/common"
+	"github.com/smartcontractkit/cld-changesets/pkg/cldfutil"
 )
 
 // PreloadAddressBookWithMCMSPrograms creates and returns an address book containing preloaded MCMS
@@ -21,15 +21,15 @@ func PreloadAddressBookWithMCMSPrograms(t *testing.T, selector uint64) *cldf.Add
 
 	ab := cldf.NewMemoryAddressBook()
 
-	tv := cldf.NewTypeAndVersion(mcmscontracts.ManyChainMultisigProgram, common.Version1_0_0)
+	tv := cldf.NewTypeAndVersion(mcmscontracts.ManyChainMultisigProgram, cldfutil.Version1_0_0)
 	err := ab.Save(selector, solutils.GetProgramID(solutils.ProgMCM), tv)
 	require.NoError(t, err)
 
-	tv = cldf.NewTypeAndVersion(mcmscontracts.AccessControllerProgram, common.Version1_0_0)
+	tv = cldf.NewTypeAndVersion(mcmscontracts.AccessControllerProgram, cldfutil.Version1_0_0)
 	err = ab.Save(selector, solutils.GetProgramID(solutils.ProgAccessController), tv)
 	require.NoError(t, err)
 
-	tv = cldf.NewTypeAndVersion(mcmscontracts.RBACTimelockProgram, common.Version1_0_0)
+	tv = cldf.NewTypeAndVersion(mcmscontracts.RBACTimelockProgram, cldfutil.Version1_0_0)
 	err = ab.Save(selector, solutils.GetProgramID(solutils.ProgTimelock), tv)
 	require.NoError(t, err)
 
