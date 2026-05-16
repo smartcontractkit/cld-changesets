@@ -217,8 +217,8 @@ func TestSetConfigMCMSV2Solana(t *testing.T) {
 	newCfgBypasser.Signers = append(newCfgBypasser.Signers, signer1Addr)
 	newCfgBypasser.Quorum = 2
 
-	t.Run("MCMS disabled", func(t *testing.T) {
-		t.Parallel()
+	// Subtests share rt and mutable newCfg*; they must run serially (parallel caused InvalidSigner / races).
+	t.Run("MCMS disabled", func(t *testing.T) { //nolint:paralleltest
 		err = rt.Exec(
 			runtime.ChangesetTask(cldf.CreateLegacyChangeSet(SetConfigMCMSV2), MCMSConfigV2{
 				ConfigsPerChain: map[uint64]ConfigPerRoleV2{
@@ -237,8 +237,7 @@ func TestSetConfigMCMSV2Solana(t *testing.T) {
 		assertSolConfigEquals(t, inspector, mcmsState.McmProgram, mcmsState.CancellerMcmSeed, newCfgCanceller)
 	})
 
-	t.Run("MCMS enabled", func(t *testing.T) {
-		t.Parallel()
+	t.Run("MCMS enabled", func(t *testing.T) { //nolint:paralleltest
 		// Now we transfer the MCMS contracts to the timelock for testing setConfig on MCMS owned contracts
 		err = rt.Exec(
 			runtime.ChangesetTask(changesets.TransferMCMSToTimelockSolana{}, changesets.TransferMCMSToTimelockSolanaConfig{
