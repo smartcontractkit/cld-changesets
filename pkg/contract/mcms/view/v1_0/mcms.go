@@ -16,7 +16,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-evm/pkg/utils"
 
-	cldcommon "github.com/smartcontractkit/cld-changesets/pkg/common"
+	"github.com/smartcontractkit/cld-changesets/pkg/cldfutil"
 )
 
 type Role struct {
@@ -61,7 +61,7 @@ var (
 // --- evm ---
 
 type MCMSView struct {
-	cldcommon.ContractMetaData
+	cldfutil.ContractMetaData
 	// Note config is json marshallable.
 	Config mcmstypes.Config `json:"config"`
 }
@@ -96,7 +96,7 @@ func GenerateMCMSView(mcms owner_helpers.ManyChainMultiSig) (MCMSView, error) {
 
 	return MCMSView{
 		// Has no type and version on the contract
-		ContractMetaData: cldcommon.ContractMetaData{
+		ContractMetaData: cldfutil.ContractMetaData{
 			Owner:   owner,
 			Address: mcms.Address(),
 		},
@@ -105,7 +105,7 @@ func GenerateMCMSView(mcms owner_helpers.ManyChainMultiSig) (MCMSView, error) {
 }
 
 type TimelockView struct {
-	cldcommon.ContractMetaData
+	cldfutil.ContractMetaData
 	MembersByRole map[string][]common.Address `json:"membersByRole"`
 }
 
@@ -128,7 +128,7 @@ func GenerateTimelockView(tl owner_helpers.RBACTimelock) (TimelockView, error) {
 
 	return TimelockView{
 		// Has no type and version or owner.
-		ContractMetaData: cldcommon.ContractMetaData{
+		ContractMetaData: cldfutil.ContractMetaData{
 			Address: tl.Address(),
 		},
 		MembersByRole: membersByRole,
@@ -136,12 +136,12 @@ func GenerateTimelockView(tl owner_helpers.RBACTimelock) (TimelockView, error) {
 }
 
 type CallProxyView struct {
-	cldcommon.ContractMetaData
+	cldfutil.ContractMetaData
 }
 
 func GenerateCallProxyView(cp owner_helpers.CallProxy) (CallProxyView, error) {
 	return CallProxyView{
-		ContractMetaData: cldcommon.ContractMetaData{
+		ContractMetaData: cldfutil.ContractMetaData{
 			Address: cp.Address(),
 		},
 	}, nil

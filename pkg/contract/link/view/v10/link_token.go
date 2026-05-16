@@ -11,11 +11,11 @@ import (
 
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 
-	cldchangesetscommon "github.com/smartcontractkit/cld-changesets/pkg/common"
+	"github.com/smartcontractkit/cld-changesets/pkg/cldfutil"
 )
 
 type LinkTokenView struct {
-	cldchangesetscommon.ContractMetaData
+	cldfutil.ContractMetaData
 	Decimals uint8            `json:"decimals"`
 	Supply   *big.Int         `json:"supply"`
 	Minters  []common.Address `json:"minters"`
@@ -45,10 +45,10 @@ func GenerateLinkTokenView(lt *link_token.LinkToken) (LinkTokenView, error) {
 	}
 
 	return LinkTokenView{
-		ContractMetaData: cldchangesetscommon.ContractMetaData{
+		ContractMetaData: cldfutil.ContractMetaData{
 			TypeAndVersion: cldf.TypeAndVersion{
 				Type:    linkcontracts.LinkToken,
-				Version: cldchangesetscommon.Version1_0_0,
+				Version: cldfutil.Version1_0_0,
 			}.String(),
 			Address: lt.Address(),
 			Owner:   owner,

@@ -23,7 +23,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 
 	solana2 "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana"
-	cldchangesetscommon "github.com/smartcontractkit/cld-changesets/pkg/common"
+	"github.com/smartcontractkit/cld-changesets/pkg/cldfutil"
 	familysolana "github.com/smartcontractkit/cld-changesets/pkg/family/solana"
 )
 
@@ -37,48 +37,48 @@ type Deps struct {
 var (
 	DeployAccessControllerOp = operations.NewOperation(
 		"deploy-access-controller",
-		&cldchangesetscommon.Version1_0_0,
+		&cldfutil.Version1_0_0,
 		"Deploys access controller for solana",
 		Deploy,
 	)
 
 	DeployMCMProgramOp = operations.NewOperation(
 		"deploy-mcm-program",
-		&cldchangesetscommon.Version1_0_0,
+		&cldfutil.Version1_0_0,
 		"Deploys mcm for solana",
 		Deploy,
 	)
 
 	DeployTimelockOp = operations.NewOperation(
 		"deploy-timelock-program",
-		&cldchangesetscommon.Version1_0_0,
+		&cldfutil.Version1_0_0,
 		"Deploys timelock for solana",
 		Deploy,
 	)
 
 	InitAccessControllerOp = operations.NewOperation(
 		"init-access-controller",
-		&cldchangesetscommon.Version1_0_0,
+		&cldfutil.Version1_0_0,
 		"Initializes access controller for solana",
 		initAccessController,
 	)
 
 	InitMCMOp = operations.NewOperation(
 		"init-mcm-program",
-		&cldchangesetscommon.Version1_0_0,
+		&cldfutil.Version1_0_0,
 		"Initializes MCMProgram for solana",
 		initMCM,
 	)
 
 	InitTimelockOp = operations.NewOperation(
 		"init-timelock-program",
-		&cldchangesetscommon.Version1_0_0,
+		&cldfutil.Version1_0_0,
 		"Initializes timelock for solana",
 		initTimelock,
 	)
 	AddAccessOp = operations.NewOperation(
 		"add-access-op",
-		&cldchangesetscommon.Version1_0_0,
+		&cldfutil.Version1_0_0,
 		"Adds access to provided role for timelock",
 		addAccess,
 	)
@@ -123,7 +123,7 @@ func initAccessController(b operations.Bundle, deps Deps, in InitAccessControlle
 		return out, fmt.Errorf("access controller program is not deployed for chain sel %d", deps.Chain.ChainSelector())
 	}
 
-	typeAndVersion := cldf.NewTypeAndVersion(in.ContractType, cldchangesetscommon.Version1_0_0)
+	typeAndVersion := cldf.NewTypeAndVersion(in.ContractType, cldfutil.Version1_0_0)
 	_, accessControllerAccountSeed, err := deps.State.GetStateFromType(in.ContractType)
 	if err != nil {
 		return out, fmt.Errorf("failed to get account controller state: %w", err)
@@ -234,7 +234,7 @@ func initMCM(b operations.Bundle, deps Deps, in InitMCMInput) (InitMCMOutput, er
 	programID := deps.State.McmProgram
 	mcmBindings.SetProgramID(programID)
 
-	typeAndVersion := cldf.NewTypeAndVersion(in.ContractType, cldchangesetscommon.Version1_0_0)
+	typeAndVersion := cldf.NewTypeAndVersion(in.ContractType, cldfutil.Version1_0_0)
 	mcmProgram, mcmSeed, err := deps.State.GetStateFromType(in.ContractType)
 	if err != nil {
 		return out, fmt.Errorf("failed to get mcm state: %w", err)
@@ -354,7 +354,7 @@ func initTimelock(b operations.Bundle, deps Deps, in InitTimelockInput) (InitTim
 	programID := deps.State.TimelockProgram
 	timelockBindings.SetProgramID(programID)
 
-	typeAndVersion := cldf.NewTypeAndVersion(in.ContractType, cldchangesetscommon.Version1_0_0)
+	typeAndVersion := cldf.NewTypeAndVersion(in.ContractType, cldfutil.Version1_0_0)
 	timelockProgram, timelockSeed, err := deps.State.GetStateFromType(in.ContractType)
 	if err != nil {
 		return out, fmt.Errorf("failed to get timelock state: %w", err)

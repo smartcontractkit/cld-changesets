@@ -22,7 +22,7 @@ import (
 	"github.com/smartcontractkit/chainlink-evm/gethwrappers/generated/link_token_interface"
 	"github.com/smartcontractkit/chainlink-evm/gethwrappers/shared/generated/initial/link_token"
 
-	cldchangesetscommon "github.com/smartcontractkit/cld-changesets/pkg/common"
+	"github.com/smartcontractkit/cld-changesets/pkg/cldfutil"
 )
 
 var _ cldf.ChangeSet[[]uint64] = DeployLinkToken
@@ -31,7 +31,7 @@ var _ cldf.ChangeSet[DeploySolanaLinkTokenConfig] = DeploySolanaLinkToken
 
 // DeployLinkToken deploys a link token contract to the chain identified by the ChainSelector.
 func DeployLinkToken(e cldf.Environment, chains []uint64) (cldf.ChangesetOutput, error) {
-	if err := validateSelectorsInEnvironment(e, chains); err != nil {
+	if err := cldfutil.ValidateSelectorsInEnvironment(e, chains); err != nil {
 		return cldf.ChangesetOutput{}, err
 	}
 	if err := validateNoDuplicateSelectors(chains); err != nil {
@@ -66,7 +66,7 @@ func DeployLinkToken(e cldf.Environment, chains []uint64) (cldf.ChangesetOutput,
 
 // DeployStaticLinkToken deploys a static link token contract to the chain identified by the ChainSelector.
 func DeployStaticLinkToken(e cldf.Environment, chains []uint64) (cldf.ChangesetOutput, error) {
-	if err := validateSelectorsInEnvironment(e, chains); err != nil {
+	if err := cldfutil.ValidateSelectorsInEnvironment(e, chains); err != nil {
 		return cldf.ChangesetOutput{}, err
 	}
 	if err := validateNoDuplicateSelectors(chains); err != nil {
@@ -215,11 +215,11 @@ func newLinkTokenOutput() cldf.ChangesetOutput {
 }
 
 func linkTokenTypeAndVersion() cldf.TypeAndVersion {
-	return cldf.NewTypeAndVersion(linkcontracts.LinkToken, cldchangesetscommon.Version1_0_0)
+	return cldf.NewTypeAndVersion(linkcontracts.LinkToken, cldfutil.Version1_0_0)
 }
 
 func staticLinkTokenTypeAndVersion() cldf.TypeAndVersion {
-	return cldf.NewTypeAndVersion(linkcontracts.StaticLinkToken, cldchangesetscommon.Version1_0_0)
+	return cldf.NewTypeAndVersion(linkcontracts.StaticLinkToken, cldfutil.Version1_0_0)
 }
 
 func saveAddressRef(ds datastore.MutableDataStore, chainSelector uint64, address string, tv cldf.TypeAndVersion, qualifier string) error {
@@ -231,16 +231,6 @@ func saveAddressRef(ds datastore.MutableDataStore, chainSelector uint64, address
 		Qualifier:     qualifier,
 		Labels:        datastore.NewLabelSet(),
 	})
-}
-
-func validateSelectorsInEnvironment(e cldf.Environment, chains []uint64) error {
-	for _, chain := range chains {
-		if !e.BlockChains.Exists(chain) {
-			return fmt.Errorf("chain %d not found in environment", chain)
-		}
-	}
-
-	return nil
 }
 
 func validateNoDuplicateSelectors(chains []uint64) error {

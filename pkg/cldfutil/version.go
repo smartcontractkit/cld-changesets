@@ -1,4 +1,4 @@
-package common //nolint:revive // package name is part of the public repo layout
+package cldfutil //nolint:revive // package name is part of the public repo layout
 
 import (
 	"github.com/Masterminds/semver/v3"

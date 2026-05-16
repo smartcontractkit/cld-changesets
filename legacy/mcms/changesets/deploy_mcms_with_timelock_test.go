@@ -23,7 +23,7 @@ import (
 	evmstate "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/evm"
 	solana2 "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana"
 	soltestutils "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana/testutils"
-	cldchangesetscommon "github.com/smartcontractkit/cld-changesets/pkg/common"
+	"github.com/smartcontractkit/cld-changesets/pkg/cldfutil"
 	familysolana "github.com/smartcontractkit/cld-changesets/pkg/family/solana"
 
 	timelockBindings "github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings/v0_1_1/timelock"
@@ -38,7 +38,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/onchain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/runtime"
 
-	commonchangeset "github.com/smartcontractkit/cld-changesets/pkg/common/changeset"
+	cldfchangesetutil "github.com/smartcontractkit/cld-changesets/pkg/cldfutil/changeset"
 )
 
 func TestGrantRoleInTimeLock(t *testing.T) {
@@ -53,13 +53,13 @@ func TestGrantRoleInTimeLock(t *testing.T) {
 	require.NoError(t, err)
 
 	// deploy the MCMS with timelock contracts
-	configuredChangeset := commonchangeset.Configure(
+	configuredChangeset := cldfchangesetutil.Configure(
 		cldf.CreateLegacyChangeSet(mcmschangesets.DeployMCMSWithTimelockV2),
 		map[uint64]cldfproposalutils.MCMSWithTimelockConfig{
 			selector: cldftesthelpers.SingleGroupTimelockConfig(t),
 		},
 	)
-	updatedEnv, err := commonchangeset.Apply(t, *env, configuredChangeset)
+	updatedEnv, err := cldfchangesetutil.Apply(t, *env, configuredChangeset)
 	require.NoError(t, err)
 	mcmsState, err := evmstate.MaybeLoadMCMSWithTimelockState(updatedEnv, []uint64{selector})
 	require.NoError(t, err)
@@ -69,7 +69,7 @@ func TestGrantRoleInTimeLock(t *testing.T) {
 	existingProposer := mcmsState[selector].ProposerMcm
 	ab := cldf.NewMemoryAddressBook()
 	require.NoError(t, ab.Save(selector, existingProposer.Address().String(),
-		cldf.NewTypeAndVersion(mcmscontracts.ProposerManyChainMultisig, cldchangesetscommon.Version1_0_0)))
+		cldf.NewTypeAndVersion(mcmscontracts.ProposerManyChainMultisig, cldfutil.Version1_0_0)))
 	require.NoError(t, updatedEnv.ExistingAddresses.Remove(ab)) //nolint:staticcheck // test removes legacy AddressBook entry while verifying DataStore migration behavior
 
 	// remove from DataStore since deployment now uses DataStore
@@ -100,13 +100,13 @@ func TestGrantRoleInTimeLock(t *testing.T) {
 	chain.DeployerKey = evmChains[selector].Users[0]
 
 	// now deploy MCMS again so that only the proposer is new
-	updatedEnv, err = commonchangeset.Apply(t, updatedEnv, configuredChangeset)
+	updatedEnv, err = cldfchangesetutil.Apply(t, updatedEnv, configuredChangeset)
 	require.NoError(t, err)
 	mcmsState, err = evmstate.MaybeLoadMCMSWithTimelockState(updatedEnv, []uint64{selector})
 	require.NoError(t, err)
 
 	require.NotEqual(t, existingProposer.Address(), mcmsState[selector].ProposerMcm.Address())
-	updatedEnv, err = commonchangeset.Apply(t, updatedEnv, commonchangeset.Configure(
+	updatedEnv, err = cldfchangesetutil.Apply(t, updatedEnv, cldfchangesetutil.Configure(
 		mcmschangesets.GrantRoleInTimeLock,
 		mcmschangesets.GrantRoleInput{
 			ExistingProposerByChain: map[uint64]common.Address{
@@ -143,7 +143,7 @@ func TestDeployMCMSWithTimelockV2WithFewExistingContracts(t *testing.T) {
 
 	callProxyAddress := utils.RandomAddress()
 	mcmsAddress := utils.RandomAddress()
-	mcmsType := cldf.NewTypeAndVersion(mcmscontracts.ManyChainMultisig, cldchangesetscommon.Version1_0_0)
+	mcmsType := cldf.NewTypeAndVersion(mcmscontracts.ManyChainMultisig, cldfutil.Version1_0_0)
 	// we use same address for bypasser and canceller
 	mcmsType.AddLabel(mcmscontracts.BypasserRole.String())
 	mcmsType.AddLabel(mcmscontracts.CancellerRole.String())
@@ -153,7 +153,7 @@ func TestDeployMCMSWithTimelockV2WithFewExistingContracts(t *testing.T) {
 		ChainSelector: selector1,
 		Address:       callProxyAddress.String(),
 		Type:          datastore.ContractType(mcmscontracts.CallProxy),
-		Version:       &cldchangesetscommon.Version1_0_0,
+		Version:       &cldfutil.Version1_0_0,
 	}))
 
 	// Add MCMS contract with both bypasser and canceller labels for first chain only
