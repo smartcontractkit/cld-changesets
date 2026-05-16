@@ -57,7 +57,8 @@ func (t *TransferToTimelockSolana) VerifyPreconditions(
 	env cldf.Environment, config TransferToTimelockSolanaConfig,
 ) error {
 	for chainSelector, contracts := range config.ContractsByChain {
-		err := addressBookContains(env.ExistingAddresses, chainSelector,
+		addressBook := env.ExistingAddresses //nolint:staticcheck // SA1019: legacy AddressBook until DataStore migration
+		err := addressBookContains(addressBook, chainSelector,
 			mcmscontracts.RBACTimelockProgram,
 			mcmscontracts.RBACTimelock,
 			mcmscontracts.ManyChainMultisigProgram,
@@ -68,7 +69,7 @@ func (t *TransferToTimelockSolana) VerifyPreconditions(
 		}
 
 		for _, contract := range contracts {
-			exists, err := cldf.AddressBookContains(env.ExistingAddresses, chainSelector, contract.ProgramID.String())
+			exists, err := cldf.AddressBookContains(addressBook, chainSelector, contract.ProgramID.String())
 			if err != nil {
 				return fmt.Errorf("failed to search address book for program id: %w", err)
 			}
@@ -80,19 +81,19 @@ func (t *TransferToTimelockSolana) VerifyPreconditions(
 				continue
 			}
 
-			exists, err = cldf.AddressBookContains(env.ExistingAddresses, chainSelector, base58.Encode(contract.Seed[:]))
+			exists, err = cldf.AddressBookContains(addressBook, chainSelector, base58.Encode(contract.Seed[:]))
 			if err != nil {
 				return fmt.Errorf("failed to search address book for seed (%s): %w", base58.Encode(contract.Seed[:]), err)
 			}
 			if !exists {
 				address := solanaAddress(contract.ProgramID, contract.Seed)
-				exists, err = cldf.AddressBookContains(env.ExistingAddresses, chainSelector, address)
+				exists, err = cldf.AddressBookContains(addressBook, chainSelector, address)
 				if err != nil {
 					return fmt.Errorf("failed to search address book for seed (%s): %w", address, err)
 				}
 			}
 			if !exists {
-				exists, err = cldf.AddressBookContains(env.ExistingAddresses, chainSelector, string(contract.Seed[:]))
+				exists, err = cldf.AddressBookContains(addressBook, chainSelector, string(contract.Seed[:]))
 				if err != nil {
 					return fmt.Errorf("failed to search address book for seed (%s): %w", string(contract.Seed[:]), err)
 				}
@@ -135,7 +136,7 @@ func (t *TransferToTimelockSolana) Apply(
 		proposers[chainSelector] = solanaAddress(chainState.McmProgram, mcmssolanasdk.PDASeed(chainState.ProposerMcmSeed))
 
 		for _, contract := range contractsToTransfer {
-			execOut, err := operations.ExecuteOperation(env.OperationsBundle,
+			execOut, execErr := operations.ExecuteOperation(env.OperationsBundle,
 				operations.NewOperation(
 					"transfer-ownership",
 					&cldfutil.Version1_0_0,
@@ -152,8 +153,8 @@ func (t *TransferToTimelockSolana) Apply(
 					MCMSCfg:  cfg.MCMSCfg,
 				},
 			)
-			if err != nil {
-				return out, err
+			if execErr != nil {
+				return out, execErr
 			}
 
 			batches = append(batches, execOut.Output.Batches...)
@@ -315,7 +316,7 @@ func TransferToTimelockSolanaOp(b operations.Bundle, deps Deps, in TransferToTim
 	timelocks := map[uint64]string{}
 	proposers := map[uint64]string{}
 	inspectors := map[uint64]mcmssdk.Inspector{}
-	instructions := []solana.Instruction{}
+	instructions := make([]solana.Instruction, 0, 1)
 	chainSelector := solChain.ChainSelector()
 
 	timelocks[chainSelector] = solanaAddress(chainState.TimelockProgram, mcmssolanasdk.PDASeed(chainState.TimelockSeed))
@@ -324,7 +325,7 @@ func TransferToTimelockSolanaOp(b operations.Bundle, deps Deps, in TransferToTim
 
 	timelockSignerPDA := pdasol.GetTimelockSignerPDA(chainState.TimelockProgram, chainState.TimelockSeed)
 
-	transactions := []mcmstypes.Transaction{}
+	transactions := make([]mcmstypes.Transaction, 0, 1)
 	contract := in.Contract
 	transferInstruction, err := transferOwnershipInstruction(contract.ProgramID, contract.Seed, timelockSignerPDA,
 		contract.OwnerPDA, solChain.DeployerKey.PublicKey())
@@ -376,7 +377,8 @@ func (t TransferMCMSToTimelockSolana) VerifyPreconditions(
 	env cldf.Environment, config TransferMCMSToTimelockSolanaConfig,
 ) error {
 	for _, chainSelector := range config.Chains {
-		err := addressBookContains(env.ExistingAddresses, chainSelector,
+		addressBook := env.ExistingAddresses //nolint:staticcheck // SA1019: legacy AddressBook until DataStore migration
+		err := addressBookContains(addressBook, chainSelector,
 			mcmscontracts.RBACTimelockProgram,
 			mcmscontracts.RBACTimelock,
 			mcmscontracts.ManyChainMultisigProgram,

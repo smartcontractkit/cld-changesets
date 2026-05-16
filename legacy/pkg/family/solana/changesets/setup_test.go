@@ -13,7 +13,7 @@ import (
 	cldfproposalutils "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
 	cldftesthelpers "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils/testhelpers"
 
-	"github.com/smartcontractkit/chainlink-common/pkg/logger"
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/environment"
@@ -23,6 +23,7 @@ import (
 // setupTest sets up a test runtime with a single solana chain with deployed the MCMS and Timelock
 // contracts
 func setupTest(t *testing.T) (*runtime.Runtime, uint64) {
+	t.Helper()
 	// Setup the runtime with preloaded programs. The address book is updated with the preloaded programs.
 	selector := chainselectors.TEST_22222222222222222222222222222222222222222222.Selector
 	programsPath, programIDs, ab := soltestutils2.PreloadMCMS(t, selector)

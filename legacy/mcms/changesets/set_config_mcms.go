@@ -31,8 +31,8 @@ import (
 
 	proposeutils "github.com/smartcontractkit/cld-changesets/legacy/mcms/proposeutils"
 
-	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 )
 
 type ConfigPerRoleV2 struct {
@@ -196,7 +196,7 @@ func setConfigPerRoleV2(ctx context.Context, lggr logger.Logger, chain cldf_evm.
 
 // SetConfigMCMSV2 is a reimplementation of SetConfigMCMS that uses the new MCMS library.
 func SetConfigMCMSV2(e cldf.Environment, cfg MCMSConfigV2) (cldf.ChangesetOutput, error) {
-	selectors := []uint64{}
+	selectors := make([]uint64, 0, len(cfg.ConfigsPerChain))
 	lggr := e.Logger
 	ctx := e.GetContext()
 	for chainSelector := range cfg.ConfigsPerChain {
@@ -236,9 +236,9 @@ func SetConfigMCMSV2(e cldf.Environment, cfg MCMSConfigV2) (cldf.ChangesetOutput
 			state := mcmsStatePerChain[chainSelector]
 			timelockAddressesPerChain[chainSelector] = state.Timelock.Address().Hex()
 			if cfg.ProposalConfig != nil {
-				mcmsContract, err := cfg.ProposalConfig.MCMBasedOnAction(*state)
-				if err != nil {
-					return cldf.ChangesetOutput{}, fmt.Errorf("failed to get MCMS contract: %w", err)
+				mcmsContract, mcmsErr := cfg.ProposalConfig.MCMBasedOnAction(*state)
+				if mcmsErr != nil {
+					return cldf.ChangesetOutput{}, fmt.Errorf("failed to get MCMS contract: %w", mcmsErr)
 				}
 				proposerMcmsPerChain[chainSelector] = mcmsContract.Address().Hex()
 			}

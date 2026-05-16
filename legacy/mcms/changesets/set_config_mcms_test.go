@@ -24,8 +24,8 @@ import (
 
 	cldftesthelpers "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils/testhelpers"
 
-	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 	"github.com/smartcontractkit/chainlink-common/pkg/utils/tests"
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
@@ -126,6 +126,7 @@ func TestSetConfigMCMSV2EVM(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			// Get the mcms addresses for the chain
 			addrs, err := rt.State().AddressBook.AddressesForChain(tt.chain.Selector)
 			require.NoError(t, err)
@@ -217,6 +218,7 @@ func TestSetConfigMCMSV2Solana(t *testing.T) {
 	newCfgBypasser.Quorum = 2
 
 	t.Run("MCMS disabled", func(t *testing.T) {
+		t.Parallel()
 		err = rt.Exec(
 			runtime.ChangesetTask(cldf.CreateLegacyChangeSet(SetConfigMCMSV2), MCMSConfigV2{
 				ConfigsPerChain: map[uint64]ConfigPerRoleV2{
@@ -236,6 +238,7 @@ func TestSetConfigMCMSV2Solana(t *testing.T) {
 	})
 
 	t.Run("MCMS enabled", func(t *testing.T) {
+		t.Parallel()
 		// Now we transfer the MCMS contracts to the timelock for testing setConfig on MCMS owned contracts
 		err = rt.Exec(
 			runtime.ChangesetTask(changesets.TransferMCMSToTimelockSolana{}, changesets.TransferMCMSToTimelockSolanaConfig{
@@ -482,6 +485,7 @@ func TestValidateV2(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			selectors := []uint64{evmSelector, solSelector}
 
 			err := tt.cfg.Validate(rt.Environment(), selectors)
@@ -586,6 +590,7 @@ func TestSetConfigMCMSV2WithTimelockQualifier(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			mcmsCfg := MCMSConfigV2{
 				ProposalConfig: &cldfproposalutils.TimelockConfig{
 					MinDelay: 0,
