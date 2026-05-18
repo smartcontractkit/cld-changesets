@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.4.0](https://github.com/smartcontractkit/cld-changesets/compare/v0.3.0...v0.4.0) (2026-05-18)
+
+
+### Features
+
+* add changeset and operation to delete CRE workflow ([#54](https://github.com/smartcontractkit/cld-changesets/issues/54)) ([f0e341a](https://github.com/smartcontractkit/cld-changesets/commit/f0e341a654355183db5ff9d9c9e1697b5825282f))
+* add support for multiple api key to deploy workflow ([#55](https://github.com/smartcontractkit/cld-changesets/issues/55)) ([a68f156](https://github.com/smartcontractkit/cld-changesets/commit/a68f156c62d19888e5a50897a7a2164bc1368251))
+* transfer native ([#56](https://github.com/smartcontractkit/cld-changesets/issues/56)) ([4368e49](https://github.com/smartcontractkit/cld-changesets/commit/4368e4947a322e411790dbb61e5d6ad3aa1d3b3a))
+
+
+### Bug Fixes
+
+* use cache dir for sol programs loading ([#52](https://github.com/smartcontractkit/cld-changesets/issues/52)) ([b04f4d9](https://github.com/smartcontractkit/cld-changesets/commit/b04f4d9908495e6048a59a1f0892ea5d4ddddc37))
+
 ## [0.3.0](https://github.com/smartcontractkit/cld-changesets/compare/v0.2.0...v0.3.0) (2026-05-08)
 
 
