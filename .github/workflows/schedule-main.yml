@@ -1,27 +1,12 @@
-name: pull-request-main
+name: schedule-main
 
 on:
-  merge_group:
-  pull_request:
-    branches:
-      - main
+  schedule:
+    # Runs once a day at 1:00 UTC on main branch to collect statistics
+    - cron: "0 1 * * *"
+  workflow_dispatch:
 
 jobs:
-  go-mod-sync:
-    name: Go Mod Tidy
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - uses: actions/setup-go@v6
-        with:
-          go-version-file: go.mod
-
-      - name: Ensure go.mod and go.sum match module graph
-        run: |
-          go mod tidy
-          git diff --exit-code go.mod go.sum
-
   ci-lint:
     name: Lint
     runs-on: ubuntu-latest
@@ -63,13 +48,8 @@ jobs:
 
   sonarqube:
     name: Sonar Scan
-    if: |
-      always() &&
-      github.event_name == 'pull_request' &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled')
     runs-on: ubuntu-24.04
-    needs: [go-mod-sync, ci-lint, ci-lint-misc, ci-test]
+    needs: [ci-lint, ci-lint-misc, ci-test]
     permissions:
       contents: read
       actions: read
@@ -79,3 +59,4 @@ jobs:
         with:
           sonar-token: ${{ secrets.SONAR_TOKEN }}
           sonar-host-url: ${{ secrets.SONAR_HOST_URL }}
+          include-lint: true
