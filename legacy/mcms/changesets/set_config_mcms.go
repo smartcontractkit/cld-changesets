@@ -9,30 +9,25 @@ import (
 	aptos "github.com/aptos-labs/aptos-go-sdk"
 	"github.com/ethereum/go-ethereum/core/types"
 	solanasdk "github.com/gagliardetto/solana-go"
+
 	"github.com/smartcontractkit/ccip-owner-contracts/pkg/gethwrappers"
 	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
+	cldf_solana "github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
+	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	mcmscontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/mcms"
-
-	aptosstate "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/aptos"
-	evmstate "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/evm"
-	solstate "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana"
-	"github.com/smartcontractkit/cld-changesets/pkg/cldfutil"
-
+	cldfproposalutils "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 	mcmslib "github.com/smartcontractkit/mcms"
 	aptosmcms "github.com/smartcontractkit/mcms/sdk/aptos"
 	"github.com/smartcontractkit/mcms/sdk/evm"
 	"github.com/smartcontractkit/mcms/sdk/solana"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 
-	cldfproposalutils "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
-
-	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
-	cldf_solana "github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
-
 	proposeutils "github.com/smartcontractkit/cld-changesets/legacy/mcms/proposeutils"
-
-	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
-	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
+	aptosstate "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/aptos"
+	evmstate "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/evm"
+	solstate "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana"
 )
 
 type ConfigPerRoleV2 struct {
@@ -54,7 +49,7 @@ func (cfg MCMSConfigV2) Validate(e cldf.Environment, selectors []uint64) error {
 		return errors.New("no chain configs provided")
 	}
 
-	err := cldfutil.ValidateSelectorsInEnvironment(e, selectors)
+	err := validateSelectorsInEnvironment(e, selectors)
 	if err != nil {
 		return err
 	}
@@ -459,4 +454,14 @@ func setConfigForRoleAptos(ctx context.Context, mcmsAddress aptos.AccountAddress
 	}
 
 	return result.RawData.(mcmstypes.Transaction), nil
+}
+
+func validateSelectorsInEnvironment(e cldf.Environment, chains []uint64) error {
+	for _, chain := range chains {
+		if !e.BlockChains.Exists(chain) {
+			return fmt.Errorf("chain %d not found in environment", chain)
+		}
+	}
+
+	return nil
 }
