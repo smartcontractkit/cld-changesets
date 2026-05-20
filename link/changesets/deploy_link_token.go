@@ -31,7 +31,7 @@ var _ cldf.ChangeSet[DeploySolanaLinkTokenConfig] = DeploySolanaLinkToken
 
 // DeployLinkToken deploys a link token contract to the chain identified by the ChainSelector.
 func DeployLinkToken(e cldf.Environment, chains []uint64) (cldf.ChangesetOutput, error) {
-	if err := cldfutil.ValidateSelectorsInEnvironment(e, chains); err != nil {
+	if err := validateSelectorsInEnvironment(e, chains); err != nil {
 		return cldf.ChangesetOutput{}, err
 	}
 	if err := validateNoDuplicateSelectors(chains); err != nil {
@@ -66,7 +66,7 @@ func DeployLinkToken(e cldf.Environment, chains []uint64) (cldf.ChangesetOutput,
 
 // DeployStaticLinkToken deploys a static link token contract to the chain identified by the ChainSelector.
 func DeployStaticLinkToken(e cldf.Environment, chains []uint64) (cldf.ChangesetOutput, error) {
-	if err := cldfutil.ValidateSelectorsInEnvironment(e, chains); err != nil {
+	if err := validateSelectorsInEnvironment(e, chains); err != nil {
 		return cldf.ChangesetOutput{}, err
 	}
 	if err := validateNoDuplicateSelectors(chains); err != nil {
@@ -85,7 +85,7 @@ func DeployStaticLinkToken(e cldf.Environment, chains []uint64) (cldf.ChangesetO
 		if !ok {
 			return cldf.ChangesetOutput{}, fmt.Errorf("chain not found in environment: %d", chainSel)
 		}
-		deploy, err := cldf.DeployContract[*link_token_interface.LinkToken](e.Logger, chain, out.AddressBook, //nolint:staticcheck // SA1019: legacy changeset still supports AddressBook output.
+		deploy, err := cldf.DeployContract(e.Logger, chain, out.AddressBook, //nolint:staticcheck // SA1019: legacy changeset still supports AddressBook output.
 			func(chain cldf_evm.Chain) cldf.ContractDeploy[*link_token_interface.LinkToken] {
 				linkTokenAddr, tx, linkToken, err2 := link_token_interface.DeployLinkToken(
 					chain.DeployerKey,
@@ -231,6 +231,16 @@ func saveAddressRef(ds datastore.MutableDataStore, chainSelector uint64, address
 		Qualifier:     qualifier,
 		Labels:        datastore.NewLabelSet(),
 	})
+}
+
+func validateSelectorsInEnvironment(e cldf.Environment, chains []uint64) error {
+	for _, chain := range chains {
+		if !e.BlockChains.Exists(chain) {
+			return fmt.Errorf("chain %d not found in environment", chain)
+		}
+	}
+
+	return nil
 }
 
 func validateNoDuplicateSelectors(chains []uint64) error {
