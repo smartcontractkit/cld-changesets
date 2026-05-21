@@ -25,7 +25,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/offchain/ocr"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
-	"github.com/smartcontractkit/cld-changesets/pkg/cldfutil"
+	"github.com/smartcontractkit/cld-changesets/internal/semvers"
 )
 
 func TestGetAddressTypeVersionByQualifier(t *testing.T) {
@@ -33,7 +33,7 @@ func TestGetAddressTypeVersionByQualifier(t *testing.T) {
 
 	chainSel := chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector
 	otherSel := chainSel + 1
-	v := cldfutil.Version1_0_0
+	v := semvers.V1_0_0
 
 	t.Run("no addresses for chain", func(t *testing.T) {
 		t.Parallel()
@@ -215,7 +215,7 @@ func TestMaybeLoadMCMSWithTimelockChainState(t *testing.T) {
 
 	t.Run("duplicate RBACTimelock in bundle", func(t *testing.T) {
 		t.Parallel()
-		tv := cldf.NewTypeAndVersion(mcmscontracts.RBACTimelock, cldfutil.Version1_0_0)
+		tv := cldf.NewTypeAndVersion(mcmscontracts.RBACTimelock, semvers.V1_0_0)
 		addrs := map[string]cldf.TypeAndVersion{
 			"0x0000000000000000000000000000000000000001": tv,
 			"0x0000000000000000000000000000000000000002": tv,
@@ -226,7 +226,7 @@ func TestMaybeLoadMCMSWithTimelockChainState(t *testing.T) {
 
 	t.Run("invalid hex address in bundle", func(t *testing.T) {
 		t.Parallel()
-		tv := cldf.NewTypeAndVersion(mcmscontracts.RBACTimelock, cldfutil.Version1_0_0)
+		tv := cldf.NewTypeAndVersion(mcmscontracts.RBACTimelock, semvers.V1_0_0)
 		_, err := MaybeLoadMCMSWithTimelockChainState(ch, map[string]cldf.TypeAndVersion{
 			"not-a-valid-hex-address": tv,
 		})
@@ -238,7 +238,7 @@ func TestMaybeLoadMCMSWithTimelockStateWithQualifier(t *testing.T) {
 	t.Parallel()
 
 	chainSel := chainsel.ETHEREUM_TESTNET_SEPOLIA.Selector
-	v := cldfutil.Version1_0_0
+	v := semvers.V1_0_0
 
 	t.Run("chain not in environment", func(t *testing.T) {
 		t.Parallel()
@@ -434,7 +434,7 @@ func TestAddressesForChain(t *testing.T) {
 		// Create environment with only AddressBook
 		addressBook := cldf.NewMemoryAddressBook()
 		err := addressBook.Save(chainSelector, "0x1234567890123456789012345678901234567890",
-			cldf.NewTypeAndVersion(linkcontracts.LinkToken, cldfutil.Version1_0_0))
+			cldf.NewTypeAndVersion(linkcontracts.LinkToken, semvers.V1_0_0))
 		require.NoError(t, err)
 
 		env := cldf.Environment{
@@ -460,7 +460,7 @@ func TestAddressesForChain(t *testing.T) {
 			ChainSelector: chainSelector,
 			Address:       "0xABCDEF1234567890123456789012345678901234",
 			Type:          datastore.ContractType(mcmscontracts.RBACTimelock),
-			Version:       &cldfutil.Version1_0_0,
+			Version:       &semvers.V1_0_0,
 		})
 		require.NoError(t, err)
 
@@ -485,7 +485,7 @@ func TestAddressesForChain(t *testing.T) {
 		// Create a mock environment with both AddressBook and DataStore
 		addressBook := cldf.NewMemoryAddressBook()
 		err := addressBook.Save(chainSelector, "0x1234567890123456789012345678901234567890",
-			cldf.NewTypeAndVersion(linkcontracts.LinkToken, cldfutil.Version1_0_0))
+			cldf.NewTypeAndVersion(linkcontracts.LinkToken, semvers.V1_0_0))
 		require.NoError(t, err)
 
 		dataStore := datastore.NewMemoryDataStore()
@@ -493,7 +493,7 @@ func TestAddressesForChain(t *testing.T) {
 			ChainSelector: chainSelector,
 			Address:       "0xABCDEF1234567890123456789012345678901234",
 			Type:          datastore.ContractType(mcmscontracts.RBACTimelock),
-			Version:       &cldfutil.Version1_0_0,
+			Version:       &semvers.V1_0_0,
 			Labels: datastore.NewLabelSet(
 				"team:core",
 				"environment:production",
@@ -519,11 +519,11 @@ func TestAddressesForChain(t *testing.T) {
 		// Verify that types are correctly preserved
 		linkTokenTV := mergedAddresses["0x1234567890123456789012345678901234567890"]
 		require.Equal(t, linkcontracts.LinkToken, linkTokenTV.Type)
-		require.Equal(t, cldfutil.Version1_0_0, linkTokenTV.Version)
+		require.Equal(t, semvers.V1_0_0, linkTokenTV.Version)
 
 		timelockTV := mergedAddresses["0xABCDEF1234567890123456789012345678901234"]
 		require.Equal(t, mcmscontracts.RBACTimelock, timelockTV.Type)
-		require.Equal(t, cldfutil.Version1_0_0, timelockTV.Version)
+		require.Equal(t, semvers.V1_0_0, timelockTV.Version)
 
 		// Verify labels are preserved in DataStore
 		refs := env.DataStore.Addresses().Filter(datastore.AddressRefByChainSelector(chainSelector))
@@ -546,7 +546,7 @@ func TestAddressesForChain(t *testing.T) {
 			ChainSelector: chainSelector,
 			Address:       "0x1111111111111111111111111111111111111111",
 			Type:          datastore.ContractType(mcmscontracts.RBACTimelock),
-			Version:       &cldfutil.Version1_0_0,
+			Version:       &semvers.V1_0_0,
 			Qualifier:     "team-a",
 			Labels: datastore.NewLabelSet(
 				"team:team-a",
@@ -559,7 +559,7 @@ func TestAddressesForChain(t *testing.T) {
 			ChainSelector: chainSelector,
 			Address:       "0x2222222222222222222222222222222222222222",
 			Type:          datastore.ContractType(mcmscontracts.RBACTimelock),
-			Version:       &cldfutil.Version1_0_0,
+			Version:       &semvers.V1_0_0,
 			Qualifier:     "team-b",
 			Labels: datastore.NewLabelSet(
 				"team:team-b",
@@ -612,7 +612,7 @@ func TestAddressesForChain(t *testing.T) {
 		addressBook := cldf.NewMemoryAddressBook()
 		// Add LinkToken to AddressBook
 		err := addressBook.Save(chainSelector, duplicateAddress,
-			cldf.NewTypeAndVersion(linkcontracts.LinkToken, cldfutil.Version1_0_0))
+			cldf.NewTypeAndVersion(linkcontracts.LinkToken, semvers.V1_0_0))
 		require.NoError(t, err)
 
 		dataStore := datastore.NewMemoryDataStore()
@@ -622,7 +622,7 @@ func TestAddressesForChain(t *testing.T) {
 			ChainSelector: chainSelector,
 			Address:       duplicateAddress,                                   // Same address as AddressBook
 			Type:          datastore.ContractType(mcmscontracts.RBACTimelock), // Different type from AddressBook LinkToken
-			Version:       &cldfutil.Version1_6_0,                             // Different version
+			Version:       &semvers.V1_6_0,                                    // Different version
 			Labels: datastore.NewLabelSet(
 				"team:datastore-team",
 				"environment:staging",
@@ -636,7 +636,7 @@ func TestAddressesForChain(t *testing.T) {
 			ChainSelector: chainSelector,
 			Address:       uniqueAddress,
 			Type:          datastore.ContractType(mcmscontracts.RBACTimelock),
-			Version:       &cldfutil.Version1_0_0,
+			Version:       &semvers.V1_0_0,
 			Labels: datastore.NewLabelSet(
 				"team:unique-entry",
 				"role:timelock",
@@ -661,12 +661,12 @@ func TestAddressesForChain(t *testing.T) {
 		// The duplicate address should use DataStore values (DataStore takes precedence)
 		duplicateTV := mergedAddresses[duplicateAddress]
 		require.Equal(t, mcmscontracts.RBACTimelock, duplicateTV.Type, "DataStore type should override AddressBook type")
-		require.Equal(t, cldfutil.Version1_6_0, duplicateTV.Version, "DataStore version should override AddressBook version")
+		require.Equal(t, semvers.V1_6_0, duplicateTV.Version, "DataStore version should override AddressBook version")
 
 		// The unique address should have correct type
 		uniqueTV := mergedAddresses[uniqueAddress]
 		require.Equal(t, mcmscontracts.RBACTimelock, uniqueTV.Type)
-		require.Equal(t, cldfutil.Version1_0_0, uniqueTV.Version)
+		require.Equal(t, semvers.V1_0_0, uniqueTV.Version)
 
 		// Verify that DataStore labels are preserved for both addresses
 		refs := env.DataStore.Addresses().Filter(datastore.AddressRefByChainSelector(chainSelector))
@@ -741,9 +741,9 @@ func TestGetMCMSWithTimelockState(t *testing.T) {
 
 	// timelock, callProxy, proposer shared by both stores
 	commonRefs := []datastore.AddressRef{
-		{ChainSelector: selector, Address: strings.ToLower(timelock.Address().Hex()), Type: datastore.ContractType(mcmscontracts.RBACTimelock), Version: &cldfutil.Version1_0_0},
-		{ChainSelector: selector, Address: strings.ToLower(callProxy.Address().Hex()), Type: datastore.ContractType(mcmscontracts.CallProxy), Version: &cldfutil.Version1_0_0},
-		{ChainSelector: selector, Address: strings.ToLower(proposerMcm.Address().Hex()), Type: datastore.ContractType(mcmscontracts.ProposerManyChainMultisig), Version: &cldfutil.Version1_0_0},
+		{ChainSelector: selector, Address: strings.ToLower(timelock.Address().Hex()), Type: datastore.ContractType(mcmscontracts.RBACTimelock), Version: &semvers.V1_0_0},
+		{ChainSelector: selector, Address: strings.ToLower(callProxy.Address().Hex()), Type: datastore.ContractType(mcmscontracts.CallProxy), Version: &semvers.V1_0_0},
+		{ChainSelector: selector, Address: strings.ToLower(proposerMcm.Address().Hex()), Type: datastore.ContractType(mcmscontracts.ProposerManyChainMultisig), Version: &semvers.V1_0_0},
 	}
 
 	t.Run("shared address for bypasser and canceller", func(t *testing.T) {
@@ -756,11 +756,11 @@ func TestGetMCMSWithTimelockState(t *testing.T) {
 		}
 		require.NoError(t, store.Addresses().Add(datastore.AddressRef{
 			ChainSelector: selector, Address: sharedAddress,
-			Type: datastore.ContractType(mcmscontracts.BypasserManyChainMultisig), Version: &cldfutil.Version1_0_0, Qualifier: "bypasser",
+			Type: datastore.ContractType(mcmscontracts.BypasserManyChainMultisig), Version: &semvers.V1_0_0, Qualifier: "bypasser",
 		}))
 		require.NoError(t, store.Addresses().Add(datastore.AddressRef{
 			ChainSelector: selector, Address: sharedAddress,
-			Type: datastore.ContractType(mcmscontracts.CancellerManyChainMultisig), Version: &cldfutil.Version1_0_0, Qualifier: "canceller",
+			Type: datastore.ContractType(mcmscontracts.CancellerManyChainMultisig), Version: &semvers.V1_0_0, Qualifier: "canceller",
 		}))
 
 		state, err := GetMCMSWithTimelockState(store.Seal().Addresses(), chain, "")
@@ -786,12 +786,12 @@ func TestGetMCMSWithTimelockState(t *testing.T) {
 		}
 		require.NoError(t, legacyStore.Addresses().Add(datastore.AddressRef{
 			ChainSelector: selector, Address: sharedAddress,
-			Type: datastore.ContractType(mcmscontracts.ManyChainMultisig), Version: &cldfutil.Version1_0_0, Qualifier: "bypasser",
+			Type: datastore.ContractType(mcmscontracts.ManyChainMultisig), Version: &semvers.V1_0_0, Qualifier: "bypasser",
 			Labels: datastore.NewLabelSet(mcmscontracts.BypasserRole.String()),
 		}))
 		require.NoError(t, legacyStore.Addresses().Add(datastore.AddressRef{
 			ChainSelector: selector, Address: sharedAddress,
-			Type: datastore.ContractType(mcmscontracts.ManyChainMultisig), Version: &cldfutil.Version1_0_0, Qualifier: "canceller",
+			Type: datastore.ContractType(mcmscontracts.ManyChainMultisig), Version: &semvers.V1_0_0, Qualifier: "canceller",
 			Labels: datastore.NewLabelSet(mcmscontracts.CancellerRole.String()),
 		}))
 

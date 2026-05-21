@@ -9,6 +9,7 @@ import (
 
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 
+	"github.com/smartcontractkit/cld-changesets/internal/semvers"
 	"github.com/smartcontractkit/cld-changesets/pkg/cldfutil"
 )
 
@@ -32,7 +33,7 @@ func GenerateStaticLinkTokenView(lt *link_token_interface.LinkToken) (StaticLink
 		ContractMetaData: cldfutil.ContractMetaData{
 			TypeAndVersion: cldf.TypeAndVersion{
 				Type:    linkcontracts.StaticLinkToken,
-				Version: cldfutil.Version1_0_0,
+				Version: semvers.V1_0_0,
 			}.String(),
 			Address: lt.Address(),
 			// No owner.

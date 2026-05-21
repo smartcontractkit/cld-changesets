@@ -9,7 +9,7 @@ import (
 
 	zkbindings "github.com/smartcontractkit/mcms/sdk/zksync/bindings"
 
-	"github.com/smartcontractkit/cld-changesets/pkg/cldfutil"
+	"github.com/smartcontractkit/cld-changesets/internal/semvers"
 )
 
 type OpEVMDeployMCMOutput struct {
@@ -23,7 +23,7 @@ var OpEVMDeployProposerMCM = NewEVMDeployOperation(
 	mcmscontracts.ProposerManyChainMultisig,
 	bindings.ManyChainMultiSigMetaData,
 	&ContractOpts{
-		Version:          &cldfutil.Version1_0_0,
+		Version:          &semvers.V1_0_0,
 		EVMBytecode:      common.FromHex(bindings.ManyChainMultiSigBin),
 		ZkSyncVMBytecode: zkbindings.ManyChainMultiSigZkBytecode,
 	},
@@ -39,7 +39,7 @@ var OpEVMDeployBypasserMCM = NewEVMDeployOperation(
 	mcmscontracts.BypasserManyChainMultisig,
 	bindings.ManyChainMultiSigMetaData,
 	&ContractOpts{
-		Version:          &cldfutil.Version1_0_0,
+		Version:          &semvers.V1_0_0,
 		EVMBytecode:      common.FromHex(bindings.ManyChainMultiSigBin),
 		ZkSyncVMBytecode: zkbindings.ManyChainMultiSigZkBytecode,
 	},
@@ -55,7 +55,7 @@ var OpEVMDeployCancellerMCM = NewEVMDeployOperation(
 	mcmscontracts.CancellerManyChainMultisig,
 	bindings.ManyChainMultiSigMetaData,
 	&ContractOpts{
-		Version:          &cldfutil.Version1_0_0,
+		Version:          &semvers.V1_0_0,
 		EVMBytecode:      common.FromHex(bindings.ManyChainMultiSigBin),
 		ZkSyncVMBytecode: zkbindings.ManyChainMultiSigZkBytecode,
 	},

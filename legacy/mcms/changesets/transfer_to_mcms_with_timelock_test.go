@@ -12,9 +12,9 @@ import (
 	linkcontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/link"
 	"github.com/stretchr/testify/require"
 
+	"github.com/smartcontractkit/cld-changesets/internal/semvers"
 	evmstate "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/evm"
 	linkchangesets "github.com/smartcontractkit/cld-changesets/link/changesets"
-	"github.com/smartcontractkit/cld-changesets/pkg/cldfutil"
 
 	cldfproposalutils "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
 
@@ -124,7 +124,7 @@ func TestTransferToMCMSWithTimelockV2DataStore(t *testing.T) { //nolint:parallel
 	// TODO: migrate DeployLinkToken to use datastore only
 	linkAb := cldf.NewMemoryAddressBookFromMap(map[uint64]map[string]cldf.TypeAndVersion{
 		selector: {
-			link.LinkToken.Address().String(): cldf.NewTypeAndVersion(linkcontracts.LinkToken, cldfutil.Version1_0_0),
+			link.LinkToken.Address().String(): cldf.NewTypeAndVersion(linkcontracts.LinkToken, semvers.V1_0_0),
 		},
 	})
 	err = rt.State().AddressBook.Remove(linkAb)
@@ -132,7 +132,7 @@ func TestTransferToMCMSWithTimelockV2DataStore(t *testing.T) { //nolint:parallel
 
 	// Add link token address to the datastore only
 	ds := datastore.NewMemoryDataStore()
-	typeAndVersion := cldf.NewTypeAndVersion(linkcontracts.LinkToken, cldfutil.Version1_0_0)
+	typeAndVersion := cldf.NewTypeAndVersion(linkcontracts.LinkToken, semvers.V1_0_0)
 
 	err = ds.Addresses().Add(datastore.AddressRef{
 		Address:       link.LinkToken.Address().String(),

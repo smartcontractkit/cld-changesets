@@ -22,7 +22,7 @@ import (
 	"github.com/smartcontractkit/chainlink-evm/gethwrappers/generated/link_token_interface"
 	"github.com/smartcontractkit/chainlink-evm/gethwrappers/shared/generated/initial/link_token"
 
-	"github.com/smartcontractkit/cld-changesets/pkg/cldfutil"
+	"github.com/smartcontractkit/cld-changesets/internal/semvers"
 )
 
 var _ cldf.ChangeSet[[]uint64] = DeployLinkToken
@@ -215,11 +215,11 @@ func newLinkTokenOutput() cldf.ChangesetOutput {
 }
 
 func linkTokenTypeAndVersion() cldf.TypeAndVersion {
-	return cldf.NewTypeAndVersion(linkcontracts.LinkToken, cldfutil.Version1_0_0)
+	return cldf.NewTypeAndVersion(linkcontracts.LinkToken, semvers.V1_0_0)
 }
 
 func staticLinkTokenTypeAndVersion() cldf.TypeAndVersion {
-	return cldf.NewTypeAndVersion(linkcontracts.StaticLinkToken, cldfutil.Version1_0_0)
+	return cldf.NewTypeAndVersion(linkcontracts.StaticLinkToken, semvers.V1_0_0)
 }
 
 func saveAddressRef(ds datastore.MutableDataStore, chainSelector uint64, address string, tv cldf.TypeAndVersion, qualifier string) error {
