@@ -15,7 +15,7 @@ import (
 	"github.com/smartcontractkit/chainlink-evm/gethwrappers/generated/link_token_interface"
 	"github.com/smartcontractkit/chainlink-evm/gethwrappers/shared/generated/initial/link_token"
 
-	"github.com/smartcontractkit/cld-changesets/pkg/cldfutil"
+	"github.com/smartcontractkit/cld-changesets/internal/semvers"
 	linkv10 "github.com/smartcontractkit/cld-changesets/pkg/contract/link/view/v10"
 	"github.com/smartcontractkit/cld-changesets/pkg/contract/mcms/view/v1_0"
 )
@@ -262,17 +262,17 @@ func MaybeLoadMCMSWithTimelockChainState(chain cldf_evm.Chain, addresses map[str
 	state := MCMSWithTimelockState{}
 	var (
 		// We expect one of each contract on the chain.
-		timelock  = cldf.NewTypeAndVersion(mcmscontracts.RBACTimelock, cldfutil.Version1_0_0)
-		callProxy = cldf.NewTypeAndVersion(mcmscontracts.CallProxy, cldfutil.Version1_0_0)
-		proposer  = cldf.NewTypeAndVersion(mcmscontracts.ProposerManyChainMultisig, cldfutil.Version1_0_0)
-		canceller = cldf.NewTypeAndVersion(mcmscontracts.CancellerManyChainMultisig, cldfutil.Version1_0_0)
-		bypasser  = cldf.NewTypeAndVersion(mcmscontracts.BypasserManyChainMultisig, cldfutil.Version1_0_0)
+		timelock  = cldf.NewTypeAndVersion(mcmscontracts.RBACTimelock, semvers.V1_0_0)
+		callProxy = cldf.NewTypeAndVersion(mcmscontracts.CallProxy, semvers.V1_0_0)
+		proposer  = cldf.NewTypeAndVersion(mcmscontracts.ProposerManyChainMultisig, semvers.V1_0_0)
+		canceller = cldf.NewTypeAndVersion(mcmscontracts.CancellerManyChainMultisig, semvers.V1_0_0)
+		bypasser  = cldf.NewTypeAndVersion(mcmscontracts.BypasserManyChainMultisig, semvers.V1_0_0)
 
 		// the same contract can have different roles
-		multichain    = cldf.NewTypeAndVersion(mcmscontracts.ManyChainMultisig, cldfutil.Version1_0_0)
-		proposerMCMS  = cldf.NewTypeAndVersion(mcmscontracts.ManyChainMultisig, cldfutil.Version1_0_0)
-		bypasserMCMS  = cldf.NewTypeAndVersion(mcmscontracts.ManyChainMultisig, cldfutil.Version1_0_0)
-		cancellerMCMS = cldf.NewTypeAndVersion(mcmscontracts.ManyChainMultisig, cldfutil.Version1_0_0)
+		multichain    = cldf.NewTypeAndVersion(mcmscontracts.ManyChainMultisig, semvers.V1_0_0)
+		proposerMCMS  = cldf.NewTypeAndVersion(mcmscontracts.ManyChainMultisig, semvers.V1_0_0)
+		bypasserMCMS  = cldf.NewTypeAndVersion(mcmscontracts.ManyChainMultisig, semvers.V1_0_0)
+		cancellerMCMS = cldf.NewTypeAndVersion(mcmscontracts.ManyChainMultisig, semvers.V1_0_0)
 	)
 
 	// Add role labels to the ManyChainMultisig variants and build the expected contract bundle.
@@ -380,11 +380,11 @@ func MaybeLoadMCMSWithTimelockChainStateFromRefs(chain cldf_evm.Chain, refs []da
 	state := MCMSWithTimelockState{}
 	var (
 		// We expect one of each contract on the chain.
-		timelock  = cldf.NewTypeAndVersion(mcmscontracts.RBACTimelock, cldfutil.Version1_0_0)
-		callProxy = cldf.NewTypeAndVersion(mcmscontracts.CallProxy, cldfutil.Version1_0_0)
-		proposer  = cldf.NewTypeAndVersion(mcmscontracts.ProposerManyChainMultisig, cldfutil.Version1_0_0)
-		canceller = cldf.NewTypeAndVersion(mcmscontracts.CancellerManyChainMultisig, cldfutil.Version1_0_0)
-		bypasser  = cldf.NewTypeAndVersion(mcmscontracts.BypasserManyChainMultisig, cldfutil.Version1_0_0)
+		timelock  = cldf.NewTypeAndVersion(mcmscontracts.RBACTimelock, semvers.V1_0_0)
+		callProxy = cldf.NewTypeAndVersion(mcmscontracts.CallProxy, semvers.V1_0_0)
+		proposer  = cldf.NewTypeAndVersion(mcmscontracts.ProposerManyChainMultisig, semvers.V1_0_0)
+		canceller = cldf.NewTypeAndVersion(mcmscontracts.CancellerManyChainMultisig, semvers.V1_0_0)
+		bypasser  = cldf.NewTypeAndVersion(mcmscontracts.BypasserManyChainMultisig, semvers.V1_0_0)
 	)
 
 	wantTypes := []cldf.TypeAndVersion{timelock, proposer, canceller, bypasser, callProxy}
@@ -487,7 +487,7 @@ func (s LinkTokenState) GenerateLinkView() (linkv10.LinkTokenView, error) {
 
 func MaybeLoadLinkTokenChainState(chain cldf_evm.Chain, addresses map[string]cldf.TypeAndVersion) (*LinkTokenState, error) {
 	state := LinkTokenState{}
-	linkToken := cldf.NewTypeAndVersion(linkcontracts.LinkToken, cldfutil.Version1_0_0)
+	linkToken := cldf.NewTypeAndVersion(linkcontracts.LinkToken, semvers.V1_0_0)
 
 	// Convert map keys to a slice
 	wantTypes := []cldf.TypeAndVersion{linkToken}
@@ -525,7 +525,7 @@ func (s StaticLinkTokenState) GenerateStaticLinkView() (linkv10.StaticLinkTokenV
 
 func MaybeLoadStaticLinkTokenState(chain cldf_evm.Chain, addresses map[string]cldf.TypeAndVersion) (*StaticLinkTokenState, error) {
 	state := StaticLinkTokenState{}
-	staticLinkToken := cldf.NewTypeAndVersion(linkcontracts.StaticLinkToken, cldfutil.Version1_0_0)
+	staticLinkToken := cldf.NewTypeAndVersion(linkcontracts.StaticLinkToken, semvers.V1_0_0)
 
 	// Convert map keys to a slice
 	wantTypes := []cldf.TypeAndVersion{staticLinkToken}

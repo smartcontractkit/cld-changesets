@@ -19,11 +19,11 @@ import (
 	"github.com/smartcontractkit/quarantine"
 	"github.com/stretchr/testify/require"
 
+	"github.com/smartcontractkit/cld-changesets/internal/semvers"
 	mcmschangesets "github.com/smartcontractkit/cld-changesets/legacy/mcms/changesets"
 	evmstate "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/evm"
 	solana2 "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana"
 	soltestutils "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana/testutils"
-	"github.com/smartcontractkit/cld-changesets/pkg/cldfutil"
 	familysolana "github.com/smartcontractkit/cld-changesets/pkg/family/solana"
 
 	timelockBindings "github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings/v0_1_1/timelock"
@@ -69,7 +69,7 @@ func TestGrantRoleInTimeLock(t *testing.T) {
 	existingProposer := mcmsState[selector].ProposerMcm
 	ab := cldf.NewMemoryAddressBook()
 	require.NoError(t, ab.Save(selector, existingProposer.Address().String(),
-		cldf.NewTypeAndVersion(mcmscontracts.ProposerManyChainMultisig, cldfutil.Version1_0_0)))
+		cldf.NewTypeAndVersion(mcmscontracts.ProposerManyChainMultisig, semvers.V1_0_0)))
 	require.NoError(t, updatedEnv.ExistingAddresses.Remove(ab)) //nolint:staticcheck // test removes legacy AddressBook entry while verifying DataStore migration behavior
 
 	// remove from DataStore since deployment now uses DataStore
@@ -143,7 +143,7 @@ func TestDeployMCMSWithTimelockV2WithFewExistingContracts(t *testing.T) {
 
 	callProxyAddress := utils.RandomAddress()
 	mcmsAddress := utils.RandomAddress()
-	mcmsType := cldf.NewTypeAndVersion(mcmscontracts.ManyChainMultisig, cldfutil.Version1_0_0)
+	mcmsType := cldf.NewTypeAndVersion(mcmscontracts.ManyChainMultisig, semvers.V1_0_0)
 	// we use same address for bypasser and canceller
 	mcmsType.AddLabel(mcmscontracts.BypasserRole.String())
 	mcmsType.AddLabel(mcmscontracts.CancellerRole.String())
@@ -153,7 +153,7 @@ func TestDeployMCMSWithTimelockV2WithFewExistingContracts(t *testing.T) {
 		ChainSelector: selector1,
 		Address:       callProxyAddress.String(),
 		Type:          datastore.ContractType(mcmscontracts.CallProxy),
-		Version:       &cldfutil.Version1_0_0,
+		Version:       &semvers.V1_0_0,
 	}))
 
 	// Add MCMS contract with both bypasser and canceller labels for first chain only

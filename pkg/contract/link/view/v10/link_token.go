@@ -11,6 +11,7 @@ import (
 
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 
+	"github.com/smartcontractkit/cld-changesets/internal/semvers"
 	"github.com/smartcontractkit/cld-changesets/pkg/cldfutil"
 )
 
@@ -48,7 +49,7 @@ func GenerateLinkTokenView(lt *link_token.LinkToken) (LinkTokenView, error) {
 		ContractMetaData: cldfutil.ContractMetaData{
 			TypeAndVersion: cldf.TypeAndVersion{
 				Type:    linkcontracts.LinkToken,
-				Version: cldfutil.Version1_0_0,
+				Version: semvers.V1_0_0,
 			}.String(),
 			Address: lt.Address(),
 			Owner:   owner,

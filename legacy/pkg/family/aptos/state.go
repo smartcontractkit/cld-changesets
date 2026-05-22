@@ -7,7 +7,7 @@ import (
 
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 
-	"github.com/smartcontractkit/cld-changesets/pkg/cldfutil"
+	"github.com/smartcontractkit/cld-changesets/internal/semvers"
 )
 
 const (
@@ -28,12 +28,12 @@ func LoadMCMSAddresses(env cldf.Environment, chainSelectors []uint64) (map[uint6
 		for address, tv := range addresses {
 			if tv.Equal(cldf.TypeAndVersion{
 				Type:    AptosMCMSType,
-				Version: cldfutil.Version1_6_0,
+				Version: semvers.V1_6_0,
 			}) {
 				if err := mcmsAddress.ParseStringRelaxed(address); err != nil {
 					return nil, fmt.Errorf(
 						"failed to parse Aptos MCMS address for chain %d (type=%s, version=%s, address=%s): %w",
-						selector, AptosMCMSType, cldfutil.Version1_6_0.String(), address, err,
+						selector, AptosMCMSType, semvers.V1_6_0.String(), address, err,
 					)
 				}
 

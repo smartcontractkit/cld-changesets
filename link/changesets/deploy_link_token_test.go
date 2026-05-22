@@ -16,8 +16,8 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/environment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/runtime"
 
+	"github.com/smartcontractkit/cld-changesets/internal/semvers"
 	evmstate "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/evm"
-	"github.com/smartcontractkit/cld-changesets/pkg/cldfutil"
 )
 
 func TestDeployLinkToken(t *testing.T) {
@@ -54,7 +54,7 @@ func TestDeployLinkToken(t *testing.T) {
 	require.Len(t, refs, len(selectors))
 	for _, ref := range refs {
 		require.Equal(t, datastore.ContractType(linkcontracts.LinkToken), ref.Type)
-		require.True(t, cldfutil.Version1_0_0.Equal(ref.Version))
+		require.True(t, semvers.V1_0_0.Equal(ref.Version))
 	}
 }
 
@@ -205,7 +205,7 @@ func TestDeployStaticLinkToken(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, refs, 1)
 	require.Equal(t, datastore.ContractType(linkcontracts.StaticLinkToken), refs[0].Type)
-	require.True(t, cldfutil.Version1_0_0.Equal(refs[0].Version))
+	require.True(t, semvers.V1_0_0.Equal(refs[0].Version))
 }
 
 func addressBookWith(t *testing.T, selector uint64, address string, tv cldf.TypeAndVersion) cldf.AddressBook {

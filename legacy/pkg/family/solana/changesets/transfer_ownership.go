@@ -15,8 +15,8 @@ import (
 	mcmssolanasdk "github.com/smartcontractkit/mcms/sdk/solana"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 
+	"github.com/smartcontractkit/cld-changesets/internal/semvers"
 	solstate "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana"
-	"github.com/smartcontractkit/cld-changesets/pkg/cldfutil"
 	pdasol "github.com/smartcontractkit/cld-changesets/pkg/family/solana"
 
 	accessControllerBindings "github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings/v0_1_1/access_controller"
@@ -139,7 +139,7 @@ func (t *TransferToTimelockSolana) Apply(
 			execOut, execErr := operations.ExecuteOperation(env.OperationsBundle,
 				operations.NewOperation(
 					"transfer-ownership",
-					&cldfutil.Version1_0_0,
+					&semvers.V1_0_0,
 					"transfers ownership of contracts to mcms",
 					TransferToTimelockSolanaOp,
 				),
