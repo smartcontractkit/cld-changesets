@@ -9,7 +9,7 @@ import (
 
 	zkbindings "github.com/smartcontractkit/mcms/sdk/zksync/bindings"
 
-	"github.com/smartcontractkit/cld-changesets/pkg/cldfutil"
+	"github.com/smartcontractkit/cld-changesets/internal/semvers"
 )
 
 type OpEVMDeployCallProxyInput struct {
@@ -23,7 +23,7 @@ var OpEVMDeployCallProxy = NewEVMDeployOperation(
 	mcmscontracts.CallProxy,
 	bindings.CallProxyMetaData,
 	&ContractOpts{
-		Version:          &cldfutil.Version1_0_0,
+		Version:          &semvers.V1_0_0,
 		EVMBytecode:      common.FromHex(bindings.CallProxyBin),
 		ZkSyncVMBytecode: zkbindings.CallProxyZkBytecode,
 	},

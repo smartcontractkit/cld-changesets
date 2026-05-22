@@ -10,8 +10,8 @@ import (
 	"github.com/smartcontractkit/mcms/sdk"
 	mcmsTypes "github.com/smartcontractkit/mcms/types"
 
+	"github.com/smartcontractkit/cld-changesets/internal/semvers"
 	gethwrappers_zksync "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/evm/changesets/zksync"
-	"github.com/smartcontractkit/cld-changesets/pkg/cldfutil"
 )
 
 // TODO: Remove this function once the tests are implemented for the new sequence.
@@ -50,7 +50,7 @@ func DeployMCMSWithConfigEVM(
 				)
 			}
 
-			tv := cldf.NewTypeAndVersion(contractType, cldfutil.Version1_0_0)
+			tv := cldf.NewTypeAndVersion(contractType, semvers.V1_0_0)
 			for _, option := range options {
 				option(&tv)
 			}

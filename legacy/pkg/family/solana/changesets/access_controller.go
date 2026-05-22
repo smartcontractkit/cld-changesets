@@ -7,19 +7,17 @@ import (
 	"github.com/gagliardetto/solana-go"
 	"github.com/gagliardetto/solana-go/programs/system"
 	"github.com/gagliardetto/solana-go/rpc"
-	mcmscontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/mcms"
-
-	cldf_solana "github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
 
 	accessControllerBindings "github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings/v0_1_1/access_controller"
 	timelockBindings "github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings/v0_1_1/timelock"
 	solanaUtils "github.com/smartcontractkit/chainlink-ccip/chains/solana/utils/common"
-
+	cldf_solana "github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	mcmscontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/mcms"
 
+	"github.com/smartcontractkit/cld-changesets/internal/semvers"
 	legacy2 "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana"
 	"github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana/solutils"
-	"github.com/smartcontractkit/cld-changesets/pkg/cldfutil"
 	familysolana "github.com/smartcontractkit/cld-changesets/pkg/family/solana"
 )
 
@@ -27,7 +25,7 @@ func deployAccessControllerProgram(
 	e cldf.Environment, chainState *legacy2.MCMSWithTimelockState,
 	chain cldf_solana.Chain, addressBook cldf.AddressBook,
 ) error {
-	typeAndVersion := cldf.NewTypeAndVersion(mcmscontracts.AccessControllerProgram, cldfutil.Version1_0_0)
+	typeAndVersion := cldf.NewTypeAndVersion(mcmscontracts.AccessControllerProgram, semvers.V1_0_0)
 
 	programID, _, err := chainState.GetStateFromType(mcmscontracts.AccessControllerProgram)
 	if err != nil {
@@ -75,7 +73,7 @@ func initAccessController(
 	if chainState.AccessControllerProgram.IsZero() {
 		return errors.New("access controller program is not deployed")
 	}
-	typeAndVersion := cldf.NewTypeAndVersion(contractType, cldfutil.Version1_0_0)
+	typeAndVersion := cldf.NewTypeAndVersion(contractType, semvers.V1_0_0)
 	_, accessControllerAccountSeed, err := chainState.GetStateFromType(contractType)
 	if err != nil {
 		return fmt.Errorf("failed to get account controller state: %w", err)
