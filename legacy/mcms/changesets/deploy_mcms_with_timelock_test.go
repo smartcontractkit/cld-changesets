@@ -37,31 +37,35 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/environment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/onchain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/runtime"
-
-	cldfchangesetutil "github.com/smartcontractkit/cld-changesets/pkg/cldfutil/changeset"
 )
 
 func TestGrantRoleInTimeLock(t *testing.T) {
 	t.Parallel()
 
+	// Initialize a runtime with a single EVM chain with one additional account
+	//
+	// The additional account will be used later on to replace the deployer key
 	selector := chain_selectors.TEST_90000001.Selector
-	env, err := environment.New(t.Context(),
+	rt, err := runtime.New(t.Context(), runtime.WithEnvOpts(
 		environment.WithEVMSimulatedWithConfig(t, []uint64{selector}, onchain.EVMSimLoaderConfig{
 			NumAdditionalAccounts: 1,
+		}),
+		environment.WithLogger(logger.Test(t)),
+	))
+	require.NoError(t, err)
+
+	// Deploy MCMS with timelock contracts
+	err = rt.Exec(
+		runtime.ChangesetTask(cldf.CreateLegacyChangeSet(mcmschangesets.DeployMCMSWithTimelockV2), map[uint64]cldfproposalutils.MCMSWithTimelockConfig{
+			selector: cldftesthelpers.SingleGroupTimelockConfig(t),
 		}),
 	)
 	require.NoError(t, err)
 
-	// deploy the MCMS with timelock contracts
-	configuredChangeset := cldfchangesetutil.Configure(
-		cldf.CreateLegacyChangeSet(mcmschangesets.DeployMCMSWithTimelockV2),
-		map[uint64]cldfproposalutils.MCMSWithTimelockConfig{
-			selector: cldftesthelpers.SingleGroupTimelockConfig(t),
-		},
-	)
-	updatedEnv, err := cldfchangesetutil.Apply(t, *env, configuredChangeset)
-	require.NoError(t, err)
-	mcmsState, err := evmstate.MaybeLoadMCMSWithTimelockState(updatedEnv, []uint64{selector})
+	// Get the environment from the runtime because we need to make changes to it
+	env := rt.Environment()
+
+	mcmsState, err := evmstate.MaybeLoadMCMSWithTimelockState(env, []uint64{selector})
 	require.NoError(t, err)
 
 	// change the environment to remove proposer from the timelock, so that we can deploy new proposer
@@ -70,12 +74,12 @@ func TestGrantRoleInTimeLock(t *testing.T) {
 	ab := cldf.NewMemoryAddressBook()
 	require.NoError(t, ab.Save(selector, existingProposer.Address().String(),
 		cldf.NewTypeAndVersion(mcmscontracts.ProposerManyChainMultisig, semvers.V1_0_0)))
-	require.NoError(t, updatedEnv.ExistingAddresses.Remove(ab)) //nolint:staticcheck // test removes legacy AddressBook entry while verifying DataStore migration behavior
+	require.NoError(t, env.ExistingAddresses.Remove(ab)) //nolint:staticcheck // test removes legacy AddressBook entry while verifying DataStore migration behavior
 
 	// remove from DataStore since deployment now uses DataStore
 	// Since DataStore is immutable, create a new one without the proposer
 	newDataStore := datastore.NewMemoryDataStore()
-	refs, err := updatedEnv.DataStore.Addresses().Fetch()
+	refs, err := env.DataStore.Addresses().Fetch()
 	require.NoError(t, err)
 
 	// Copy all address refs except the proposer we want to remove
@@ -90,36 +94,46 @@ func TestGrantRoleInTimeLock(t *testing.T) {
 	}
 
 	// Replace the DataStore in the environment
-	updatedEnv.DataStore = newDataStore.Seal()
+	env.DataStore = newDataStore.Seal()
 
 	// change the deployer key, so that we can deploy proposer with a new key
 	// the new deployer key will not be admin of the timelock
 	// we can test granting roles through proposal
-	evmChains := updatedEnv.BlockChains.EVMChains()
+	evmChains := env.BlockChains.EVMChains()
 	chain := evmChains[selector]
-	chain.DeployerKey = evmChains[selector].Users[0]
+	chain.DeployerKey = evmChains[selector].Users[0] // Changes it to the additional account
+	evmChains[selector] = chain
+
+	// Initialize a runtime again with the new environment so we can execute the changeset against
+	// the new environment
+	rt = runtime.NewFromEnvironment(env)
 
 	// now deploy MCMS again so that only the proposer is new
-	updatedEnv, err = cldfchangesetutil.Apply(t, updatedEnv, configuredChangeset)
-	require.NoError(t, err)
-	mcmsState, err = evmstate.MaybeLoadMCMSWithTimelockState(updatedEnv, []uint64{selector})
+	err = rt.Exec(
+		runtime.ChangesetTask(cldf.CreateLegacyChangeSet(mcmschangesets.DeployMCMSWithTimelockV2), map[uint64]cldfproposalutils.MCMSWithTimelockConfig{
+			selector: cldftesthelpers.SingleGroupTimelockConfig(t),
+		}),
+	)
 	require.NoError(t, err)
 
+	mcmsState, err = evmstate.MaybeLoadMCMSWithTimelockState(rt.Environment(), []uint64{selector})
+	require.NoError(t, err)
 	require.NotEqual(t, existingProposer.Address(), mcmsState[selector].ProposerMcm.Address())
-	updatedEnv, err = cldfchangesetutil.Apply(t, updatedEnv, cldfchangesetutil.Configure(
-		mcmschangesets.GrantRoleInTimeLock,
-		mcmschangesets.GrantRoleInput{
+
+	err = rt.Exec(
+		runtime.ChangesetTask(mcmschangesets.GrantRoleInTimeLock, mcmschangesets.GrantRoleInput{
 			ExistingProposerByChain: map[uint64]common.Address{
 				selector: existingProposer.Address(),
 			},
 			MCMS: &cldfproposalutils.TimelockConfig{MinDelay: 0},
-		},
-	))
-	require.NoError(t, err)
-	mcmsState, err = evmstate.MaybeLoadMCMSWithTimelockState(updatedEnv, []uint64{selector})
+		}),
+	)
 	require.NoError(t, err)
 
-	evmTimelockInspector := mcmsevmsdk.NewTimelockInspector(updatedEnv.BlockChains.EVMChains()[selector].Client)
+	mcmsState, err = evmstate.MaybeLoadMCMSWithTimelockState(rt.Environment(), []uint64{selector})
+	require.NoError(t, err)
+
+	evmTimelockInspector := mcmsevmsdk.NewTimelockInspector(rt.Environment().BlockChains.EVMChains()[selector].Client)
 
 	proposers, err := evmTimelockInspector.GetProposers(t.Context(), mcmsState[selector].Timelock.Address().Hex())
 	require.NoError(t, err)
