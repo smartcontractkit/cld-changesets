@@ -32,8 +32,6 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/environment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations/optest"
-
-	cldfchangesetutil "github.com/smartcontractkit/cld-changesets/pkg/cldfutil/changeset"
 )
 
 func TestCloneTransactOptsWithGas(t *testing.T) {
@@ -201,19 +199,18 @@ func TestAddEVMCallSequenceToCSOutput_ProposalCombination(t *testing.T) {
 
 	// Deploy MCMS+Timelock to both chains. Real deployments are required because
 	// AddEVMCallSequenceToCSOutput → BuildProposalFromBatchesV2 reads OpCount from
-	env, err := cldfchangesetutil.Apply(t, rt.Environment(), cldfchangesetutil.Configure(
-		cldf.CreateLegacyChangeSet(mcmschangesets.DeployMCMSWithTimelockV2),
-		map[uint64]cldfproposalutils.MCMSWithTimelockConfig{
+	err = rt.Exec(
+		runtime.ChangesetTask(cldf.CreateLegacyChangeSet(mcmschangesets.DeployMCMSWithTimelockV2), map[uint64]cldfproposalutils.MCMSWithTimelockConfig{
 			selector1: cldftesthelpers.SingleGroupTimelockConfig(t),
 			selector2: cldftesthelpers.SingleGroupTimelockConfig(t),
-		},
-	))
+		}),
+	)
 	require.NoError(t, err)
 
 	// Build the MCMS state map directly from the EVM state package — this is the
 	// product-agnostic, MCMS-only equivalent of CCIP's stateview.LoadOnchainState
 	// + chainState.EVMMCMSStateByChain().
-	mcmsStateByChain := loadEVMMCMSStateByChain(t, env, selectors)
+	mcmsStateByChain := loadEVMMCMSStateByChain(t, rt.Environment(), selectors)
 
 	// Two pre-existing proposals (one per chain) to exercise the aggregation path.
 	existingProposal1 := mcmslib.TimelockProposal{
@@ -282,7 +279,7 @@ func TestAddEVMCallSequenceToCSOutput_ProposalCombination(t *testing.T) {
 	}
 
 	result, err := opsevm.AddEVMCallSequenceToCSOutput(
-		env,
+		rt.Environment(),
 		csOutput,
 		seqReport,
 		nil,
