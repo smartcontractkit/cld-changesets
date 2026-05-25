@@ -17,7 +17,6 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/runtime"
 
 	"github.com/smartcontractkit/cld-changesets/internal/semvers"
-	evmstate "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/evm"
 )
 
 func TestDeployLinkToken(t *testing.T) {
@@ -38,15 +37,14 @@ func TestDeployLinkToken(t *testing.T) {
 	require.NoError(t, err)
 
 	for _, selector := range selectors {
-		chain := rt.Environment().BlockChains.EVMChains()[selector]
-		addrs, addrsErr := rt.State().AddressBook.AddressesForChain(selector)
-		require.NoError(t, addrsErr)
+		addrs, addrErr := rt.State().AddressBook.AddressesForChain(selector)
+		require.NoError(t, addrErr)
 
-		state, stateErr := evmstate.MaybeLoadLinkTokenChainState(chain, addrs)
-		require.NoError(t, stateErr)
-
-		_, viewErr := state.GenerateLinkView()
-		require.NoError(t, viewErr)
+		require.Len(t, addrs, 1)
+		for _, addr := range addrs {
+			require.Equal(t, linkcontracts.LinkToken, addr.Type)
+			require.True(t, semvers.V1_0_0.Equal(&addr.Version))
+		}
 	}
 
 	refs, err := rt.State().DataStore.Addresses().Fetch()
@@ -185,8 +183,6 @@ func TestDeployStaticLinkToken(t *testing.T) {
 	))
 	require.NoError(t, err)
 
-	chain := rt.Environment().BlockChains.EVMChains()[selector]
-
 	err = rt.Exec(
 		runtime.ChangesetTask(cldf.CreateLegacyChangeSet(DeployStaticLinkToken), []uint64{selector}),
 	)
@@ -195,11 +191,11 @@ func TestDeployStaticLinkToken(t *testing.T) {
 	addrs, err := rt.State().AddressBook.AddressesForChain(selector)
 	require.NoError(t, err)
 
-	state, err := evmstate.MaybeLoadStaticLinkTokenState(chain, addrs)
-	require.NoError(t, err)
-
-	_, err = state.GenerateStaticLinkView()
-	require.NoError(t, err)
+	require.Len(t, addrs, 1)
+	for _, tv := range addrs {
+		require.Equal(t, linkcontracts.StaticLinkToken, tv.Type)
+		require.True(t, semvers.V1_0_0.Equal(&tv.Version))
+	}
 
 	refs, err := rt.State().DataStore.Addresses().Fetch()
 	require.NoError(t, err)
@@ -245,8 +241,6 @@ func TestDeployLinkTokenZk(t *testing.T) {
 	))
 	require.NoError(t, err)
 
-	chain := rt.Environment().BlockChains.EVMChains()[selector]
-
 	err = rt.Exec(
 		runtime.ChangesetTask(cldf.CreateLegacyChangeSet(DeployLinkToken), []uint64{selector}),
 	)
@@ -254,10 +248,16 @@ func TestDeployLinkTokenZk(t *testing.T) {
 
 	addrs, err := rt.State().AddressBook.AddressesForChain(selector)
 	require.NoError(t, err)
+	require.Len(t, addrs, 1)
 
-	state, err := evmstate.MaybeLoadLinkTokenChainState(chain, addrs)
-	require.NoError(t, err)
+	for _, tv := range addrs {
+		require.Equal(t, datastore.ContractType(linkcontracts.LinkToken), tv.Type)
+		require.True(t, semvers.V1_0_0.Equal(&tv.Version))
+	}
 
-	_, err = state.GenerateLinkView()
+	refs, err := rt.State().DataStore.Addresses().Fetch()
 	require.NoError(t, err)
+	require.Len(t, refs, 1)
+	require.Equal(t, datastore.ContractType(linkcontracts.LinkToken), refs[0].Type)
+	require.True(t, semvers.V1_0_0.Equal(refs[0].Version))
 }

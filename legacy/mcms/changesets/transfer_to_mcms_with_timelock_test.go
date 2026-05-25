@@ -2,14 +2,16 @@ package changesets
 
 import (
 	"crypto/ecdsa"
+	"fmt"
 	"math/big"
 	"testing"
 
-	"github.com/Masterminds/semver/v3"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	linkcontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/link"
+	"github.com/smartcontractkit/chainlink-evm/gethwrappers/shared/generated/initial/link_token"
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/cld-changesets/internal/semvers"
@@ -29,7 +31,9 @@ import (
 	cldftesthelpers "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils/testhelpers"
 )
 
-func TestTransferToMCMSWithTimelockV2(t *testing.T) { //nolint:paralleltest
+func TestTransferToMCMSWithTimelockV2(t *testing.T) {
+	t.Parallel()
+
 	selector := chain_selectors.TEST_90000001.Selector
 	rt, err := runtime.New(t.Context(), runtime.WithEnvOpts(
 		environment.WithEVMSimulated(t, []uint64{selector}),
@@ -53,13 +57,13 @@ func TestTransferToMCMSWithTimelockV2(t *testing.T) { //nolint:paralleltest
 	state, err := evmstate.MaybeLoadMCMSWithTimelockChainState(chain, addrs)
 	require.NoError(t, err)
 
-	link, err := evmstate.MaybeLoadLinkTokenChainState(chain, addrs)
+	linkToken, err := loadLinkTokenFromAddressBook(chain, addrs)
 	require.NoError(t, err)
 
 	err = rt.Exec(
 		runtime.ChangesetTask(cldf.CreateLegacyChangeSet(TransferToMCMSWithTimelockV2), TransferToMCMSWithTimelockConfig{
 			ContractsByChain: map[uint64][]common.Address{
-				selector: {link.LinkToken.Address()},
+				selector: {linkToken.Address()},
 			},
 			MCMSConfig: cldfproposalutils.TimelockConfig{
 				MinDelay: 0,
@@ -72,28 +76,30 @@ func TestTransferToMCMSWithTimelockV2(t *testing.T) { //nolint:paralleltest
 	require.True(t, rt.State().Proposals[0].IsExecuted)
 
 	// We expect now that the link token is owned by the MCMS timelock.
-	link, err = evmstate.MaybeLoadLinkTokenChainState(chain, addrs)
+	linkToken, err = loadLinkTokenFromAddressBook(chain, addrs)
 	require.NoError(t, err)
 
-	o, err := link.LinkToken.Owner(nil)
+	o, err := linkToken.Owner(nil)
 	require.NoError(t, err)
 	require.Equal(t, state.Timelock.Address(), o)
 
 	// Try a rollback to the deployer.
 	err = rt.Exec(
 		runtime.ChangesetTask(cldf.CreateLegacyChangeSet(TransferToDeployer), TransferToDeployerConfig{
-			ContractAddress: link.LinkToken.Address(),
+			ContractAddress: linkToken.Address(),
 			ChainSel:        selector,
 		}),
 	)
 	require.NoError(t, err)
 
-	o, err = link.LinkToken.Owner(nil)
+	o, err = linkToken.Owner(nil)
 	require.NoError(t, err)
 	require.Equal(t, chain.DeployerKey.From, o)
 }
 
-func TestTransferToMCMSWithTimelockV2DataStore(t *testing.T) { //nolint:paralleltest
+func TestTransferToMCMSWithTimelockV2DataStore(t *testing.T) {
+	t.Parallel()
+
 	selector := chain_selectors.TEST_90000001.Selector
 	rt, err := runtime.New(t.Context(), runtime.WithEnvOpts(
 		environment.WithEVMSimulated(t, []uint64{selector}),
@@ -117,42 +123,23 @@ func TestTransferToMCMSWithTimelockV2DataStore(t *testing.T) { //nolint:parallel
 	state, err := evmstate.MaybeLoadMCMSWithTimelockChainState(chain, addrs)
 	require.NoError(t, err)
 
-	link, err := evmstate.MaybeLoadLinkTokenChainState(chain, addrs)
+	linkToken, err := loadLinkTokenFromDataStore(chain, rt.State().DataStore)
 	require.NoError(t, err)
 
 	// Remove LinkToken from AddressBook to simulate datastore only having the contract address
 	// TODO: migrate DeployLinkToken to use datastore only
 	linkAb := cldf.NewMemoryAddressBookFromMap(map[uint64]map[string]cldf.TypeAndVersion{
 		selector: {
-			link.LinkToken.Address().String(): cldf.NewTypeAndVersion(linkcontracts.LinkToken, semvers.V1_0_0),
+			linkToken.Address().String(): cldf.NewTypeAndVersion(linkcontracts.LinkToken, semvers.V1_0_0),
 		},
 	})
 	err = rt.State().AddressBook.Remove(linkAb)
 	require.NoError(t, err)
 
-	// Add link token address to the datastore only
-	ds := datastore.NewMemoryDataStore()
-	typeAndVersion := cldf.NewTypeAndVersion(linkcontracts.LinkToken, semvers.V1_0_0)
-
-	err = ds.Addresses().Add(datastore.AddressRef{
-		Address:       link.LinkToken.Address().String(),
-		Type:          datastore.ContractType(typeAndVersion.Type.String()),
-		ChainSelector: selector,
-		Version:       semver.MustParse(typeAndVersion.Version.String()),
-	})
-	require.NoError(t, err)
-	err = ds.Merge(rt.State().DataStore)
-	require.NoError(t, err)
-	rt.State().DataStore = ds.Seal()
-	newEnv := rt.Environment()
-	newEnv.DataStore = ds.Seal()
-	// Re create runtime with new environment
-	rt = runtime.NewFromEnvironment(newEnv)
-
 	err = rt.Exec(
 		runtime.ChangesetTask(cldf.CreateLegacyChangeSet(TransferToMCMSWithTimelockV2), TransferToMCMSWithTimelockConfig{
 			ContractsByChain: map[uint64][]common.Address{
-				selector: {link.LinkToken.Address()},
+				selector: {linkToken.Address()},
 			},
 			MCMSConfig: cldfproposalutils.TimelockConfig{
 				MinDelay: 0,
@@ -165,25 +152,20 @@ func TestTransferToMCMSWithTimelockV2DataStore(t *testing.T) { //nolint:parallel
 	require.True(t, rt.State().Proposals[0].IsExecuted)
 
 	// We expect now that the link token is owned by the MCMS timelock.
-	addrsDatastore, err := evmstate.LoadAddressesFromDataStore(rt.State().DataStore, selector, "") //nolint:staticcheck // will be refactored once usages are removed
-	require.NoError(t, err)
-	linkState, err := evmstate.MaybeLoadLinkTokenChainState(chain, addrsDatastore)
-	require.NoError(t, err)
-
-	o, err := linkState.LinkToken.Owner(nil)
+	o, err := linkToken.Owner(nil)
 	require.NoError(t, err)
 	require.Equal(t, state.Timelock.Address(), o)
 
 	// Try a rollback to the deployer.
 	err = rt.Exec(
 		runtime.ChangesetTask(cldf.CreateLegacyChangeSet(TransferToDeployer), TransferToDeployerConfig{
-			ContractAddress: link.LinkToken.Address(),
+			ContractAddress: linkToken.Address(),
 			ChainSel:        selector,
 		}),
 	)
 	require.NoError(t, err)
 
-	o, err = linkState.LinkToken.Owner(nil)
+	o, err = linkToken.Owner(nil)
 	require.NoError(t, err)
 	require.Equal(t, chain.DeployerKey.From, o)
 }
@@ -309,4 +291,46 @@ func TestRenounceTimelockDeployer(t *testing.T) { //nolint:paralleltest
 
 	// Check that the admin is the timelock
 	require.Equal(t, tl.Address(), admin)
+}
+
+func loadLinkTokenFromAddressBook(chain cldf_evm.Chain, addresses map[string]cldf.TypeAndVersion) (*link_token.LinkToken, error) {
+	linkToken := cldf.NewTypeAndVersion(linkcontracts.LinkToken, semvers.V1_0_0)
+
+	// Convert map keys to a slice
+	wantTypes := []cldf.TypeAndVersion{linkToken}
+
+	// Ensure we either have the bundle or not.
+	_, err := cldf.EnsureDeduped(addresses, wantTypes)
+	if err != nil {
+		return nil, fmt.Errorf("unable to check link token on chain %s error: %w", chain.Name(), err)
+	}
+
+	for address, tvStr := range addresses {
+		if tvStr.Type == linkToken.Type && tvStr.Version.String() == linkToken.Version.String() {
+			return link_token.NewLinkToken(common.HexToAddress(address), chain.Client)
+		}
+	}
+
+	return nil, fmt.Errorf("link token not found on chain %s", chain.Name())
+}
+
+func loadLinkTokenFromDataStore(chain cldf_evm.Chain, dataStore datastore.DataStore) (*link_token.LinkToken, error) {
+	linkToken := cldf.NewTypeAndVersion(linkcontracts.LinkToken, semvers.V1_0_0)
+
+	refs, err := dataStore.Addresses().Fetch()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, ref := range refs {
+		if ref.ChainSelector != chain.Selector {
+			continue
+		}
+
+		if ref.Type == datastore.ContractType(linkToken.Type.String()) && ref.Version.String() == linkToken.Version.String() {
+			return link_token.NewLinkToken(common.HexToAddress(ref.Address), chain.Client)
+		}
+	}
+
+	return nil, fmt.Errorf("link token not found on chain %s", chain.Name())
 }
