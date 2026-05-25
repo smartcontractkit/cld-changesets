@@ -15,7 +15,6 @@ import (
 	"github.com/smartcontractkit/mcms/sdk/evm"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 
-	"github.com/smartcontractkit/cld-changesets/legacy/pkg/addresses"
 	evmstate "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/evm"
 	seqs "github.com/smartcontractkit/cld-changesets/pkg/family/evm/sequences"
 
@@ -75,12 +74,12 @@ func (t TransferToMCMSWithTimelockConfig) Validate(e cldf.Environment) error {
 		for _, contract := range contracts {
 			// Cannot transfer an unknown address.
 			// Note this also assures non-zero addresses.
-			if exists, err := addresses.SearchAddress(e, chainSelector, contract.String()); err != nil || !exists {
+			if exists, err := searchAddress(e, chainSelector, contract.String()); err != nil || !exists {
 				if err != nil {
-					return fmt.Errorf("failed to check address book: %w", err)
+					return fmt.Errorf("failed to search address: %w", err)
 				}
 
-				return fmt.Errorf("contract %s not found in address book or datstore", contract)
+				return fmt.Errorf("contract %s not found in address book or datastore", contract)
 			}
 
 			owner, _, err := LoadOwnableContract(contract, evmChains[chainSelector].Client)
@@ -305,4 +304,24 @@ func RenounceTimelockDeployer(e cldf.Environment, cfg RenounceTimelockDeployerCo
 	e.Logger.Infof("revoked deployer key from owning contract %s", tl.Address().Hex())
 
 	return cldf.ChangesetOutput{}, nil
+}
+
+// searchAddress searches for a contract address in both AddressBook and DataStore.
+//
+// Returns true if the address is found in either source.
+func searchAddress(e cldf.Environment, chainSelector uint64, address string) (bool, error) {
+	// Use the merged address loading from the EVM state function
+	addressesChain, err := evmstate.AddressesForChain(e, chainSelector, "")
+	if err != nil {
+		return false, fmt.Errorf("failed to load addresses: %w", err)
+	}
+
+	// Search through merged addresses for the contract type
+	for addr := range addressesChain {
+		if addr == address {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
