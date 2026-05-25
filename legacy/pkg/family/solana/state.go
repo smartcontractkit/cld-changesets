@@ -1,7 +1,6 @@
 package solana
 
 import (
-	"context"
 	"errors"
 	"fmt"
 
@@ -14,7 +13,6 @@ import (
 	mcmssolanasdk "github.com/smartcontractkit/mcms/sdk/solana"
 
 	"github.com/smartcontractkit/cld-changesets/internal/semvers"
-	"github.com/smartcontractkit/cld-changesets/pkg/contract/mcms/view/v1_0"
 )
 
 type PDASeed [32]byte
@@ -62,20 +60,6 @@ func (s *MCMSWithTimelockPrograms) Validate() error {
 	}
 
 	return nil
-}
-
-func (s *MCMSWithTimelockPrograms) GenerateView(
-	ctx context.Context, chain cldf_solana.Chain,
-) (v1_0.MCMSWithTimelockViewSolana, error) {
-	if err := s.Validate(); err != nil {
-		return v1_0.MCMSWithTimelockViewSolana{}, fmt.Errorf("unable to validate state: %w", err)
-	}
-
-	inspector := mcmssolanasdk.NewInspector(chain.Client)
-	timelockInspector := mcmssolanasdk.NewTimelockInspector(chain.Client)
-
-	return v1_0.GenerateMCMSWithTimelockViewSolana(ctx, inspector, timelockInspector, s.McmProgram,
-		s.ProposerMcmSeed, s.CancellerMcmSeed, s.BypasserMcmSeed, s.TimelockProgram, s.TimelockSeed)
 }
 
 func (s *MCMSWithTimelockPrograms) GetStateFromType(programType cldf.ContractType) (solana.PublicKey, PDASeed, error) {
