@@ -15,6 +15,8 @@ import (
 	mcmscontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/mcms"
 	"github.com/smartcontractkit/chainlink-evm/gethwrappers/shared/generated/initial/link_token"
 
+	"github.com/smartcontractkit/cld-changesets/internal/semvers"
+
 	"github.com/smartcontractkit/mcms"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 )
@@ -51,26 +53,29 @@ func (TransferLinkTokenChangeset) VerifyPreconditions(e cldf.Environment, input 
 		return errors.New("datastore is required")
 	}
 
-	if len(e.DataStore.Addresses().Filter(
-		datastore.AddressRefByChainSelector(input.ChainSelector),
-		datastore.AddressRefByType(datastore.ContractType(linkcontracts.LinkToken)),
-		datastore.AddressRefByQualifier(input.Qualifier),
-	)) == 0 {
-		return fmt.Errorf("no LinkToken address found for chain selector %d", input.ChainSelector)
+	if _, err := e.DataStore.Addresses().Get(datastore.NewAddressRefKey(
+		input.ChainSelector,
+		datastore.ContractType(linkcontracts.LinkToken),
+		&semvers.V1_0_0,
+		input.Qualifier,
+	)); err != nil {
+		return fmt.Errorf("no LinkToken address found for chain selector %d: %w", input.ChainSelector, err)
 	}
-	if len(e.DataStore.Addresses().Filter(
-		datastore.AddressRefByChainSelector(input.ChainSelector),
-		datastore.AddressRefByType(datastore.ContractType(mcmscontracts.ProposerManyChainMultisig)),
-		datastore.AddressRefByQualifier(input.Qualifier),
-	)) == 0 {
-		return fmt.Errorf("no ProposerManyChainMultisig address found for chain selector %d", input.ChainSelector)
+	if _, err := e.DataStore.Addresses().Get(datastore.NewAddressRefKey(
+		input.ChainSelector,
+		datastore.ContractType(mcmscontracts.ProposerManyChainMultisig),
+		&semvers.V1_0_0,
+		input.Qualifier,
+	)); err != nil {
+		return fmt.Errorf("no ProposerManyChainMultisig address found for chain selector %d: %w", input.ChainSelector, err)
 	}
-	if len(e.DataStore.Addresses().Filter(
-		datastore.AddressRefByChainSelector(input.ChainSelector),
-		datastore.AddressRefByType(datastore.ContractType(mcmscontracts.RBACTimelock)),
-		datastore.AddressRefByQualifier(input.Qualifier),
-	)) == 0 {
-		return fmt.Errorf("no RBACTimelock address found for chain selector %d", input.ChainSelector)
+	if _, err := e.DataStore.Addresses().Get(datastore.NewAddressRefKey(
+		input.ChainSelector,
+		datastore.ContractType(mcmscontracts.RBACTimelock),
+		&semvers.V1_0_0,
+		input.Qualifier,
+	)); err != nil {
+		return fmt.Errorf("no RBACTimelock address found for chain selector %d: %w", input.ChainSelector, err)
 	}
 
 	return nil
@@ -82,23 +87,35 @@ func (TransferLinkTokenChangeset) Apply(e cldf.Environment, input TransferLinkTo
 		return cldf.ChangesetOutput{}, fmt.Errorf("chain not found in environment: %d", input.ChainSelector)
 	}
 
-	linkRefs := e.DataStore.Addresses().Filter(
-		datastore.AddressRefByChainSelector(input.ChainSelector),
-		datastore.AddressRefByType(datastore.ContractType(linkcontracts.LinkToken)),
-		datastore.AddressRefByQualifier(input.Qualifier),
-	)
-	proposerRefs := e.DataStore.Addresses().Filter(
-		datastore.AddressRefByChainSelector(input.ChainSelector),
-		datastore.AddressRefByType(datastore.ContractType(mcmscontracts.ProposerManyChainMultisig)),
-		datastore.AddressRefByQualifier(input.Qualifier),
-	)
-	timelockRefs := e.DataStore.Addresses().Filter(
-		datastore.AddressRefByChainSelector(input.ChainSelector),
-		datastore.AddressRefByType(datastore.ContractType(mcmscontracts.RBACTimelock)),
-		datastore.AddressRefByQualifier(input.Qualifier),
-	)
+	linkRef, err := e.DataStore.Addresses().Get(datastore.NewAddressRefKey(
+		input.ChainSelector,
+		datastore.ContractType(linkcontracts.LinkToken),
+		&semvers.V1_0_0,
+		input.Qualifier,
+	))
+	if err != nil {
+		return cldf.ChangesetOutput{}, fmt.Errorf("no LinkToken address found for chain selector %d: %w", input.ChainSelector, err)
+	}
+	proposerRef, err := e.DataStore.Addresses().Get(datastore.NewAddressRefKey(
+		input.ChainSelector,
+		datastore.ContractType(mcmscontracts.ProposerManyChainMultisig),
+		&semvers.V1_0_0,
+		input.Qualifier,
+	))
+	if err != nil {
+		return cldf.ChangesetOutput{}, fmt.Errorf("no ProposerManyChainMultisig address found for chain selector %d: %w", input.ChainSelector, err)
+	}
+	timelockRef, err := e.DataStore.Addresses().Get(datastore.NewAddressRefKey(
+		input.ChainSelector,
+		datastore.ContractType(mcmscontracts.RBACTimelock),
+		&semvers.V1_0_0,
+		input.Qualifier,
+	))
+	if err != nil {
+		return cldf.ChangesetOutput{}, fmt.Errorf("no RBACTimelock address found for chain selector %d: %w", input.ChainSelector, err)
+	}
 
-	token, err := link_token.NewLinkToken(common.HexToAddress(linkRefs[0].Address), chain.Client)
+	token, err := link_token.NewLinkToken(common.HexToAddress(linkRef.Address), chain.Client)
 	if err != nil {
 		return cldf.ChangesetOutput{}, fmt.Errorf("failed to instantiate link token contract: %w", err)
 	}
@@ -121,14 +138,14 @@ func (TransferLinkTokenChangeset) Apply(e cldf.Environment, input TransferLinkTo
 	proposal, err := mcms.NewTimelockProposalBuilder().
 		SetAction(mcmstypes.TimelockActionSchedule).
 		SetTimelockAddresses(map[mcmstypes.ChainSelector]string{
-			mcmstypes.ChainSelector(input.ChainSelector): timelockRefs[0].Address,
+			mcmstypes.ChainSelector(input.ChainSelector): timelockRef.Address,
 		}).
 		SetVersion("v1").
 		SetValidUntil(uint32(unixTs)).
 		SetChainMetadata(map[mcmstypes.ChainSelector]mcmstypes.ChainMetadata{
 			mcmstypes.ChainSelector(input.ChainSelector): {
 				StartingOpCount: 0,
-				MCMAddress:      proposerRefs[0].Address,
+				MCMAddress:      proposerRef.Address,
 			},
 		}).
 		SetOperations([]mcmstypes.BatchOperation{
