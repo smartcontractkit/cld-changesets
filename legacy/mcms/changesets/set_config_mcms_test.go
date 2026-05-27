@@ -18,7 +18,7 @@ import (
 	solstate "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana"
 	"github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana/changesets"
 	soltestutils "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana/testutils"
-	linkchangesets "github.com/smartcontractkit/cld-changesets/link/changesets"
+	linkchangesets "github.com/smartcontractkit/cld-changesets/tokens/link/changesets"
 
 	cldfproposalutils "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
 
@@ -300,7 +300,9 @@ func TestValidateV2(t *testing.T) {
 
 	// Deploy MCMS and Timelock
 	err = rt.Exec(
-		runtime.ChangesetTask(cldf.CreateLegacyChangeSet(linkchangesets.DeployLinkToken), []uint64{evmSelector}),
+		runtime.ChangesetTask(linkchangesets.DeployLinkTokenChangeset{}, linkchangesets.DeployLinkTokenInput{
+			EVM: map[uint64]linkchangesets.EVMLinkConfig{evmSelector: {}},
+		}),
 		runtime.ChangesetTask(cldf.CreateLegacyChangeSet(DeployMCMSWithTimelockV2), map[uint64]cldfproposalutils.MCMSWithTimelockConfig{
 			evmSelector: config,
 			solSelector: config,
