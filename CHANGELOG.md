@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.5.0](https://github.com/smartcontractkit/cld-changesets/compare/v0.4.0...v0.5.0) (2026-05-29)
+
+
+### ⚠ BREAKING CHANGES
+
+* Deletes the ApproveToken helper and related tests.
+* Removes the Solana MCMS state views from the public API.
+* Removes the LinkToken and StaticLinkToken state views from the public API.
+* Moves version constants out of the public API and into internal.
+* Remove `ValidateSelectorsInEnvironment` method from `pkg/cldfutil/selectors.go`.
+
+### Features
+
+* delete ApproveToken helper ([#70](https://github.com/smartcontractkit/cld-changesets/issues/70)) ([83f59e7](https://github.com/smartcontractkit/cld-changesets/commit/83f59e7f7fce11d1cfe02c22f090a9f316e5b27d))
+* delete Link state views ([#68](https://github.com/smartcontractkit/cld-changesets/issues/68)) ([d5f643b](https://github.com/smartcontractkit/cld-changesets/commit/d5f643babc970be9869004efbcc1a450163e7f7c))
+* link refactor ([#71](https://github.com/smartcontractkit/cld-changesets/issues/71)) ([177dbc5](https://github.com/smartcontractkit/cld-changesets/commit/177dbc5ace4fa2435dc9e837c6e893ecccd2a5ca))
+* remove Solana MCMS state views ([#69](https://github.com/smartcontractkit/cld-changesets/issues/69)) ([eb948dd](https://github.com/smartcontractkit/cld-changesets/commit/eb948dd2e436125b5c909c4519970268c783f476))
+* remove ValidateSelectorsInEnvironment method ([#61](https://github.com/smartcontractkit/cld-changesets/issues/61)) ([72f431f](https://github.com/smartcontractkit/cld-changesets/commit/72f431f09aaecfaeb5d2368b8706087fe01902c9))
+
+
+### Bug Fixes
+
+* move contract version to internal package ([#64](https://github.com/smartcontractkit/cld-changesets/issues/64)) ([936a00b](https://github.com/smartcontractkit/cld-changesets/commit/936a00b387f20684064f01a7dd451820b7fb6fb5))
+
 ## [0.4.0](https://github.com/smartcontractkit/cld-changesets/compare/v0.3.0...v0.4.0) (2026-05-18)
 
 
