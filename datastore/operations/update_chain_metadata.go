@@ -25,11 +25,11 @@ type UpdateChainMetadataOutput struct {
 	DataStore cldfdatastore.MutableDataStore
 }
 
-// UpdateChainMetadataOp updates existing chain metadata entries in the Catalog service.
+// UpdateChainMetadataOp updates existing chain metadata entries in the Datastore.
 var UpdateChainMetadataOp = cldfops.NewOperation(
-	"catalog-update-chain-metadata",
+	"datastore-update-chain-metadata",
 	semver.MustParse("1.0.0"),
-	"Update chain metadata entries in the Catalog service",
+	"Update chain metadata entries in the Datastore",
 	func(b cldfops.Bundle, deps UpdateChainMetadataDeps, input UpdateChainMetadataInput) (UpdateChainMetadataOutput, error) {
 		dataStore := cldfdatastore.NewMemoryDataStore()
 		err := dataStore.Merge(deps.DataStore)
@@ -40,11 +40,11 @@ var UpdateChainMetadataOp = cldfops.NewOperation(
 		for i, item := range input.ChainMetadata {
 			err = dataStore.ChainMetadata().Update(item)
 			if err != nil {
-				return UpdateChainMetadataOutput{}, fmt.Errorf("failed to update chain metadata entry %d in catalog store: %w", i, err)
+				return UpdateChainMetadataOutput{}, fmt.Errorf("failed to update chain metadata entry %d in datastore: %w", i, err)
 			}
 		}
 
-		b.Logger.Infow("Catalog ChainMetadata updated successfully")
+		b.Logger.Infow("Datastore ChainMetadata updated successfully")
 
 		return UpdateChainMetadataOutput{DataStore: dataStore}, nil
 	},

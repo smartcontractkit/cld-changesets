@@ -23,11 +23,11 @@ type DeleteChainMetadataOutput struct {
 	DataStore cldfdatastore.MutableDataStore
 }
 
-// DeleteChainMetadataOp deletes chain metadata entries from the Catalog service or local datastore files.
+// DeleteChainMetadataOp deletes chain metadata entries from the Datastore.
 var DeleteChainMetadataOp = cldfops.NewOperation(
 	"datastore-delete-chain-metadata",
 	semver.MustParse("1.0.0"),
-	"Delete chain metadata entries from the Catalog service or local datastore files",
+	"Delete chain metadata entries from the Datastore",
 	func(b cldfops.Bundle, deps DeleteChainMetadataDeps, input DeleteChainMetadataInput) (DeleteChainMetadataOutput, error) {
 		dataStore := cldfdatastore.NewMemoryDataStore()
 		err := dataStore.Merge(deps.DataStore)
@@ -42,7 +42,7 @@ var DeleteChainMetadataOp = cldfops.NewOperation(
 			}
 		}
 
-		b.Logger.Infow("Catalog ChainMetadata successfully staged for deletion")
+		b.Logger.Infow("Datastore ChainMetadata successfully staged for deletion")
 
 		return DeleteChainMetadataOutput{DataStore: dataStore}, nil
 	},

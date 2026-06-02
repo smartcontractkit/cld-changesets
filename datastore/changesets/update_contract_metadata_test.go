@@ -13,10 +13,10 @@ import (
 	cldfoperations "github.com/smartcontractkit/chainlink-deployments-framework/operations"
 	cldflogger "github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
-	"github.com/smartcontractkit/cld-changesets/catalog/operations"
+	"github.com/smartcontractkit/cld-changesets/datastore/operations"
 )
 
-func TestCreateContractMetadataChangeset_VerifyPreconditions(t *testing.T) {
+func TestUpdateContractMetadataChangeset_VerifyPreconditions(t *testing.T) {
 	t.Parallel()
 
 	contractMetadata1 := cldfdatastore.ContractMetadata{Address: "0x01", ChainSelector: 1234, Metadata: "value1"}
@@ -25,42 +25,11 @@ func TestCreateContractMetadataChangeset_VerifyPreconditions(t *testing.T) {
 	tests := []struct {
 		name    string
 		env     cldf.Environment
-		input   CreateContractMetadataChangesetInput
+		input   UpdateContractMetadataChangesetInput
 		wantErr string
 	}{
 		{
 			name: "success: valid preconditions",
-			env:  cldf.Environment{DataStore: cldfdatastore.NewMemoryDataStore().Seal()},
-			input: CreateContractMetadataChangesetInput{
-				ContractMetadata: []cldfdatastore.ContractMetadata{contractMetadata1},
-			},
-		},
-		{
-			name: "failure: missing datastore",
-			env:  cldf.Environment{},
-			input: CreateContractMetadataChangesetInput{
-				ContractMetadata: []cldfdatastore.ContractMetadata{{}},
-			},
-			wantErr: "missing datastore in environment",
-		},
-		{
-			name: "failure: no contract metadata given",
-			env:  cldf.Environment{DataStore: cldfdatastore.NewMemoryDataStore().Seal()},
-			input: CreateContractMetadataChangesetInput{
-				ContractMetadata: []cldfdatastore.ContractMetadata{},
-			},
-			wantErr: "missing contract metadata input",
-		},
-		{
-			name: "failure: duplicate entries",
-			env:  cldf.Environment{DataStore: cldfdatastore.NewMemoryDataStore().Seal()},
-			input: CreateContractMetadataChangesetInput{
-				ContractMetadata: []cldfdatastore.ContractMetadata{contractMetadata1, contractMetadata2},
-			},
-			wantErr: "duplicate contract metadata entries found in input",
-		},
-		{
-			name: "failure: contract metadata already exists",
 			env: cldf.Environment{DataStore: func() cldfdatastore.DataStore {
 				ds := cldfdatastore.NewMemoryDataStore()
 				err := ds.ContractMetadata().Add(contractMetadata1)
@@ -68,17 +37,48 @@ func TestCreateContractMetadataChangeset_VerifyPreconditions(t *testing.T) {
 
 				return ds.Seal()
 			}()},
-			input: CreateContractMetadataChangesetInput{
+			input: UpdateContractMetadataChangesetInput{
 				ContractMetadata: []cldfdatastore.ContractMetadata{contractMetadata1},
 			},
-			wantErr: "contract metadata for chain selector 1234 and address 0x01 already exists",
+		},
+		{
+			name: "failure: missing datastore",
+			env:  cldf.Environment{},
+			input: UpdateContractMetadataChangesetInput{
+				ContractMetadata: []cldfdatastore.ContractMetadata{{}},
+			},
+			wantErr: "missing datastore in environment",
+		},
+		{
+			name: "failure: no contract metadata given",
+			env:  cldf.Environment{DataStore: cldfdatastore.NewMemoryDataStore().Seal()},
+			input: UpdateContractMetadataChangesetInput{
+				ContractMetadata: []cldfdatastore.ContractMetadata{},
+			},
+			wantErr: "missing contract metadata input",
+		},
+		{
+			name: "failure: duplicate entries",
+			env:  cldf.Environment{DataStore: cldfdatastore.NewMemoryDataStore().Seal()},
+			input: UpdateContractMetadataChangesetInput{
+				ContractMetadata: []cldfdatastore.ContractMetadata{contractMetadata1, contractMetadata2},
+			},
+			wantErr: "duplicate contract metadata entries found in input",
+		},
+		{
+			name: "failure: contract metadata does not exist",
+			env:  cldf.Environment{DataStore: cldfdatastore.NewMemoryDataStore().Seal()},
+			input: UpdateContractMetadataChangesetInput{
+				ContractMetadata: []cldfdatastore.ContractMetadata{contractMetadata1},
+			},
+			wantErr: "contract metadata for chain selector 1234 and address 0x01 does not exist",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			err := CreateContractMetadataChangeset{}.VerifyPreconditions(tt.env, tt.input)
+			err := UpdateContractMetadataChangeset{}.VerifyPreconditions(tt.env, tt.input)
 
 			if tt.wantErr == "" {
 				require.NoError(t, err)
@@ -89,63 +89,65 @@ func TestCreateContractMetadataChangeset_VerifyPreconditions(t *testing.T) {
 	}
 }
 
-func TestCreateContractMetadataChangeset_Apply(t *testing.T) {
+func TestUpdateContractMetadataChangeset_Apply(t *testing.T) {
 	t.Parallel()
 
 	contractMetadata1 := cldfdatastore.ContractMetadata{Address: "0x01", ChainSelector: 1234, Metadata: "value1"}
 	contractMetadata2 := cldfdatastore.ContractMetadata{Address: "0x02", ChainSelector: 1234, Metadata: "value2"}
+	contractMetadata1Updated := cldfdatastore.ContractMetadata{Address: "0x01", ChainSelector: 1234, Metadata: "updated-value1"}
+	contractMetadata2Updated := cldfdatastore.ContractMetadata{Address: "0x02", ChainSelector: 1234, Metadata: "updated-value2"}
 
 	tests := []struct {
 		name    string
 		env     cldf.Environment
-		input   CreateContractMetadataChangesetInput
+		input   UpdateContractMetadataChangesetInput
 		want    cldf.ChangesetOutput
 		wantErr string
 	}{
 		{
-			name: "success: adds two entries to contract metadata",
+			name: "success: updates two entries in contract metadata",
 			env: cldf.Environment{
-				DataStore:        testDataStoreWithContractMetadata(t).Seal(),
+				DataStore:        testDataStoreWithContractMetadata(t, contractMetadata1, contractMetadata2).Seal(),
 				OperationsBundle: cldfoperations.NewBundle(t.Context, cldflogger.Test(t), cldfoperations.NewMemoryReporter()),
 			},
-			input: CreateContractMetadataChangesetInput{
-				ContractMetadata: []cldfdatastore.ContractMetadata{contractMetadata1, contractMetadata2},
+			input: UpdateContractMetadataChangesetInput{
+				ContractMetadata: []cldfdatastore.ContractMetadata{contractMetadata1Updated, contractMetadata2Updated},
 			},
 			want: cldf.ChangesetOutput{
-				DataStore: testDataStoreWithContractMetadata(t, contractMetadata1, contractMetadata2),
+				DataStore: testDataStoreWithContractMetadata(t, contractMetadata1Updated, contractMetadata2Updated),
 				Reports: []cldfoperations.Report[any, any]{{
 					Def: cldfoperations.Definition{
-						ID:          "catalog-create-contract-metadata",
+						ID:          "datastore-update-contract-metadata",
 						Version:     semver.MustParse("1.0.0"),
-						Description: "Add contract metadata entries to the Catalog service",
+						Description: "Update contract metadata entries in the Datastore",
 					},
-					Input: operations.CreateContractMetadataInput{
-						ContractMetadata: []cldfdatastore.ContractMetadata{contractMetadata1, contractMetadata2},
+					Input: operations.UpdateContractMetadataInput{
+						ContractMetadata: []cldfdatastore.ContractMetadata{contractMetadata1Updated, contractMetadata2Updated},
 					},
-					Output: operations.CreateContractMetadataOutput{
-						DataStore: testDataStoreWithContractMetadata(t, contractMetadata1, contractMetadata2),
+					Output: operations.UpdateContractMetadataOutput{
+						DataStore: testDataStoreWithContractMetadata(t, contractMetadata1Updated, contractMetadata2Updated),
 					},
 				}},
 			},
 		},
 		{
-			name: "failure: fails to add second entry",
+			name: "failure: fails to update entry that does not exist",
 			env: cldf.Environment{
-				DataStore:        testDataStoreWithContractMetadata(t, contractMetadata2).Seal(),
+				DataStore:        testDataStoreWithContractMetadata(t, contractMetadata1).Seal(),
 				OperationsBundle: cldfoperations.NewBundle(t.Context, cldflogger.Test(t), cldfoperations.NewMemoryReporter()),
 			},
-			input: CreateContractMetadataChangesetInput{
-				ContractMetadata: []cldfdatastore.ContractMetadata{contractMetadata1, contractMetadata2},
+			input: UpdateContractMetadataChangesetInput{
+				ContractMetadata: []cldfdatastore.ContractMetadata{contractMetadata1Updated, contractMetadata2Updated},
 			},
-			wantErr: "failed to create contract metadata entry 1 in catalog store: " +
-				"a contract metadata record with the supplied key already exists",
+			wantErr: "failed to update contract metadata entry 1 in datastore: " +
+				"no contract metadata record can be found for the provided key",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := CreateContractMetadataChangeset{}.Apply(tt.env, tt.input)
+			got, err := UpdateContractMetadataChangeset{}.Apply(tt.env, tt.input)
 
 			if tt.wantErr == "" {
 				require.NoError(t, err)
@@ -159,20 +161,4 @@ func TestCreateContractMetadataChangeset_Apply(t *testing.T) {
 			}
 		})
 	}
-}
-
-// ----- helpers -----
-
-func testDataStoreWithContractMetadata(
-	t *testing.T, metadata ...cldfdatastore.ContractMetadata,
-) cldfdatastore.MutableDataStore {
-	t.Helper()
-
-	ds := cldfdatastore.NewMemoryDataStore()
-	for _, m := range metadata {
-		err := ds.ContractMetadata().Add(m)
-		require.NoError(t, err)
-	}
-
-	return ds
 }

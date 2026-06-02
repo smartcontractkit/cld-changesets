@@ -25,11 +25,11 @@ type UpdateEnvMetadataOutput struct {
 	DataStore cldfdatastore.MutableDataStore
 }
 
-// UpdateEnvMetadataOp updates existing env metadata entries in the Catalog service.
+// UpdateEnvMetadataOp updates existing env metadata entries in the Datastore.
 var UpdateEnvMetadataOp = cldfops.NewOperation(
-	"catalog-update-env-metadata",
+	"datastore-update-env-metadata",
 	semver.MustParse("1.0.0"),
-	"Update env metadata entries in the Catalog service",
+	"Update env metadata entries in the Datastore",
 	func(b cldfops.Bundle, deps UpdateEnvMetadataDeps, input UpdateEnvMetadataInput) (UpdateEnvMetadataOutput, error) {
 		dataStore := cldfdatastore.NewMemoryDataStore()
 		err := dataStore.Merge(deps.DataStore)
@@ -39,10 +39,10 @@ var UpdateEnvMetadataOp = cldfops.NewOperation(
 
 		err = dataStore.EnvMetadata().Set(input.EnvMetadata)
 		if err != nil {
-			return UpdateEnvMetadataOutput{}, fmt.Errorf("failed to update env metadata in catalog store: %w", err)
+			return UpdateEnvMetadataOutput{}, fmt.Errorf("failed to update env metadata in datastore: %w", err)
 		}
 
-		b.Logger.Infow("Catalog EnvMetadata updated successfully")
+		b.Logger.Infow("Datastore EnvMetadata updated successfully")
 
 		return UpdateEnvMetadataOutput{DataStore: dataStore}, nil
 	},

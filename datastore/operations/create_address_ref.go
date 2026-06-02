@@ -25,11 +25,11 @@ type CreateAddressRefOutput struct {
 	DataStore cldfdatastore.MutableDataStore
 }
 
-// CreateAddressRefOp creates address ref entries in the Catalog service.
+// CreateAddressRefOp creates address ref entries in the Datastore.
 var CreateAddressRefOp = cldfops.NewOperation(
-	"catalog-create-address-ref",
+	"datastore-create-address-ref",
 	semver.MustParse("1.0.0"),
-	"Add address ref entries to the Catalog service",
+	"Add address ref entries to the Datastore",
 	func(b cldfops.Bundle, deps CreateAddressRefDeps, input CreateAddressRefInput) (CreateAddressRefOutput, error) {
 		dataStore := cldfdatastore.NewMemoryDataStore()
 		err := dataStore.Merge(deps.DataStore)
@@ -40,11 +40,11 @@ var CreateAddressRefOp = cldfops.NewOperation(
 		for i, item := range input.AddressRefs {
 			err = dataStore.Addresses().Add(item)
 			if err != nil {
-				return CreateAddressRefOutput{}, fmt.Errorf("failed to create address ref entry %d in catalog store: %w", i, err)
+				return CreateAddressRefOutput{}, fmt.Errorf("failed to create address ref entry %d in datastore: %w", i, err)
 			}
 		}
 
-		b.Logger.Infow("Catalog AddressRef created successfully")
+		b.Logger.Infow("Datastore AddressRef created successfully")
 
 		return CreateAddressRefOutput{DataStore: dataStore}, nil
 	},
