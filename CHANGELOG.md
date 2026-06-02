@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.6.0](https://github.com/smartcontractkit/cld-changesets/compare/v0.5.0...v0.6.0) (2026-06-02)
+
+
+### Features
+
+* add datastore chain metadata changeset ([#75](https://github.com/smartcontractkit/cld-changesets/issues/75)) ([7d0c300](https://github.com/smartcontractkit/cld-changesets/commit/7d0c30044951bca48cbed55eb369751cf27350fd))
+* add datastore contract metadata changeset ([#74](https://github.com/smartcontractkit/cld-changesets/issues/74)) ([4b75d9b](https://github.com/smartcontractkit/cld-changesets/commit/4b75d9bfb2dec9b4f148161810d11adda43d74d3))
+* add datastore delete address ref changeset ([#72](https://github.com/smartcontractkit/cld-changesets/issues/72)) ([11308c8](https://github.com/smartcontractkit/cld-changesets/commit/11308c8d8b19280d4c2e45cdb86eea79318f5cff))
+
 ## [0.5.0](https://github.com/smartcontractkit/cld-changesets/compare/v0.4.0...v0.5.0) (2026-05-29)
 
 
