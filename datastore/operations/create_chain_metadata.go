@@ -25,11 +25,11 @@ type CreateChainMetadataOutput struct {
 	DataStore cldfdatastore.MutableDataStore
 }
 
-// CreateChainMetadataOp creates chain metadata entries in the Catalog service.
+// CreateChainMetadataOp creates chain metadata entries in the Datastore.
 var CreateChainMetadataOp = cldfops.NewOperation(
-	"catalog-create-chain-metadata",
+	"datastore-create-chain-metadata",
 	semver.MustParse("1.0.0"),
-	"Add chain metadata entries to the Catalog service",
+	"Add chain metadata entries to the Datastore",
 	func(b cldfops.Bundle, deps CreateChainMetadataDeps, input CreateChainMetadataInput) (CreateChainMetadataOutput, error) {
 		dataStore := cldfdatastore.NewMemoryDataStore()
 		err := dataStore.Merge(deps.DataStore)
@@ -40,11 +40,11 @@ var CreateChainMetadataOp = cldfops.NewOperation(
 		for i, item := range input.ChainMetadata {
 			err = dataStore.ChainMetadata().Add(item)
 			if err != nil {
-				return CreateChainMetadataOutput{}, fmt.Errorf("failed to create chain metadata entry %d in catalog store: %w", i, err)
+				return CreateChainMetadataOutput{}, fmt.Errorf("failed to create chain metadata entry %d in datastore: %w", i, err)
 			}
 		}
 
-		b.Logger.Infow("Catalog ChainMetadata created successfully")
+		b.Logger.Infow("Datastore ChainMetadata created successfully")
 
 		return CreateChainMetadataOutput{DataStore: dataStore}, nil
 	},

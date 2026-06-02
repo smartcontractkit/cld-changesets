@@ -9,10 +9,10 @@ import (
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	cldfops "github.com/smartcontractkit/chainlink-deployments-framework/operations"
 
-	"github.com/smartcontractkit/cld-changesets/catalog/operations"
+	"github.com/smartcontractkit/cld-changesets/datastore/operations"
 )
 
-// CreateChainMetadataChangeset creates chain metadata entries in the Catalog service.
+// CreateChainMetadataChangeset creates chain metadata entries in the Datastore.
 type CreateChainMetadataChangeset struct{}
 
 type CreateChainMetadataChangesetInput struct {
@@ -50,7 +50,7 @@ func (CreateChainMetadataChangeset) VerifyPreconditions(e cldf.Environment, inpu
 	return nil
 }
 
-// Apply executes the changeset, adding the chain metadata to the Catalog service.
+// Apply executes the changeset, adding the chain metadata to the Datastore.
 func (CreateChainMetadataChangeset) Apply(e cldf.Environment, input CreateChainMetadataChangesetInput) (cldf.ChangesetOutput, error) {
 	deps := operations.CreateChainMetadataDeps{DataStore: e.DataStore}
 	opInput := operations.CreateChainMetadataInput{ChainMetadata: input.ChainMetadata}

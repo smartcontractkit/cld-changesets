@@ -25,11 +25,11 @@ type UpdateContractMetadataOutput struct {
 	DataStore cldfdatastore.MutableDataStore
 }
 
-// UpdateContractMetadataOp updates existing contract metadata entries in the Catalog service.
+// UpdateContractMetadataOp updates existing contract metadata entries in the Datastore.
 var UpdateContractMetadataOp = cldfops.NewOperation(
-	"catalog-update-contract-metadata",
+	"datastore-update-contract-metadata",
 	semver.MustParse("1.0.0"),
-	"Update contract metadata entries in the Catalog service",
+	"Update contract metadata entries in the Datastore",
 	func(b cldfops.Bundle, deps UpdateContractMetadataDeps, input UpdateContractMetadataInput) (UpdateContractMetadataOutput, error) {
 		dataStore := cldfdatastore.NewMemoryDataStore()
 		err := dataStore.Merge(deps.DataStore)
@@ -40,11 +40,11 @@ var UpdateContractMetadataOp = cldfops.NewOperation(
 		for i, item := range input.ContractMetadata {
 			err = dataStore.ContractMetadata().Update(item)
 			if err != nil {
-				return UpdateContractMetadataOutput{}, fmt.Errorf("failed to update contract metadata entry %d in catalog store: %w", i, err)
+				return UpdateContractMetadataOutput{}, fmt.Errorf("failed to update contract metadata entry %d in datastore: %w", i, err)
 			}
 		}
 
-		b.Logger.Infow("Catalog ContractMetadata updated successfully")
+		b.Logger.Infow("Datastore ContractMetadata updated successfully")
 
 		return UpdateContractMetadataOutput{DataStore: dataStore}, nil
 	},

@@ -13,10 +13,10 @@ import (
 	cldfoperations "github.com/smartcontractkit/chainlink-deployments-framework/operations"
 	cldflogger "github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
-	"github.com/smartcontractkit/cld-changesets/catalog/operations"
+	"github.com/smartcontractkit/cld-changesets/datastore/operations"
 )
 
-func TestCreateChainMetadataChangeset_VerifyPreconditions(t *testing.T) {
+func TestUpdateChainMetadataChangeset_VerifyPreconditions(t *testing.T) {
 	t.Parallel()
 
 	chainMetadata1 := cldfdatastore.ChainMetadata{ChainSelector: 1234, Metadata: "value1"}
@@ -25,42 +25,11 @@ func TestCreateChainMetadataChangeset_VerifyPreconditions(t *testing.T) {
 	tests := []struct {
 		name    string
 		env     cldf.Environment
-		input   CreateChainMetadataChangesetInput
+		input   UpdateChainMetadataChangesetInput
 		wantErr string
 	}{
 		{
 			name: "success: valid preconditions",
-			env:  cldf.Environment{DataStore: cldfdatastore.NewMemoryDataStore().Seal()},
-			input: CreateChainMetadataChangesetInput{
-				ChainMetadata: []cldfdatastore.ChainMetadata{chainMetadata1},
-			},
-		},
-		{
-			name: "failure: missing datastore",
-			env:  cldf.Environment{},
-			input: CreateChainMetadataChangesetInput{
-				ChainMetadata: []cldfdatastore.ChainMetadata{{}},
-			},
-			wantErr: "missing datastore in environment",
-		},
-		{
-			name: "failure: no chain metadata given",
-			env:  cldf.Environment{DataStore: cldfdatastore.NewMemoryDataStore().Seal()},
-			input: CreateChainMetadataChangesetInput{
-				ChainMetadata: []cldfdatastore.ChainMetadata{},
-			},
-			wantErr: "missing chain metadata input",
-		},
-		{
-			name: "failure: duplicate entries",
-			env:  cldf.Environment{DataStore: cldfdatastore.NewMemoryDataStore().Seal()},
-			input: CreateChainMetadataChangesetInput{
-				ChainMetadata: []cldfdatastore.ChainMetadata{chainMetadata1, chainMetadata2},
-			},
-			wantErr: "duplicate chain metadata entries found in input",
-		},
-		{
-			name: "failure: chain metadata already exists",
 			env: cldf.Environment{DataStore: func() cldfdatastore.DataStore {
 				ds := cldfdatastore.NewMemoryDataStore()
 				err := ds.ChainMetadata().Add(chainMetadata1)
@@ -68,17 +37,48 @@ func TestCreateChainMetadataChangeset_VerifyPreconditions(t *testing.T) {
 
 				return ds.Seal()
 			}()},
-			input: CreateChainMetadataChangesetInput{
+			input: UpdateChainMetadataChangesetInput{
 				ChainMetadata: []cldfdatastore.ChainMetadata{chainMetadata1},
 			},
-			wantErr: "chain metadata for chain selector 1234 already exists",
+		},
+		{
+			name: "failure: missing datastore",
+			env:  cldf.Environment{},
+			input: UpdateChainMetadataChangesetInput{
+				ChainMetadata: []cldfdatastore.ChainMetadata{{}},
+			},
+			wantErr: "missing datastore in environment",
+		},
+		{
+			name: "failure: no chain metadata given",
+			env:  cldf.Environment{DataStore: cldfdatastore.NewMemoryDataStore().Seal()},
+			input: UpdateChainMetadataChangesetInput{
+				ChainMetadata: []cldfdatastore.ChainMetadata{},
+			},
+			wantErr: "missing chain metadata input",
+		},
+		{
+			name: "failure: duplicate entries",
+			env:  cldf.Environment{DataStore: cldfdatastore.NewMemoryDataStore().Seal()},
+			input: UpdateChainMetadataChangesetInput{
+				ChainMetadata: []cldfdatastore.ChainMetadata{chainMetadata1, chainMetadata2},
+			},
+			wantErr: "duplicate chain metadata entries found in input",
+		},
+		{
+			name: "failure: chain metadata does not exist",
+			env:  cldf.Environment{DataStore: cldfdatastore.NewMemoryDataStore().Seal()},
+			input: UpdateChainMetadataChangesetInput{
+				ChainMetadata: []cldfdatastore.ChainMetadata{chainMetadata1},
+			},
+			wantErr: "chain metadata for chain selector 1234 does not exist",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			err := CreateChainMetadataChangeset{}.VerifyPreconditions(tt.env, tt.input)
+			err := UpdateChainMetadataChangeset{}.VerifyPreconditions(tt.env, tt.input)
 
 			if tt.wantErr == "" {
 				require.NoError(t, err)
@@ -89,63 +89,65 @@ func TestCreateChainMetadataChangeset_VerifyPreconditions(t *testing.T) {
 	}
 }
 
-func TestCreateChainMetadataChangeset_Apply(t *testing.T) {
+func TestUpdateChainMetadataChangeset_Apply(t *testing.T) {
 	t.Parallel()
 
 	chainMetadata1 := cldfdatastore.ChainMetadata{ChainSelector: 1234, Metadata: "value1"}
 	chainMetadata2 := cldfdatastore.ChainMetadata{ChainSelector: 5678, Metadata: "value2"}
+	chainMetadata1Updated := cldfdatastore.ChainMetadata{ChainSelector: 1234, Metadata: "updated-value1"}
+	chainMetadata2Updated := cldfdatastore.ChainMetadata{ChainSelector: 5678, Metadata: "updated-value2"}
 
 	tests := []struct {
 		name    string
 		env     cldf.Environment
-		input   CreateChainMetadataChangesetInput
+		input   UpdateChainMetadataChangesetInput
 		want    cldf.ChangesetOutput
 		wantErr string
 	}{
 		{
-			name: "success: adds two entries to chain metadata",
+			name: "success: updates two entries in chain metadata",
 			env: cldf.Environment{
-				DataStore:        testDataStoreWithChainMetadata(t).Seal(),
+				DataStore:        testDataStoreWithChainMetadata(t, chainMetadata1, chainMetadata2).Seal(),
 				OperationsBundle: cldfoperations.NewBundle(t.Context, cldflogger.Test(t), cldfoperations.NewMemoryReporter()),
 			},
-			input: CreateChainMetadataChangesetInput{
-				ChainMetadata: []cldfdatastore.ChainMetadata{chainMetadata1, chainMetadata2},
+			input: UpdateChainMetadataChangesetInput{
+				ChainMetadata: []cldfdatastore.ChainMetadata{chainMetadata1Updated, chainMetadata2Updated},
 			},
 			want: cldf.ChangesetOutput{
-				DataStore: testDataStoreWithChainMetadata(t, chainMetadata1, chainMetadata2),
+				DataStore: testDataStoreWithChainMetadata(t, chainMetadata1Updated, chainMetadata2Updated),
 				Reports: []cldfoperations.Report[any, any]{{
 					Def: cldfoperations.Definition{
-						ID:          "catalog-create-chain-metadata",
+						ID:          "datastore-update-chain-metadata",
 						Version:     semver.MustParse("1.0.0"),
-						Description: "Add chain metadata entries to the Catalog service",
+						Description: "Update chain metadata entries in the Datastore",
 					},
-					Input: operations.CreateChainMetadataInput{
-						ChainMetadata: []cldfdatastore.ChainMetadata{chainMetadata1, chainMetadata2},
+					Input: operations.UpdateChainMetadataInput{
+						ChainMetadata: []cldfdatastore.ChainMetadata{chainMetadata1Updated, chainMetadata2Updated},
 					},
-					Output: operations.CreateChainMetadataOutput{
-						DataStore: testDataStoreWithChainMetadata(t, chainMetadata1, chainMetadata2),
+					Output: operations.UpdateChainMetadataOutput{
+						DataStore: testDataStoreWithChainMetadata(t, chainMetadata1Updated, chainMetadata2Updated),
 					},
 				}},
 			},
 		},
 		{
-			name: "failure: fails to add second entry",
+			name: "failure: fails to update entry that does not exist",
 			env: cldf.Environment{
-				DataStore:        testDataStoreWithChainMetadata(t, chainMetadata2).Seal(),
+				DataStore:        testDataStoreWithChainMetadata(t, chainMetadata1).Seal(),
 				OperationsBundle: cldfoperations.NewBundle(t.Context, cldflogger.Test(t), cldfoperations.NewMemoryReporter()),
 			},
-			input: CreateChainMetadataChangesetInput{
-				ChainMetadata: []cldfdatastore.ChainMetadata{chainMetadata1, chainMetadata2},
+			input: UpdateChainMetadataChangesetInput{
+				ChainMetadata: []cldfdatastore.ChainMetadata{chainMetadata1Updated, chainMetadata2Updated},
 			},
-			wantErr: "failed to create chain metadata entry 1 in catalog store: " +
-				"a chain metadata record with the supplied key already exists",
+			wantErr: "failed to update chain metadata entry 1 in datastore: " +
+				"no chain metadata record can be found for the provided key",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := CreateChainMetadataChangeset{}.Apply(tt.env, tt.input)
+			got, err := UpdateChainMetadataChangeset{}.Apply(tt.env, tt.input)
 
 			if tt.wantErr == "" {
 				require.NoError(t, err)
@@ -159,20 +161,4 @@ func TestCreateChainMetadataChangeset_Apply(t *testing.T) {
 			}
 		})
 	}
-}
-
-// ----- helpers -----
-
-func testDataStoreWithChainMetadata(
-	t *testing.T, metadata ...cldfdatastore.ChainMetadata,
-) cldfdatastore.MutableDataStore {
-	t.Helper()
-
-	ds := cldfdatastore.NewMemoryDataStore()
-	for _, m := range metadata {
-		err := ds.ChainMetadata().Add(m)
-		require.NoError(t, err)
-	}
-
-	return ds
 }

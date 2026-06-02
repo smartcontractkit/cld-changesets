@@ -25,11 +25,11 @@ type UpdateAddressRefOutput struct {
 	DataStore cldfdatastore.MutableDataStore
 }
 
-// UpdateAddressRefOp updates existing address ref entries in the Catalog service.
+// UpdateAddressRefOp updates existing address ref entries in the Datastore.
 var UpdateAddressRefOp = cldfops.NewOperation(
-	"catalog-update-address-ref",
+	"datastore-update-address-ref",
 	semver.MustParse("1.0.0"),
-	"Update address ref entries in the Catalog service",
+	"Update address ref entries in the Datastore",
 	func(b cldfops.Bundle, deps UpdateAddressRefDeps, input UpdateAddressRefInput) (UpdateAddressRefOutput, error) {
 		dataStore := cldfdatastore.NewMemoryDataStore()
 		err := dataStore.Merge(deps.DataStore)
@@ -40,11 +40,11 @@ var UpdateAddressRefOp = cldfops.NewOperation(
 		for i, item := range input.AddressRefs {
 			err = dataStore.Addresses().Update(item)
 			if err != nil {
-				return UpdateAddressRefOutput{}, fmt.Errorf("failed to update address ref entry %d in catalog store: %w", i, err)
+				return UpdateAddressRefOutput{}, fmt.Errorf("failed to update address ref entry %d in datastore: %w", i, err)
 			}
 		}
 
-		b.Logger.Infow("Catalog AddressRef updated successfully")
+		b.Logger.Infow("Datastore AddressRef updated successfully")
 
 		return UpdateAddressRefOutput{DataStore: dataStore}, nil
 	},
