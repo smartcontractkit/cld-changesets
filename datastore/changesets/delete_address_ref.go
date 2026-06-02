@@ -8,10 +8,10 @@ import (
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	cldfops "github.com/smartcontractkit/chainlink-deployments-framework/operations"
 
-	"github.com/smartcontractkit/cld-changesets/catalog/operations"
+	"github.com/smartcontractkit/cld-changesets/datastore/operations"
 )
 
-// DeleteAddressRefChangeset deletes address ref entries from the Catalog service.
+// DeleteAddressRefChangeset deletes address ref entries from the Datastore.
 type DeleteAddressRefChangeset struct{}
 
 type DeleteAddressRefChangesetInput struct {
@@ -43,7 +43,7 @@ func (DeleteAddressRefChangeset) VerifyPreconditions(e cldf.Environment, input D
 	return nil
 }
 
-// Apply executes the changeset, staging the address refs to be deleted from the Catalog service of local datastore files.
+// Apply executes the changeset, staging the address refs to be deleted from the Datastore.
 func (DeleteAddressRefChangeset) Apply(e cldf.Environment, input DeleteAddressRefChangesetInput) (cldf.ChangesetOutput, error) {
 	deps := operations.DeleteAddressRefDeps{DataStore: e.DataStore}
 	opInput := operations.DeleteAddressRefInput{AddressRefKeys: input.AddressRefKeys}

@@ -23,11 +23,11 @@ type DeleteContractMetadataOutput struct {
 	DataStore cldfdatastore.MutableDataStore
 }
 
-// DeleteContractMetadataOp deletes contract metadata entries from the Catalog service or local datastore files.
+// DeleteContractMetadataOp deletes contract metadata entries from the Datastore.
 var DeleteContractMetadataOp = cldfops.NewOperation(
 	"datastore-delete-contract-metadata",
 	semver.MustParse("1.0.0"),
-	"Delete contract metadata entries from the Catalog service or local datastore files",
+	"Delete contract metadata entries from the Datastore",
 	func(b cldfops.Bundle, deps DeleteContractMetadataDeps, input DeleteContractMetadataInput) (DeleteContractMetadataOutput, error) {
 		dataStore := cldfdatastore.NewMemoryDataStore()
 		err := dataStore.Merge(deps.DataStore)
@@ -42,7 +42,7 @@ var DeleteContractMetadataOp = cldfops.NewOperation(
 			}
 		}
 
-		b.Logger.Infow("Catalog ContractMetadata successfully staged for deletion")
+		b.Logger.Infow("Datastore ContractMetadata successfully staged for deletion")
 
 		return DeleteContractMetadataOutput{DataStore: dataStore}, nil
 	},

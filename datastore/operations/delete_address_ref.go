@@ -23,11 +23,11 @@ type DeleteAddressRefOutput struct {
 	DataStore cldfdatastore.MutableDataStore
 }
 
-// DeleteAddressRefOp deletes address ref entries from the Catalog service or local datastore files.
+// DeleteAddressRefOp deletes address ref entries from the Datastore.
 var DeleteAddressRefOp = cldfops.NewOperation(
 	"datastore-delete-address-ref",
 	semver.MustParse("1.0.0"),
-	"Delete address ref entries from the Catalog service or local datastore files",
+	"Delete address ref entries from the Datastore",
 	func(b cldfops.Bundle, deps DeleteAddressRefDeps, input DeleteAddressRefInput) (DeleteAddressRefOutput, error) {
 		dataStore := cldfdatastore.NewMemoryDataStore()
 		err := dataStore.Merge(deps.DataStore)
@@ -42,7 +42,7 @@ var DeleteAddressRefOp = cldfops.NewOperation(
 			}
 		}
 
-		b.Logger.Infow("Catalog AddressRef successfully staged for deletion")
+		b.Logger.Infow("Datastore AddressRef successfully staged for deletion")
 
 		return DeleteAddressRefOutput{DataStore: dataStore}, nil
 	},

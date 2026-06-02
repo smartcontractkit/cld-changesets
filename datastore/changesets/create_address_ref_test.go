@@ -13,10 +13,10 @@ import (
 	cldfoperations "github.com/smartcontractkit/chainlink-deployments-framework/operations"
 	cldflogger "github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
-	"github.com/smartcontractkit/cld-changesets/catalog/operations"
+	"github.com/smartcontractkit/cld-changesets/datastore/operations"
 )
 
-func TestUpdateAddressRefChangeset_VerifyPreconditions(t *testing.T) {
+func TestCreateAddressRefChangeset_VerifyPreconditions(t *testing.T) {
 	t.Parallel()
 
 	version := semver.MustParse("1.0.0")
@@ -26,26 +26,20 @@ func TestUpdateAddressRefChangeset_VerifyPreconditions(t *testing.T) {
 	tests := []struct {
 		name    string
 		env     cldf.Environment
-		input   UpdateAddressRefChangesetInput
+		input   CreateAddressRefChangesetInput
 		wantErr string
 	}{
 		{
 			name: "success: valid preconditions",
-			env: cldf.Environment{DataStore: func() cldfdatastore.DataStore {
-				ds := cldfdatastore.NewMemoryDataStore()
-				err := ds.Addresses().Add(addressRef1)
-				require.NoError(t, err)
-
-				return ds.Seal()
-			}()},
-			input: UpdateAddressRefChangesetInput{
+			env:  cldf.Environment{DataStore: cldfdatastore.NewMemoryDataStore().Seal()},
+			input: CreateAddressRefChangesetInput{
 				AddressRefs: []cldfdatastore.AddressRef{addressRef1},
 			},
 		},
 		{
 			name: "failure: missing datastore",
 			env:  cldf.Environment{},
-			input: UpdateAddressRefChangesetInput{
+			input: CreateAddressRefChangesetInput{
 				AddressRefs: []cldfdatastore.AddressRef{addressRef1},
 			},
 			wantErr: "missing datastore in environment",
@@ -53,7 +47,7 @@ func TestUpdateAddressRefChangeset_VerifyPreconditions(t *testing.T) {
 		{
 			name: "failure: no address refs given",
 			env:  cldf.Environment{DataStore: cldfdatastore.NewMemoryDataStore().Seal()},
-			input: UpdateAddressRefChangesetInput{
+			input: CreateAddressRefChangesetInput{
 				AddressRefs: []cldfdatastore.AddressRef{},
 			},
 			wantErr: "missing address refs input",
@@ -61,25 +55,31 @@ func TestUpdateAddressRefChangeset_VerifyPreconditions(t *testing.T) {
 		{
 			name: "failure: duplicate entries",
 			env:  cldf.Environment{DataStore: cldfdatastore.NewMemoryDataStore().Seal()},
-			input: UpdateAddressRefChangesetInput{
+			input: CreateAddressRefChangesetInput{
 				AddressRefs: []cldfdatastore.AddressRef{addressRef1, addressRef2},
 			},
 			wantErr: "duplicate address ref entries found in input",
 		},
 		{
-			name: "failure: address ref does not exist",
-			env:  cldf.Environment{DataStore: cldfdatastore.NewMemoryDataStore().Seal()},
-			input: UpdateAddressRefChangesetInput{
+			name: "failure: address ref already exists",
+			env: cldf.Environment{DataStore: func() cldfdatastore.DataStore {
+				ds := cldfdatastore.NewMemoryDataStore()
+				err := ds.Addresses().Add(addressRef1)
+				require.NoError(t, err)
+
+				return ds.Seal()
+			}()},
+			input: CreateAddressRefChangesetInput{
 				AddressRefs: []cldfdatastore.AddressRef{addressRef1},
 			},
-			wantErr: "address ref for chain selector 1234, type MyContract, version 1.0.0 and qualifier \"q1\" does not exist",
+			wantErr: "address ref for chain selector 1234, type MyContract, version 1.0.0 and qualifier \"q1\" already exists",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			err := UpdateAddressRefChangeset{}.VerifyPreconditions(tt.env, tt.input)
+			err := CreateAddressRefChangeset{}.VerifyPreconditions(tt.env, tt.input)
 
 			if tt.wantErr == "" {
 				require.NoError(t, err)
@@ -90,66 +90,64 @@ func TestUpdateAddressRefChangeset_VerifyPreconditions(t *testing.T) {
 	}
 }
 
-func TestUpdateAddressRefChangeset_Apply(t *testing.T) {
+func TestCreateAddressRefChangeset_Apply(t *testing.T) {
 	t.Parallel()
 
 	version := semver.MustParse("1.0.0")
 	addressRef1 := cldfdatastore.AddressRef{Address: "0x01", ChainSelector: 1234, Type: "MyContract", Version: version, Qualifier: "q1"}
-	addressRef2 := cldfdatastore.AddressRef{Address: "0x02", ChainSelector: 5678, Type: "OtherContract", Version: version, Qualifier: "q2"}
-	addressRef1Updated := cldfdatastore.AddressRef{Address: "0x99", ChainSelector: 1234, Type: "MyContract", Version: version, Qualifier: "q1"}
-	addressRef2Updated := cldfdatastore.AddressRef{Address: "0x88", ChainSelector: 5678, Type: "OtherContract", Version: version, Qualifier: "q2"}
+	addressRef2 := cldfdatastore.AddressRef{Address: "0x02", ChainSelector: 1234, Type: "MyContract", Version: version, Qualifier: "q2"}
 
 	tests := []struct {
 		name    string
 		env     cldf.Environment
-		input   UpdateAddressRefChangesetInput
+		input   CreateAddressRefChangesetInput
 		want    cldf.ChangesetOutput
 		wantErr string
 	}{
 		{
-			name: "success: updates two entries in address refs",
+			name: "success: adds two entries to address refs",
 			env: cldf.Environment{
-				DataStore:        testDataStoreWithAddressRefs(t, addressRef1, addressRef2).Seal(),
+				DataStore:        testDataStoreWithAddressRefs(t).Seal(),
 				OperationsBundle: cldfoperations.NewBundle(t.Context, cldflogger.Test(t), cldfoperations.NewMemoryReporter()),
 			},
-			input: UpdateAddressRefChangesetInput{
-				AddressRefs: []cldfdatastore.AddressRef{addressRef1Updated, addressRef2Updated},
+			input: CreateAddressRefChangesetInput{
+				AddressRefs: []cldfdatastore.AddressRef{addressRef1, addressRef2},
 			},
 			want: cldf.ChangesetOutput{
-				DataStore: testDataStoreWithAddressRefs(t, addressRef1Updated, addressRef2Updated),
+				DataStore: testDataStoreWithAddressRefs(t, addressRef1, addressRef2),
 				Reports: []cldfoperations.Report[any, any]{{
 					Def: cldfoperations.Definition{
-						ID:          "catalog-update-address-ref",
+						ID:          "datastore-create-address-ref",
 						Version:     semver.MustParse("1.0.0"),
-						Description: "Update address ref entries in the Catalog service",
+						Description: "Add address ref entries to the Datastore",
 					},
-					Input: operations.UpdateAddressRefInput{
-						AddressRefs: []cldfdatastore.AddressRef{addressRef1Updated, addressRef2Updated},
+					Input: operations.CreateAddressRefInput{
+						AddressRefs: []cldfdatastore.AddressRef{addressRef1, addressRef2},
 					},
-					Output: operations.UpdateAddressRefOutput{
-						DataStore: testDataStoreWithAddressRefs(t, addressRef1Updated, addressRef2Updated),
+					Output: operations.CreateAddressRefOutput{
+						DataStore: testDataStoreWithAddressRefs(t, addressRef1, addressRef2),
 					},
 				}},
 			},
 		},
 		{
-			name: "failure: fails to update entry that does not exist",
+			name: "failure: fails to add second entry",
 			env: cldf.Environment{
-				DataStore:        testDataStoreWithAddressRefs(t).Seal(),
+				DataStore:        testDataStoreWithAddressRefs(t, addressRef2).Seal(),
 				OperationsBundle: cldfoperations.NewBundle(t.Context, cldflogger.Test(t), cldfoperations.NewMemoryReporter()),
 			},
-			input: UpdateAddressRefChangesetInput{
-				AddressRefs: []cldfdatastore.AddressRef{addressRef1Updated},
+			input: CreateAddressRefChangesetInput{
+				AddressRefs: []cldfdatastore.AddressRef{addressRef1, addressRef2},
 			},
-			wantErr: "failed to update address ref entry 0 in catalog store: " +
-				"no such address ref can be found for the provided key",
+			wantErr: "failed to create address ref entry 1 in datastore: " +
+				"an address ref with the supplied key already exists",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := UpdateAddressRefChangeset{}.Apply(tt.env, tt.input)
+			got, err := CreateAddressRefChangeset{}.Apply(tt.env, tt.input)
 
 			if tt.wantErr == "" {
 				require.NoError(t, err)
@@ -164,4 +162,20 @@ func TestUpdateAddressRefChangeset_Apply(t *testing.T) {
 			}
 		})
 	}
+}
+
+// ----- helpers -----
+
+func testDataStoreWithAddressRefs(
+	t *testing.T, addressRefs ...cldfdatastore.AddressRef,
+) cldfdatastore.MutableDataStore {
+	t.Helper()
+
+	ds := cldfdatastore.NewMemoryDataStore()
+	for _, ar := range addressRefs {
+		err := ds.Addresses().Add(ar)
+		require.NoError(t, err)
+	}
+
+	return ds
 }

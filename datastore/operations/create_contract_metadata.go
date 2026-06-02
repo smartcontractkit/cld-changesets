@@ -25,11 +25,11 @@ type CreateContractMetadataOutput struct {
 	DataStore cldfdatastore.MutableDataStore
 }
 
-// CreateContractMetadataOp creates contract metadata entries in the Catalog service.
+// CreateContractMetadataOp creates contract metadata entries in the Datastore.
 var CreateContractMetadataOp = cldfops.NewOperation(
-	"catalog-create-contract-metadata",
+	"datastore-create-contract-metadata",
 	semver.MustParse("1.0.0"),
-	"Add contract metadata entries to the Catalog service",
+	"Add contract metadata entries to the Datastore",
 	func(b cldfops.Bundle, deps CreateContractMetadataDeps, input CreateContractMetadataInput) (CreateContractMetadataOutput, error) {
 		dataStore := cldfdatastore.NewMemoryDataStore()
 		err := dataStore.Merge(deps.DataStore)
@@ -40,11 +40,11 @@ var CreateContractMetadataOp = cldfops.NewOperation(
 		for i, item := range input.ContractMetadata {
 			err = dataStore.ContractMetadata().Add(item)
 			if err != nil {
-				return CreateContractMetadataOutput{}, fmt.Errorf("failed to create contract metadata entry %d in catalog store: %w", i, err)
+				return CreateContractMetadataOutput{}, fmt.Errorf("failed to create contract metadata entry %d in datastore: %w", i, err)
 			}
 		}
 
-		b.Logger.Infow("Catalog ContractMetadata created successfully")
+		b.Logger.Infow("Datastore ContractMetadata created successfully")
 
 		return CreateContractMetadataOutput{DataStore: dataStore}, nil
 	},

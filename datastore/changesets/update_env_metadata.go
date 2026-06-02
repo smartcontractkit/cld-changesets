@@ -7,10 +7,10 @@ import (
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	cldfops "github.com/smartcontractkit/chainlink-deployments-framework/operations"
 
-	"github.com/smartcontractkit/cld-changesets/catalog/operations"
+	"github.com/smartcontractkit/cld-changesets/datastore/operations"
 )
 
-// UpdateEnvMetadataChangeset updates existing env metadata entries in the Catalog service.
+// UpdateEnvMetadataChangeset updates existing env metadata entries in the Datastore.
 type UpdateEnvMetadataChangeset struct{}
 
 type UpdateEnvMetadataChangesetInput struct {
@@ -29,7 +29,7 @@ func (UpdateEnvMetadataChangeset) VerifyPreconditions(e cldf.Environment, input 
 	return nil
 }
 
-// Apply executes the changeset, updating the env metadata in the Catalog service.
+// Apply executes the changeset, updating the env metadata in the Datastore.
 func (UpdateEnvMetadataChangeset) Apply(
 	e cldf.Environment, input UpdateEnvMetadataChangesetInput,
 ) (cldf.ChangesetOutput, error) {

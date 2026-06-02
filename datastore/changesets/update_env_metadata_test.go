@@ -13,7 +13,7 @@ import (
 	cldfoperations "github.com/smartcontractkit/chainlink-deployments-framework/operations"
 	cldflogger "github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
-	"github.com/smartcontractkit/cld-changesets/catalog/operations"
+	"github.com/smartcontractkit/cld-changesets/datastore/operations"
 )
 
 func TestUpdateEnvMetadataChangeset_VerifyPreconditions(t *testing.T) {
@@ -98,9 +98,9 @@ func TestUpdateEnvMetadataChangeset_Apply(t *testing.T) {
 				DataStore: testDataStoreWithEnvMetadata(t, envMetadataUpdated),
 				Reports: []cldfoperations.Report[any, any]{{
 					Def: cldfoperations.Definition{
-						ID:          "catalog-update-env-metadata",
+						ID:          "datastore-update-env-metadata",
 						Version:     semver.MustParse("1.0.0"),
-						Description: "Update env metadata entries in the Catalog service",
+						Description: "Update env metadata entries in the Datastore",
 					},
 					Input: operations.UpdateEnvMetadataInput{
 						EnvMetadata: envMetadataUpdated,

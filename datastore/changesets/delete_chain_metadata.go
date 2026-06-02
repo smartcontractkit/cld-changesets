@@ -8,10 +8,10 @@ import (
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	cldfops "github.com/smartcontractkit/chainlink-deployments-framework/operations"
 
-	"github.com/smartcontractkit/cld-changesets/catalog/operations"
+	"github.com/smartcontractkit/cld-changesets/datastore/operations"
 )
 
-// DeleteChainMetadataChangeset deletes chain metadata entries from the Catalog service.
+// DeleteChainMetadataChangeset deletes chain metadata entries from the Datastore.
 type DeleteChainMetadataChangeset struct{}
 
 type DeleteChainMetadataChangesetInput struct {
@@ -41,7 +41,7 @@ func (DeleteChainMetadataChangeset) VerifyPreconditions(e cldf.Environment, inpu
 	return nil
 }
 
-// Apply executes the changeset, staging the chain metadata entries to be deleted from the Catalog service or local datastore files.
+// Apply executes the changeset, staging the chain metadata entries to be deleted from the Datastore.
 func (DeleteChainMetadataChangeset) Apply(e cldf.Environment, input DeleteChainMetadataChangesetInput) (cldf.ChangesetOutput, error) {
 	deps := operations.DeleteChainMetadataDeps{DataStore: e.DataStore}
 	opInput := operations.DeleteChainMetadataInput{ChainMetadataKeys: input.ChainMetadataKeys}

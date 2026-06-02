@@ -9,10 +9,10 @@ import (
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	cldfops "github.com/smartcontractkit/chainlink-deployments-framework/operations"
 
-	"github.com/smartcontractkit/cld-changesets/catalog/operations"
+	"github.com/smartcontractkit/cld-changesets/datastore/operations"
 )
 
-// UpdateAddressRefChangeset updates existing address ref entries in the Catalog service.
+// UpdateAddressRefChangeset updates existing address ref entries in the Datastore.
 type UpdateAddressRefChangeset struct{}
 
 type UpdateAddressRefChangesetInput struct {
@@ -50,7 +50,7 @@ func (UpdateAddressRefChangeset) VerifyPreconditions(e cldf.Environment, input U
 	return nil
 }
 
-// Apply executes the changeset, updating the address refs in the Catalog service.
+// Apply executes the changeset, updating the address refs in the Datastore.
 func (UpdateAddressRefChangeset) Apply(
 	e cldf.Environment, input UpdateAddressRefChangesetInput,
 ) (cldf.ChangesetOutput, error) {
