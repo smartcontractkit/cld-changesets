@@ -18,8 +18,8 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 	"github.com/spf13/cast"
 
+	"github.com/smartcontractkit/cld-changesets/internal/mcmsrole"
 	evmstate "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/evm"
-	"github.com/smartcontractkit/cld-changesets/pkg/contract/mcms/view/v1_0"
 	opsevm "github.com/smartcontractkit/cld-changesets/pkg/family/evm/operations"
 	seqs "github.com/smartcontractkit/cld-changesets/pkg/family/evm/sequences"
 )
@@ -300,7 +300,7 @@ func DeployMCMSWithTimelockContractsEVM(
 func getAdminAddresses(ctx context.Context, timelock *bindings.RBACTimelock) ([]string, error) {
 	numAddresses, err := timelock.GetRoleMemberCount(&bind.CallOpts{
 		Context: ctx,
-	}, v1_0.ADMIN_ROLE.ID)
+	}, mcmsrole.AdminRole.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -315,7 +315,7 @@ func getAdminAddresses(ctx context.Context, timelock *bindings.RBACTimelock) ([]
 		}
 		address, err := timelock.GetRoleMember(&bind.CallOpts{
 			Context: ctx,
-		}, v1_0.ADMIN_ROLE.ID, big.NewInt(idx))
+		}, mcmsrole.AdminRole.ID, big.NewInt(idx))
 		if err != nil {
 			return nil, err
 		}
@@ -372,23 +372,23 @@ func GrantRolesForTimelock(
 		IsDeployerKeyAdmin: isDeployerKeyAdmin,
 		RolesAndAddresses: []seqs.RolesAndAddresses{
 			{
-				Role:      v1_0.PROPOSER_ROLE.ID,
-				Name:      v1_0.PROPOSER_ROLE.Name,
+				Role:      mcmsrole.ProposerRole.ID,
+				Name:      mcmsrole.ProposerRole.Name,
 				Addresses: []common.Address{proposer.Address()},
 			},
 			{
-				Role:      v1_0.CANCELLER_ROLE.ID,
-				Name:      v1_0.CANCELLER_ROLE.Name,
+				Role:      mcmsrole.CancellerRole.ID,
+				Name:      mcmsrole.CancellerRole.Name,
 				Addresses: []common.Address{proposer.Address(), canceller.Address(), bypasser.Address()},
 			},
 			{
-				Role:      v1_0.BYPASSER_ROLE.ID,
-				Name:      v1_0.BYPASSER_ROLE.Name,
+				Role:      mcmsrole.BypasserRole.ID,
+				Name:      mcmsrole.BypasserRole.Name,
 				Addresses: []common.Address{bypasser.Address()},
 			},
 			{
-				Role:      v1_0.EXECUTOR_ROLE.ID,
-				Name:      v1_0.EXECUTOR_ROLE.Name,
+				Role:      mcmsrole.ExecutorRole.ID,
+				Name:      mcmsrole.ExecutorRole.Name,
 				Addresses: []common.Address{callProxy.Address()},
 			},
 		},
@@ -398,8 +398,8 @@ func GrantRolesForTimelock(
 	if !isTimelockAdmin {
 		// We grant the timelock the admin role on the MCMS contracts.
 		seqInput.RolesAndAddresses = append(seqInput.RolesAndAddresses, seqs.RolesAndAddresses{
-			Role:      v1_0.ADMIN_ROLE.ID,
-			Name:      v1_0.ADMIN_ROLE.Name,
+			Role:      mcmsrole.AdminRole.ID,
+			Name:      mcmsrole.AdminRole.Name,
 			Addresses: []common.Address{timelock.Address()},
 		})
 	}

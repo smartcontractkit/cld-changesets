@@ -13,7 +13,6 @@ import (
 	mcmscontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/mcms"
 
 	"github.com/smartcontractkit/cld-changesets/internal/semvers"
-	"github.com/smartcontractkit/cld-changesets/pkg/contract/mcms/view/v1_0"
 )
 
 // MCMSWithTimelockState holds the Go bindings
@@ -48,15 +47,6 @@ func (state MCMSWithTimelockState) Validate() error {
 	}
 
 	return nil
-}
-
-func (state MCMSWithTimelockState) GenerateMCMSWithTimelockView() (v1_0.MCMSWithTimelockView, error) {
-	if err := state.Validate(); err != nil {
-		return v1_0.MCMSWithTimelockView{}, fmt.Errorf("unable to validate McmsWithTimelock state: %w", err)
-	}
-
-	return v1_0.GenerateMCMSWithTimelockView(*state.BypasserMcm, *state.CancellerMcm, *state.ProposerMcm,
-		*state.Timelock, *state.CallProxy)
 }
 
 // MaybeLoadMCMSWithTimelockState loads the MCMSWithTimelockState state for each chain in the given environment.
