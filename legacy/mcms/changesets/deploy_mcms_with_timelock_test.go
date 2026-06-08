@@ -9,34 +9,32 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gagliardetto/solana-go"
 	"github.com/google/go-cmp/cmp"
+	"github.com/stretchr/testify/require"
+
 	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	timelockBindings "github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings/v0_1_1/timelock"
+	cldf_solana "github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
+	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
+	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	mcmscontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/mcms"
 	cldfproposalutils "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
 	cldftesthelpers "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils/testhelpers"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/environment"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/onchain"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/runtime"
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 	mcmsevmsdk "github.com/smartcontractkit/mcms/sdk/evm"
 	mcmssolanasdk "github.com/smartcontractkit/mcms/sdk/solana"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 	"github.com/smartcontractkit/quarantine"
-	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/cld-changesets/internal/semvers"
+	"github.com/smartcontractkit/cld-changesets/internal/testutil/evmtest"
 	mcmschangesets "github.com/smartcontractkit/cld-changesets/legacy/mcms/changesets"
 	evmstate "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/evm"
 	solana2 "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana"
 	soltestutils "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana/testutils"
 	familysolana "github.com/smartcontractkit/cld-changesets/pkg/family/solana"
-
-	timelockBindings "github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings/v0_1_1/timelock"
-	"github.com/smartcontractkit/chainlink-common/pkg/utils/tests"
-	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
-	"github.com/smartcontractkit/chainlink-evm/pkg/utils"
-
-	cldf_solana "github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
-	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
-	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/environment"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/onchain"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/runtime"
 )
 
 func TestGrantRoleInTimeLock(t *testing.T) {
@@ -155,8 +153,8 @@ func TestDeployMCMSWithTimelockV2WithFewExistingContracts(t *testing.T) {
 	// them again
 	ds := datastore.NewMemoryDataStore()
 
-	callProxyAddress := utils.RandomAddress()
-	mcmsAddress := utils.RandomAddress()
+	callProxyAddress := evmtest.RandomAddress()
+	mcmsAddress := evmtest.RandomAddress()
 	mcmsType := cldf.NewTypeAndVersion(mcmscontracts.ManyChainMultisig, semvers.V1_0_0)
 	// we use same address for bypasser and canceller
 	mcmsType.AddLabel(mcmscontracts.BypasserRole.String())
@@ -465,7 +463,7 @@ func TestDeployMCMSWithTimelockV2(t *testing.T) {
 
 // TestDeployMCMSWithTimelockV2SkipInit tests calling the deploy changeset when accounts have already been initialized
 func TestDeployMCMSWithTimelockV2SkipInitSolana(t *testing.T) {
-	tests.SkipFlakey(t, "https://smartcontract-it.atlassian.net/browse/DX-438")
+	t.Skip("https://smartcontract-it.atlassian.net/browse/DX-438")
 
 	t.Parallel()
 

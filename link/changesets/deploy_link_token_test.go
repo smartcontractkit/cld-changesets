@@ -3,10 +3,9 @@ package changesets
 import (
 	"testing"
 
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
 	"github.com/stretchr/testify/require"
 
-	"github.com/smartcontractkit/chainlink-common/pkg/utils/tests"
+	chain_selectors "github.com/smartcontractkit/chain-selectors"
 	cldf_chain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	cldf_solana "github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
@@ -231,7 +230,7 @@ func typeAndVersionWithLabels(tv cldf.TypeAndVersion, labels ...string) cldf.Typ
 }
 
 func TestDeployLinkTokenZk(t *testing.T) {
-	tests.SkipFlakey(t, "https://smartcontract-it.atlassian.net/browse/CCIP-6427")
+	t.Skip("https://smartcontract-it.atlassian.net/browse/CCIP-6427")
 
 	t.Parallel()
 
