@@ -13,8 +13,7 @@ import (
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 
-	"github.com/smartcontractkit/cld-changesets/pkg/contract/mcms/view/v1_0"
-
+	"github.com/smartcontractkit/cld-changesets/internal/mcmsrole"
 	opsevm "github.com/smartcontractkit/cld-changesets/pkg/family/evm/operations"
 )
 
@@ -56,15 +55,15 @@ var SeqGrantRolesTimelock = operations.NewSequence(
 
 		for _, roleAndAddress := range in.RolesAndAddresses {
 			switch roleAndAddress.Role {
-			case v1_0.PROPOSER_ROLE.ID:
+			case mcmsrole.ProposerRole.ID:
 				addressesInInspector, err2 = timelockInspector.GetProposers(b.GetContext(), in.Timelock.Hex())
-			case v1_0.CANCELLER_ROLE.ID:
+			case mcmsrole.CancellerRole.ID:
 				addressesInInspector, err2 = timelockInspector.GetCancellers(b.GetContext(), in.Timelock.Hex())
-			case v1_0.BYPASSER_ROLE.ID:
+			case mcmsrole.BypasserRole.ID:
 				addressesInInspector, err2 = timelockInspector.GetBypassers(b.GetContext(), in.Timelock.Hex())
-			case v1_0.EXECUTOR_ROLE.ID:
+			case mcmsrole.ExecutorRole.ID:
 				addressesInInspector, err2 = timelockInspector.GetExecutors(b.GetContext(), in.Timelock.Hex())
-			case v1_0.ADMIN_ROLE.ID:
+			case mcmsrole.AdminRole.ID:
 				addressesInInspector = []string{}
 			}
 			if err2 != nil {

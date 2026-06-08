@@ -1,7 +1,6 @@
 package changesets
 
 import (
-	"encoding/json"
 	"testing"
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
@@ -84,12 +83,6 @@ func TestDeployMCMSWithTimelockContracts(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, addresses, 5)
 
-	mcmsState, err := evmstate.MaybeLoadMCMSWithTimelockChainState(chain, addresses)
-	require.NoError(t, err)
-
-	v, err := mcmsState.GenerateMCMSWithTimelockView()
-	require.NoError(t, err)
-
-	_, err = json.MarshalIndent(v, "", "  ")
+	_, err = evmstate.MaybeLoadMCMSWithTimelockChainState(chain, addresses)
 	require.NoError(t, err)
 }
