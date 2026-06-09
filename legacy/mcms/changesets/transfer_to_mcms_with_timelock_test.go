@@ -8,26 +8,22 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/stretchr/testify/require"
+
 	chain_selectors "github.com/smartcontractkit/chain-selectors"
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
+	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	linkcontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/link"
+	cldfproposalutils "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
+	cldftesthelpers "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils/testhelpers"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/environment"
+	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/runtime"
 	"github.com/smartcontractkit/chainlink-evm/gethwrappers/shared/generated/initial/link_token"
-	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/cld-changesets/internal/semvers"
 	evmstate "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/evm"
 	linkchangesets "github.com/smartcontractkit/cld-changesets/tokens/link/changesets"
-
-	cldfproposalutils "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
-
-	"github.com/smartcontractkit/chainlink-common/pkg/utils/tests"
-
-	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/environment"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/runtime"
-
-	cldftesthelpers "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils/testhelpers"
 )
 
 func TestTransferToMCMSWithTimelockV2(t *testing.T) {
@@ -155,7 +151,8 @@ func TestTransferToMCMSWithTimelockV2DataStore(t *testing.T) {
 }
 
 func TestRenounceTimelockDeployerConfigValidate(t *testing.T) {
-	tests.SkipFlakey(t, "https://smartcontract-it.atlassian.net/browse/DX-724")
+	t.Skip("https://smartcontract-it.atlassian.net/browse/DX-724")
+
 	t.Parallel()
 
 	selector1 := chain_selectors.TEST_90000001.Selector
