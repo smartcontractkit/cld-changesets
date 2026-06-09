@@ -3,8 +3,15 @@ name: pull-request-conventional
 
 on:
   pull_request:
-    branches: [ main ]
-    types: [ opened, synchronize, reopened, edited ]
+    branches: [main]
+    types: [opened, synchronize, reopened, edited]
+  merge_group:
+    types: [checks_requested]
+
+# Avoid stale sticky comments when the PR title or branch updates quickly.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.event.merge_group.head_sha }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -18,6 +25,153 @@ jobs:
     name: Lint PR title (Conventional Commits)
     runs-on: ubuntu-latest
     steps:
-      - uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6.1.1
+      # Semantic PR action expects pull_request context; titles are enforced on PR events prior to merge queue.
+      - name: Semantic PR Linter
+        if: github.event_name != 'merge_group'
+        uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6.1.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Auto-pass the step if it's running inside the Merge Queue
+      - name: Bypass for Merge Queue
+        if: github.event_name == 'merge_group'
+        run: echo "PR title already verified prior to entering the merge queue. Bypassing."
+
+  release-bump-preview:
+    name: Release bump preview
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout base branch
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          sparse-checkout: |
+            .release-please-manifest.json
+          sparse-checkout-cone-mode: false
+
+      - name: Compute release bump
+        id: bump
+        uses: actions/github-script@v9.0.0
+        with:
+          script: |
+            const fs = require('fs');
+
+            const title = context.payload.pull_request.title;
+            const body = context.payload.pull_request.body ?? '';
+            const manifest = JSON.parse(fs.readFileSync('.release-please-manifest.json', 'utf8'));
+            const current = manifest['.'];
+
+            const releaseAsMatch = body.match(/Release-As:\s*(\d+\.\d+\.\d+)/i);
+            // handle release-as in PR description
+            if (releaseAsMatch) {
+              const next = releaseAsMatch[1];
+              core.setOutput('comment', [
+                '## Release impact (release-please)',
+                '',
+                `| | |`,
+                `|---|---|`,
+                `| **Current version** | \`${current}\` (on \`${context.payload.pull_request.base.ref}\`) |`,
+                `| **After merge** | \`${next}\` (**forced** via \`Release-As\`) |`,
+                '',
+                'This PR description contains `Release-As: x.y.z`, which release-please uses to force the next version.',
+                '',
+                '> Ensure the squash commit body includes `Release-As: ' + next + '` if your repo does not copy the PR description into the commit body.',
+              ].join('\n'));
+              return;
+            }
+
+            const headerMatch = title.match(/^(\w+)(?:\([^)]*\))?(!)?:\s*.+/);
+            const breakingInBody = /BREAKING[- ]CHANGE:/i.test(body);
+
+            let bump = 'none';
+            let type = null;
+            let breaking = breakingInBody;
+
+            if (headerMatch) {
+              type = headerMatch[1].toLowerCase();
+              breaking = breaking || Boolean(headerMatch[2]);
+            }
+
+            if (breaking) {
+              bump = 'major';
+            } else if (type === 'feat') {
+              bump = 'minor';
+            } else if (type === 'fix' || type === 'perf' || type === 'revert') {
+              bump = 'patch';
+            }
+
+            function bumpVersion(version, level) {
+              const [major, minor, patch] = version.split('.').map(Number);
+              switch (level) {
+                case 'major':
+                  return `${major + 1}.0.0`;
+                case 'minor':
+                  return `${major}.${minor + 1}.0`;
+                case 'patch':
+                  return `${major}.${minor}.${patch + 1}`;
+                default:
+                  return null;
+              }
+            }
+
+            const next = bumpVersion(current, bump);
+            const bumpLabel = bump === 'none' ? 'no release' : `**${bump}**`;
+
+            const lines = [
+              '## Release impact (release-please)',
+              '',
+              '| | |',
+              '|---|---|',
+              `| **Current version** | \`${current}\` (on \`${context.payload.pull_request.base.ref}\`) |`,
+            ];
+
+            if (next) {
+              lines.push(`| **After merge** | \`${next}\` (${bumpLabel} bump) |`);
+            } else {
+              lines.push(`| **After merge** | no version bump (${bumpLabel}) |`);
+            }
+
+            lines.push(
+              '',
+              `PR title: \`${title}\``,
+              '',
+            );
+
+            if (bump === 'none') {
+              lines.push(
+                'This title will **not** trigger a semver bump when squash-merged to `main`. Use `feat:` for a minor release, or `fix:` / `perf:` / `revert:` for a patch release.',
+                '',
+              );
+            } else {
+              lines.push(
+                `Merging this PR as-is will contribute a **${bump}** bump to the next release-please release PR.`,
+                '',
+              );
+            }
+
+            lines.push(
+              '### Conventional commit → bump',
+              '',
+              '| Intent | PR title prefix | Bump |',
+              '| --- | --- | --- |',
+              '| Bug fix | `fix:` | patch |',
+              '| New feature | `feat:` | minor |',
+              '| Breaking change | `feat!:` / `fix!:` or `BREAKING CHANGE:` / `BREAKING-CHANGE:` in description | major |',
+              '| No release | `chore:`, `docs:`, `ci:`, `refactor:`, etc. | none |',
+              '',
+              'Update the **PR title** before merge if you need a different bump (squash commit message = PR title).',
+              '',
+              '_Preview is based on this PR title only. The release-please release PR may include other unreleased commits already on `main`._',
+            );
+
+            core.setOutput('comment', lines.join('\n'));
+
+      - name: Post release bump preview
+        uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
+        with:
+          header: release-please-preview
+          message: ${{ steps.bump.outputs.comment }}
