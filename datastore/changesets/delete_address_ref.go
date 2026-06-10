@@ -36,10 +36,10 @@ func (k DeleteAddressRefKey) addressRefKey() (cldfdatastore.AddressRefKey, error
 
 func (i DeleteAddressRefChangesetInput) addressRefKeys() ([]cldfdatastore.AddressRefKey, error) {
 	keys := make([]cldfdatastore.AddressRefKey, 0, len(i.AddressRefKeys))
-	for _, inputKey := range i.AddressRefKeys {
+	for idx, inputKey := range i.AddressRefKeys {
 		key, err := inputKey.addressRefKey()
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("addressRefKeys[%d]: %w", idx, err)
 		}
 
 		keys = append(keys, key)
