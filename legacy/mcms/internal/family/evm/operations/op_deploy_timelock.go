@@ -5,16 +5,16 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/ethereum/go-ethereum/common"
-	mcmscontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/mcms"
 
 	bindings "github.com/smartcontractkit/ccip-owner-contracts/pkg/gethwrappers"
-
+	mcmscontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/mcms"
 	zkbindings "github.com/smartcontractkit/mcms/sdk/zksync/bindings"
 
 	"github.com/smartcontractkit/cld-changesets/internal/semvers"
+	"github.com/smartcontractkit/cld-changesets/pkg/family/evm/operations"
 )
 
-type OpEVMDeployTimelockInput struct {
+type OpDeployTimelockInput struct {
 	TimelockMinDelay *big.Int         `json:"timelockMinDelay"`
 	Admin            common.Address   `json:"admin"`      // Admin of the timelock contract, usually the deployer key
 	Proposers        []common.Address `json:"proposers"`  // Proposer of the timelock contract, usually the deployer key
@@ -23,18 +23,18 @@ type OpEVMDeployTimelockInput struct {
 	Bypassers        []common.Address `json:"bypassers"`  // Bypasser of the timelock contract, usually the deployer key
 }
 
-var OpEVMDeployTimelock = NewEVMDeployOperation(
+var OpDeployTimelock = operations.NewEVMDeployOperation(
 	"evm-timelock-deploy",
 	semver.MustParse("1.0.0"),
 	"Deploys Timelock contract on the specified EVM chains",
 	mcmscontracts.RBACTimelock,
 	bindings.RBACTimelockMetaData,
-	&ContractOpts{
+	&operations.ContractOpts{
 		Version:          &semvers.V1_0_0,
 		EVMBytecode:      common.FromHex(bindings.RBACTimelockBin),
 		ZkSyncVMBytecode: zkbindings.RBACTimelockZkBytecode,
 	},
-	func(input OpEVMDeployTimelockInput) []any {
+	func(input OpDeployTimelockInput) []any {
 		return []any{
 			input.TimelockMinDelay,
 			input.Admin,

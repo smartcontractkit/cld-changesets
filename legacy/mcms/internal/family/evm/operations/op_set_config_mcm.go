@@ -5,9 +5,11 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	mcmscontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/mcms"
 
 	bindings "github.com/smartcontractkit/ccip-owner-contracts/pkg/gethwrappers"
+	mcmscontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/mcms"
+
+	"github.com/smartcontractkit/cld-changesets/pkg/family/evm/operations"
 )
 
 type OpEVMSetConfigMCMInput struct {
@@ -17,7 +19,7 @@ type OpEVMSetConfigMCMInput struct {
 	GroupParents    [32]uint8        `json:"groupParents"`
 }
 
-var OpEVMSetConfigMCM = NewEVMCallOperation(
+var OpEVMSetConfigMCM = operations.NewEVMCallOperation(
 	"evm-mcm-set-config",
 	semver.MustParse("1.0.0"),
 	"Sets Config on the deployed MCM contract",
