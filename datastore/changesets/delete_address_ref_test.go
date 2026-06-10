@@ -32,14 +32,14 @@ func TestDeleteAddressRefChangeset_VerifyPreconditions(t *testing.T) {
 				DataStore: testDataStoreWithAddressRefs(t, addressRef1).Seal(),
 			},
 			input: DeleteAddressRefChangesetInput{
-				AddressRefKeys: []cldfdatastore.AddressRefKey{addressRef1.Key(), addressRef2.Key()},
+				AddressRefs: []cldfdatastore.AddressRef{addressRef1, addressRef2},
 			},
 		},
 		{
 			name: "failure: missing datastore",
 			env:  cldf.Environment{},
 			input: DeleteAddressRefChangesetInput{
-				AddressRefKeys: []cldfdatastore.AddressRefKey{addressRef1.Key(), addressRef2.Key()},
+				AddressRefs: []cldfdatastore.AddressRef{addressRef1, addressRef2},
 			},
 			wantErr: "missing datastore in environment",
 		},
@@ -48,7 +48,7 @@ func TestDeleteAddressRefChangeset_VerifyPreconditions(t *testing.T) {
 			env: cldf.Environment{
 				DataStore: cldfdatastore.NewMemoryDataStore().Seal(),
 			},
-			input:   DeleteAddressRefChangesetInput{AddressRefKeys: []cldfdatastore.AddressRefKey{}},
+			input:   DeleteAddressRefChangesetInput{AddressRefs: []cldfdatastore.AddressRef{}},
 			wantErr: "missing address ref keys input",
 		},
 		{
@@ -56,7 +56,7 @@ func TestDeleteAddressRefChangeset_VerifyPreconditions(t *testing.T) {
 			env: cldf.Environment{
 				DataStore: cldfdatastore.NewMemoryDataStore().Seal(),
 			},
-			input:   DeleteAddressRefChangesetInput{AddressRefKeys: []cldfdatastore.AddressRefKey{addressRef2.Key()}},
+			input:   DeleteAddressRefChangesetInput{AddressRefs: []cldfdatastore.AddressRef{addressRef2}},
 			wantErr: fmt.Sprintf("address ref entry for chain selector %v, type %v, version %v and qualifier %q does not exist", addressRef2.ChainSelector, addressRef2.Type, addressRef2.Version, addressRef2.Qualifier),
 		},
 	}
@@ -96,7 +96,7 @@ func TestDeleteAddressRefChangeset_Apply(t *testing.T) {
 				OperationsBundle: cldfoperations.NewBundle(t.Context, cldflogger.Test(t), cldfoperations.NewMemoryReporter()),
 			},
 			input: DeleteAddressRefChangesetInput{
-				AddressRefKeys: []cldfdatastore.AddressRefKey{addressRef1.Key(), addressRef2.Key()},
+				AddressRefs: []cldfdatastore.AddressRef{addressRef1, addressRef2},
 			},
 			wantDeletedKeys: []string{addressRef1.Key().String(), addressRef2.Key().String()},
 		},
