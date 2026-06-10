@@ -15,19 +15,29 @@ import (
 type DeleteAddressRefChangeset struct{}
 
 type DeleteAddressRefChangesetInput struct {
-	AddressRefKeys []cldfdatastore.AddressRefKey `json:"addressRefKeys"`
+	AddressRefs []cldfdatastore.AddressRef `json:"addressRefKeys"`
+}
+
+func (i DeleteAddressRefChangesetInput) addressRefKeys() []cldfdatastore.AddressRefKey {
+	keys := make([]cldfdatastore.AddressRefKey, 0, len(i.AddressRefs))
+	for _, ref := range i.AddressRefs {
+		keys = append(keys, ref.Key())
+	}
+
+	return keys
 }
 
 // VerifyPreconditions ensures the input is valid.
 func (DeleteAddressRefChangeset) VerifyPreconditions(e cldf.Environment, input DeleteAddressRefChangesetInput) error {
-	if len(input.AddressRefKeys) == 0 {
+	if len(input.AddressRefs) == 0 {
 		return errors.New("missing address ref keys input")
 	}
 	if e.DataStore == nil {
 		return errors.New("missing datastore in environment")
 	}
 
-	for _, key := range input.AddressRefKeys {
+	for _, ref := range input.AddressRefs {
+		key := ref.Key()
 		_, err := e.DataStore.Addresses().Get(key)
 		if err != nil {
 			if errors.Is(err, cldfdatastore.ErrAddressRefNotFound) {
@@ -46,7 +56,7 @@ func (DeleteAddressRefChangeset) VerifyPreconditions(e cldf.Environment, input D
 // Apply executes the changeset, staging the address refs to be deleted from the Datastore.
 func (DeleteAddressRefChangeset) Apply(e cldf.Environment, input DeleteAddressRefChangesetInput) (cldf.ChangesetOutput, error) {
 	deps := operations.DeleteAddressRefDeps{DataStore: e.DataStore}
-	opInput := operations.DeleteAddressRefInput{AddressRefKeys: input.AddressRefKeys}
+	opInput := operations.DeleteAddressRefInput{AddressRefKeys: input.addressRefKeys()}
 
 	report, err := cldfops.ExecuteOperation(e.OperationsBundle, operations.DeleteAddressRefOp, deps, opInput)
 	out := cldf.ChangesetOutput{
