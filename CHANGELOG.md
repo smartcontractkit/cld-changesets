@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.1](https://github.com/smartcontractkit/cld-changesets/compare/v0.7.0...v0.7.1) (2026-06-10)
+
+
+### Bug Fixes
+
+* use specific type to avoid requiring the address in datastore delete ([#84](https://github.com/smartcontractkit/cld-changesets/issues/84)) ([846077c](https://github.com/smartcontractkit/cld-changesets/commit/846077c6291a1f2ecf0f37a1dabb66cb305778f6))
+
 ## [0.7.0](https://github.com/smartcontractkit/cld-changesets/compare/v0.6.0...v0.7.0) (2026-06-10)
 
 
