@@ -75,6 +75,27 @@ func TestDeleteAddressRefChangeset_VerifyPreconditions(t *testing.T) {
 	}
 }
 
+func TestDeleteAddressRefChangeset_MissingVersion(t *testing.T) {
+	t.Parallel()
+
+	input := DeleteAddressRefChangesetInput{
+		AddressRefKeys: []DeleteAddressRefKey{{
+			ChainSelector: 1234,
+			Type:          "MyContract",
+			Qualifier:     "q1",
+		}},
+	}
+	env := cldf.Environment{
+		DataStore: cldfdatastore.NewMemoryDataStore().Seal(),
+	}
+
+	err := DeleteAddressRefChangeset{}.VerifyPreconditions(env, input)
+	require.ErrorIs(t, err, cldfdatastore.ErrAddressRefVersionRequired)
+
+	_, err = DeleteAddressRefChangeset{}.Apply(env, input)
+	require.ErrorIs(t, err, cldfdatastore.ErrAddressRefVersionRequired)
+}
+
 func TestDeleteAddressRefChangeset_Apply(t *testing.T) {
 	t.Parallel()
 
