@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.7.0](https://github.com/smartcontractkit/cld-changesets/compare/v0.6.0...v0.7.0) (2026-06-10)
+
+
+### ⚠ BREAKING CHANGES
+
+* Delete `pkg/contract/mcms/view/v1_0` and `GenerateMCMSWithTimelockView`.
+
+### Features
+
+* remove EVM MCMS view generation ([#77](https://github.com/smartcontractkit/cld-changesets/issues/77)) ([dcfe322](https://github.com/smartcontractkit/cld-changesets/commit/dcfe322adee2dd8ff8cf89d0d3fbad9204631be9))
+
+
+### Bug Fixes
+
+* change type from address ref key to address ref ([#83](https://github.com/smartcontractkit/cld-changesets/issues/83)) ([23a126d](https://github.com/smartcontractkit/cld-changesets/commit/23a126d5b1bbf17f44f79fa729140113986c7adf))
+
 ## [0.6.0](https://github.com/smartcontractkit/cld-changesets/compare/v0.5.0...v0.6.0) (2026-06-02)
 
 
