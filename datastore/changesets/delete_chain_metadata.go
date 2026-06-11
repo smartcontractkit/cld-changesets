@@ -8,6 +8,7 @@ import (
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	cldfops "github.com/smartcontractkit/chainlink-deployments-framework/operations"
 
+	"github.com/smartcontractkit/cld-changesets/datastore/internal/keys"
 	"github.com/smartcontractkit/cld-changesets/datastore/operations"
 )
 
@@ -15,7 +16,7 @@ import (
 type DeleteChainMetadataChangeset struct{}
 
 type DeleteChainMetadataChangesetInput struct {
-	ChainMetadataKeys []cldfdatastore.ChainMetadataKey `json:"chainMetadataKeys"`
+	ChainMetadataKeys []keys.ChainMetadataKey `json:"chainMetadataKeys"`
 }
 
 // VerifyPreconditions ensures the input is valid.
@@ -28,13 +29,14 @@ func (DeleteChainMetadataChangeset) VerifyPreconditions(e cldf.Environment, inpu
 	}
 
 	for _, key := range input.ChainMetadataKeys {
-		_, err := e.DataStore.ChainMetadata().Get(key)
+		fwKey := key.ToFrameworkKey()
+		_, err := e.DataStore.ChainMetadata().Get(fwKey)
 		if err != nil {
 			if errors.Is(err, cldfdatastore.ErrChainMetadataNotFound) {
-				return fmt.Errorf("chain metadata entry for chain selector %v does not exist", key.ChainSelector())
+				return fmt.Errorf("chain metadata entry for chain selector %v does not exist", fwKey.ChainSelector())
 			}
 
-			return fmt.Errorf("failed to retrieve chain metadata entry for chain selector %v: %w", key.ChainSelector(), err)
+			return fmt.Errorf("failed to retrieve chain metadata entry for chain selector %v: %w", fwKey.ChainSelector(), err)
 		}
 	}
 

@@ -8,6 +8,7 @@ import (
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	cldfops "github.com/smartcontractkit/chainlink-deployments-framework/operations"
 
+	"github.com/smartcontractkit/cld-changesets/datastore/internal/keys"
 	"github.com/smartcontractkit/cld-changesets/datastore/operations"
 )
 
@@ -15,7 +16,7 @@ import (
 type DeleteContractMetadataChangeset struct{}
 
 type DeleteContractMetadataChangesetInput struct {
-	ContractMetadataKeys []cldfdatastore.ContractMetadataKey `json:"contractMetadataKeys"`
+	ContractMetadataKeys []keys.ContractMetadataKey `json:"contractMetadataKeys"`
 }
 
 // VerifyPreconditions ensures the input is valid.
@@ -28,15 +29,16 @@ func (DeleteContractMetadataChangeset) VerifyPreconditions(e cldf.Environment, i
 	}
 
 	for _, key := range input.ContractMetadataKeys {
-		_, err := e.DataStore.ContractMetadata().Get(key)
+		fwKey := key.ToFrameworkKey()
+		_, err := e.DataStore.ContractMetadata().Get(fwKey)
 		if err != nil {
 			if errors.Is(err, cldfdatastore.ErrContractMetadataNotFound) {
 				return fmt.Errorf("contract metadata entry for chain selector %v and address %v does not exist",
-					key.ChainSelector(), key.Address())
+					fwKey.ChainSelector(), fwKey.Address())
 			}
 
 			return fmt.Errorf("failed to retrieve contract metadata entry for chain selector %v and address %v: %w",
-				key.ChainSelector(), key.Address(), err)
+				fwKey.ChainSelector(), fwKey.Address(), err)
 		}
 	}
 
