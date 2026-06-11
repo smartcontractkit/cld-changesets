@@ -7,12 +7,14 @@ import (
 
 	"github.com/gagliardetto/solana-go"
 	chainsel "github.com/smartcontractkit/chain-selectors"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/operations2/contract"
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	cldfops "github.com/smartcontractkit/chainlink-deployments-framework/operations"
 
-	opsevm "github.com/smartcontractkit/cld-changesets/pkg/family/evm/operations"
 	linkops "github.com/smartcontractkit/cld-changesets/tokens/link/operations"
+	"github.com/smartcontractkit/cld-changesets/tokens/link/types"
 )
 
 var _ cldf.ChangeSetV2[DeployLinkTokenInput] = DeployLinkTokenChangeset{}
@@ -69,9 +71,9 @@ func (DeployLinkTokenChangeset) VerifyPreconditions(e cldf.Environment, input De
 			return fmt.Errorf("unknown EVM LINK variant %q for chain %d: must be %q or %q", cfg.Variant, sel, EVMLinkBurnMint, EVMLinkStatic)
 		}
 
-		tv := linkTokenTypeAndVersion()
+		tv := types.BurnMintLinkTokenTypeAndVersion
 		if cfg.Variant == EVMLinkStatic {
-			tv = staticLinkTokenTypeAndVersion()
+			tv = types.StaticLinkTokenTypeAndVersion
 		}
 
 		if err := validateNoExistingContract(e, []uint64{sel}, tv, cfg.Qualifier); err != nil {
@@ -92,7 +94,7 @@ func (DeployLinkTokenChangeset) VerifyPreconditions(e cldf.Environment, input De
 			return fmt.Errorf("solana chain %d: TokenPrivKey must be set", sel)
 		}
 
-		if err := validateNoExistingContract(e, []uint64{sel}, linkTokenTypeAndVersion(), cfg.Qualifier); err != nil {
+		if err := validateNoExistingContract(e, []uint64{sel}, types.BurnMintLinkTokenTypeAndVersion, cfg.Qualifier); err != nil {
 			return err
 		}
 	}
@@ -111,10 +113,10 @@ func (DeployLinkTokenChangeset) Apply(e cldf.Environment, input DeployLinkTokenI
 		}
 
 		op := linkops.OpEVMDeployLinkToken
-		tv := linkTokenTypeAndVersion()
+		tv := types.BurnMintLinkTokenTypeAndVersion
 		if cfg.Variant == EVMLinkStatic {
 			op = linkops.OpEVMDeployStaticLinkToken
-			tv = staticLinkTokenTypeAndVersion()
+			tv = types.StaticLinkTokenTypeAndVersion
 		}
 
 		qualifier := cfg.Qualifier
@@ -122,13 +124,20 @@ func (DeployLinkTokenChangeset) Apply(e cldf.Environment, input DeployLinkTokenI
 			e.OperationsBundle,
 			op,
 			chain,
-			opsevm.EVMDeployInput[any]{ChainSelector: sel, Qualifier: &qualifier},
+			contract.DeployInput[struct{}]{
+				TypeAndVersion: tv,
+				Qualifier:      &qualifier,
+				Args:           struct{}{},
+			},
+			cldfops.WithIdempotencyKey[contract.DeployInput[struct{}], evm.Chain](
+				fmt.Sprintf("link-token-deploy-%d-%s-%s", sel, tv.String(), qualifier),
+			),
 		)
 		if err != nil {
 			return cldf.ChangesetOutput{}, fmt.Errorf("failed to deploy link token for chain %d: %w", sel, err)
 		}
 
-		addr := report.Output.Address.String()
+		addr := report.Output.Address
 		if err := saveAddressRef(ds, sel, addr, tv, cfg.Qualifier); err != nil {
 			return cldf.ChangesetOutput{}, fmt.Errorf("failed to save link token address for chain %d: %w", sel, err)
 		}
@@ -137,7 +146,7 @@ func (DeployLinkTokenChangeset) Apply(e cldf.Environment, input DeployLinkTokenI
 		e.Logger.Infow("Deployed link token", "chain", sel, "addr", addr, "variant", tv.Type)
 	}
 
-	tv := linkTokenTypeAndVersion()
+	tv := types.BurnMintLinkTokenTypeAndVersion
 	for sel, cfg := range input.Solana {
 		chain, ok := e.BlockChains.SolanaChains()[sel]
 		if !ok {

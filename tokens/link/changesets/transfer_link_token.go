@@ -14,11 +14,10 @@ import (
 	linkcontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/link"
 	mcmscontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/mcms"
 	"github.com/smartcontractkit/chainlink-evm/gethwrappers/shared/generated/initial/link_token"
-
-	"github.com/smartcontractkit/cld-changesets/internal/semvers"
-
 	"github.com/smartcontractkit/mcms"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
+
+	"github.com/smartcontractkit/cld-changesets/internal/semvers"
 )
 
 const defaultProposalValidFor = 24 * time.Hour

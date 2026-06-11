@@ -38,7 +38,7 @@ var OpTransferOwnership = operations.NewOperation(
 		_, err = cldf.ConfirmIfNoError(deps.Chain, tx, err)
 		if err != nil {
 			return OpOwnershipOutput{Tx: tx}, fmt.Errorf(
-				"failed to transfer ownership of contract %T: %w",
+				"failed to transfer ownership of contract %s: %w",
 				in.Address.Hex(),
 				err,
 			)
@@ -57,7 +57,7 @@ var OpAcceptOwnership = operations.NewOperation(
 		tx, err := deps.OwnableC.AcceptOwnership(cldf.SimTransactOpts())
 		if err != nil {
 			return OpOwnershipOutput{Tx: tx}, fmt.Errorf(
-				"failed to Accept ownership of contract %T: %w",
+				"failed to Accept ownership of contract %s: %w",
 				in.Address.Hex(),
 				err,
 			)
