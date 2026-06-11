@@ -91,7 +91,7 @@ func (MCMSSignFireDrillChangeset) Apply(e cldf.Environment, cfg FireDrillConfig)
 	deps := mcops.FireDrillDeps{Environment: e}
 	input := mcops.FireDrillInput{TimelockCfg: cfg.TimelockCfg, Selectors: cfg.Selectors}
 
-	report, err := fwops.ExecuteOperation[mcops.FireDrillInput, mcops.FireDrillOutput, mcops.FireDrillDeps](
+	report, err := fwops.ExecuteOperation(
 		e.OperationsBundle,
 		mcops.BuildMCMSFiredrillProposalOp,
 		deps,

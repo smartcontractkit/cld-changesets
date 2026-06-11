@@ -13,8 +13,8 @@ import (
 
 	cldfproposalutils "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
 
+	evmchangesets "github.com/smartcontractkit/cld-changesets/legacy/mcms/internal/family/evm/changesets"
 	"github.com/smartcontractkit/cld-changesets/legacy/pkg/family/evm"
-	evmchangesets "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/evm/changesets"
 	solchangesets "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana/changesets"
 	opsevm "github.com/smartcontractkit/cld-changesets/pkg/family/evm/operations"
 
@@ -138,7 +138,7 @@ func DeployMCMSWithTimelockV2(
 				if s != nil {
 					chainstate = s[chainSel]
 				}
-				reports, err := evmchangesets.DeployMCMSWithTimelockContractsEVM(env, env.BlockChains.EVMChains()[chainSel], newAddresses, cfg, chainstate)
+				reports, err := evmchangesets.DeployMCMSWithTimelockContracts(env, env.BlockChains.EVMChains()[chainSel], newAddresses, cfg, chainstate)
 				mu.Lock()
 				allReports = append(allReports, reports...)
 				mu.Unlock()

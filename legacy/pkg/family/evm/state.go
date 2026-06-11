@@ -11,6 +11,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	mcmscontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/mcms"
+	cldfproposalutils "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
 
 	"github.com/smartcontractkit/cld-changesets/internal/semvers"
 )
@@ -29,24 +30,35 @@ type MCMSWithTimelockState struct {
 
 // Validate checks that all fields are non-nil, ensuring it's ready
 // for use generating views or interactions.
-func (state MCMSWithTimelockState) Validate() error {
-	if state.Timelock == nil {
+func (s MCMSWithTimelockState) Validate() error {
+	if s.Timelock == nil {
 		return errors.New("timelock not found")
 	}
-	if state.CancellerMcm == nil {
+	if s.CancellerMcm == nil {
 		return errors.New("canceller not found")
 	}
-	if state.ProposerMcm == nil {
+	if s.ProposerMcm == nil {
 		return errors.New("proposer not found")
 	}
-	if state.BypasserMcm == nil {
+	if s.BypasserMcm == nil {
 		return errors.New("bypasser not found")
 	}
-	if state.CallProxy == nil {
+	if s.CallProxy == nil {
 		return errors.New("call proxy not found")
 	}
 
 	return nil
+}
+
+// TimelockContracts implements [cldfproposalutils.EVMMCMSWithTimelock] for MCMS timelock proposal helpers.
+func (s MCMSWithTimelockState) TimelockContracts() cldfproposalutils.MCMSWithTimelockContracts {
+	return cldfproposalutils.MCMSWithTimelockContracts{
+		CancellerMcm: s.CancellerMcm,
+		BypasserMcm:  s.BypasserMcm,
+		ProposerMcm:  s.ProposerMcm,
+		Timelock:     s.Timelock,
+		CallProxy:    s.CallProxy,
+	}
 }
 
 // MaybeLoadMCMSWithTimelockState loads the MCMSWithTimelockState state for each chain in the given environment.

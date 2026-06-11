@@ -1,4 +1,4 @@
-package seqs
+package sequences
 
 import (
 	"encoding/json"
@@ -7,21 +7,21 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	mcmsTypes "github.com/smartcontractkit/mcms/types"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 	"github.com/smartcontractkit/chainlink-evm/gethwrappers/shared/generated/initial/burn_mint_erc677"
+	mcmsTypes "github.com/smartcontractkit/mcms/types"
 
+	opevm "github.com/smartcontractkit/cld-changesets/legacy/mcms/internal/family/evm/operations"
 	evmstate "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/evm"
-	opsevm "github.com/smartcontractkit/cld-changesets/pkg/family/evm/operations"
 )
 
-type SeqTransferToMCMSWithTimelockV2Deps struct {
+type SeqTransferToMCMSWithTimelockDeps struct {
 	Chain evm.Chain
 }
 
-type SeqTransferToMCMSWithTimelockV2Input struct {
+type SeqTransferToMCMSWithTimelockInput struct {
 	ChainSelector uint64           `json:"chainSelector"`
 	Timelock      common.Address   `json:"timelock"`
 	Contracts     []common.Address `json:"contracts"`
@@ -29,15 +29,15 @@ type SeqTransferToMCMSWithTimelockV2Input struct {
 	OnlyAcceptOwnership bool `json:"onlyacceptownership"`
 }
 
-type SeqTransferToMCMSWithTimelockV2Output struct {
+type SeqTransferToMCMSWithTimelockOutput struct {
 	OpsMcms []mcmsTypes.Transaction `json:"opsMcms"`
 }
 
-var SeqTransferToMCMSWithTimelockV2 = operations.NewSequence(
+var SeqTransferToMCMSWithTimelock = operations.NewSequence(
 	"seq-transfer-to-mcms-with-timelock-v2",
 	semver.MustParse("1.0.0"),
 	"Transfers ownership to the Timelock contract",
-	func(b operations.Bundle, deps SeqTransferToMCMSWithTimelockV2Deps, in SeqTransferToMCMSWithTimelockV2Input) (SeqTransferToMCMSWithTimelockV2Output, error) {
+	func(b operations.Bundle, deps SeqTransferToMCMSWithTimelockDeps, in SeqTransferToMCMSWithTimelockInput) (SeqTransferToMCMSWithTimelockOutput, error) {
 		var (
 			mcsmOps []mcmsTypes.Transaction
 		)
@@ -48,7 +48,7 @@ var SeqTransferToMCMSWithTimelockV2 = operations.NewSequence(
 			owner, c, err := LoadOwnableContract(contract, deps.Chain.Client)
 			if err != nil {
 				b.Logger.Errorf("failed to load ownable contract %s: %v", contract.Hex(), err)
-				return SeqTransferToMCMSWithTimelockV2Output{}, fmt.Errorf("error loading ownable contract %s: %w", contract.Hex(), err)
+				return SeqTransferToMCMSWithTimelockOutput{}, fmt.Errorf("error loading ownable contract %s: %w", contract.Hex(), err)
 			}
 
 			if owner.String() == in.Timelock.Hex() {
@@ -59,12 +59,12 @@ var SeqTransferToMCMSWithTimelockV2 = operations.NewSequence(
 
 			if !in.OnlyAcceptOwnership {
 				// Transfer Ownership
-				_, err = operations.ExecuteOperation(b, opsevm.OpEVMTransferOwnership,
-					opsevm.OpEVMOwnershipDeps{
+				_, err = operations.ExecuteOperation(b, opevm.OpTransferOwnership,
+					opevm.OpOwnershipDeps{
 						Chain:    deps.Chain,
 						OwnableC: c,
 					},
-					opsevm.OpEVMTransferOwnershipInput{
+					opevm.OpTransferOwnershipInput{
 						ChainSelector:   in.ChainSelector,
 						TimelockAddress: in.Timelock,
 						Address:         contract,
@@ -72,24 +72,24 @@ var SeqTransferToMCMSWithTimelockV2 = operations.NewSequence(
 				)
 
 				if err != nil {
-					return SeqTransferToMCMSWithTimelockV2Output{}, err
+					return SeqTransferToMCMSWithTimelockOutput{}, err
 				}
 			}
 
 			// Accept Ownership
-			opReport, err := operations.ExecuteOperation(b, opsevm.OpEVMAcceptOwnership,
-				opsevm.OpEVMOwnershipDeps{
+			opReport, err := operations.ExecuteOperation(b, opevm.OpAcceptOwnership,
+				opevm.OpOwnershipDeps{
 					Chain:    deps.Chain,
 					OwnableC: c,
 				},
-				opsevm.OpEVMTransferOwnershipInput{
+				opevm.OpTransferOwnershipInput{
 					ChainSelector:   in.ChainSelector,
 					TimelockAddress: in.Timelock,
 					Address:         contract,
 				},
 			)
 			if err != nil {
-				return SeqTransferToMCMSWithTimelockV2Output{}, err
+				return SeqTransferToMCMSWithTimelockOutput{}, err
 			}
 
 			mcsmOps = append(mcsmOps, mcmsTypes.Transaction{
@@ -99,7 +99,7 @@ var SeqTransferToMCMSWithTimelockV2 = operations.NewSequence(
 			})
 		}
 
-		return SeqTransferToMCMSWithTimelockV2Output{OpsMcms: mcsmOps}, nil
+		return SeqTransferToMCMSWithTimelockOutput{OpsMcms: mcsmOps}, nil
 	},
 )
 
