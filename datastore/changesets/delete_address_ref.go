@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Masterminds/semver/v3"
 	cldfdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	cldfops "github.com/smartcontractkit/chainlink-deployments-framework/operations"
@@ -15,7 +16,36 @@ import (
 type DeleteAddressRefChangeset struct{}
 
 type DeleteAddressRefChangesetInput struct {
-	AddressRefKeys []cldfdatastore.AddressRefKey `json:"addressRefKeys"`
+	AddressRefKeys []DeleteAddressRefKey `json:"addressRefKeys"`
+}
+
+type DeleteAddressRefKey struct {
+	ChainSelector uint64                     `json:"chainSelector"`
+	Type          cldfdatastore.ContractType `json:"type"`
+	Version       *semver.Version            `json:"version"`
+	Qualifier     string                     `json:"qualifier"`
+}
+
+func (k DeleteAddressRefKey) addressRefKey() (cldfdatastore.AddressRefKey, error) {
+	if k.Version == nil {
+		return nil, cldfdatastore.ErrAddressRefVersionRequired
+	}
+
+	return cldfdatastore.NewAddressRefKey(k.ChainSelector, k.Type, k.Version, k.Qualifier), nil
+}
+
+func (i DeleteAddressRefChangesetInput) addressRefKeys() ([]cldfdatastore.AddressRefKey, error) {
+	keys := make([]cldfdatastore.AddressRefKey, 0, len(i.AddressRefKeys))
+	for idx, inputKey := range i.AddressRefKeys {
+		key, err := inputKey.addressRefKey()
+		if err != nil {
+			return nil, fmt.Errorf("addressRefKeys[%d]: %w", idx, err)
+		}
+
+		keys = append(keys, key)
+	}
+
+	return keys, nil
 }
 
 // VerifyPreconditions ensures the input is valid.
@@ -27,7 +57,12 @@ func (DeleteAddressRefChangeset) VerifyPreconditions(e cldf.Environment, input D
 		return errors.New("missing datastore in environment")
 	}
 
-	for _, key := range input.AddressRefKeys {
+	keys, err := input.addressRefKeys()
+	if err != nil {
+		return fmt.Errorf("invalid address ref keys input: %w", err)
+	}
+
+	for _, key := range keys {
 		_, err := e.DataStore.Addresses().Get(key)
 		if err != nil {
 			if errors.Is(err, cldfdatastore.ErrAddressRefNotFound) {
@@ -46,7 +81,11 @@ func (DeleteAddressRefChangeset) VerifyPreconditions(e cldf.Environment, input D
 // Apply executes the changeset, staging the address refs to be deleted from the Datastore.
 func (DeleteAddressRefChangeset) Apply(e cldf.Environment, input DeleteAddressRefChangesetInput) (cldf.ChangesetOutput, error) {
 	deps := operations.DeleteAddressRefDeps{DataStore: e.DataStore}
-	opInput := operations.DeleteAddressRefInput{AddressRefKeys: input.AddressRefKeys}
+	addressRefKeys, err := input.addressRefKeys()
+	if err != nil {
+		return cldf.ChangesetOutput{}, fmt.Errorf("invalid address ref keys input: %w", err)
+	}
+	opInput := operations.DeleteAddressRefInput{AddressRefKeys: addressRefKeys}
 
 	report, err := cldfops.ExecuteOperation(e.OperationsBundle, operations.DeleteAddressRefOp, deps, opInput)
 	out := cldf.ChangesetOutput{

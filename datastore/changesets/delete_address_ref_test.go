@@ -32,14 +32,14 @@ func TestDeleteAddressRefChangeset_VerifyPreconditions(t *testing.T) {
 				DataStore: testDataStoreWithAddressRefs(t, addressRef1).Seal(),
 			},
 			input: DeleteAddressRefChangesetInput{
-				AddressRefKeys: []cldfdatastore.AddressRefKey{addressRef1.Key(), addressRef2.Key()},
+				AddressRefKeys: []DeleteAddressRefKey{deleteAddressRefKey(addressRef1), deleteAddressRefKey(addressRef2)},
 			},
 		},
 		{
 			name: "failure: missing datastore",
 			env:  cldf.Environment{},
 			input: DeleteAddressRefChangesetInput{
-				AddressRefKeys: []cldfdatastore.AddressRefKey{addressRef1.Key(), addressRef2.Key()},
+				AddressRefKeys: []DeleteAddressRefKey{deleteAddressRefKey(addressRef1), deleteAddressRefKey(addressRef2)},
 			},
 			wantErr: "missing datastore in environment",
 		},
@@ -48,7 +48,7 @@ func TestDeleteAddressRefChangeset_VerifyPreconditions(t *testing.T) {
 			env: cldf.Environment{
 				DataStore: cldfdatastore.NewMemoryDataStore().Seal(),
 			},
-			input:   DeleteAddressRefChangesetInput{AddressRefKeys: []cldfdatastore.AddressRefKey{}},
+			input:   DeleteAddressRefChangesetInput{AddressRefKeys: []DeleteAddressRefKey{}},
 			wantErr: "missing address ref keys input",
 		},
 		{
@@ -56,7 +56,7 @@ func TestDeleteAddressRefChangeset_VerifyPreconditions(t *testing.T) {
 			env: cldf.Environment{
 				DataStore: cldfdatastore.NewMemoryDataStore().Seal(),
 			},
-			input:   DeleteAddressRefChangesetInput{AddressRefKeys: []cldfdatastore.AddressRefKey{addressRef2.Key()}},
+			input:   DeleteAddressRefChangesetInput{AddressRefKeys: []DeleteAddressRefKey{deleteAddressRefKey(addressRef2)}},
 			wantErr: fmt.Sprintf("address ref entry for chain selector %v, type %v, version %v and qualifier %q does not exist", addressRef2.ChainSelector, addressRef2.Type, addressRef2.Version, addressRef2.Qualifier),
 		},
 	}
@@ -73,6 +73,27 @@ func TestDeleteAddressRefChangeset_VerifyPreconditions(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestDeleteAddressRefChangeset_MissingVersion(t *testing.T) {
+	t.Parallel()
+
+	input := DeleteAddressRefChangesetInput{
+		AddressRefKeys: []DeleteAddressRefKey{{
+			ChainSelector: 1234,
+			Type:          "MyContract",
+			Qualifier:     "q1",
+		}},
+	}
+	env := cldf.Environment{
+		DataStore: cldfdatastore.NewMemoryDataStore().Seal(),
+	}
+
+	err := DeleteAddressRefChangeset{}.VerifyPreconditions(env, input)
+	require.ErrorIs(t, err, cldfdatastore.ErrAddressRefVersionRequired)
+
+	_, err = DeleteAddressRefChangeset{}.Apply(env, input)
+	require.ErrorIs(t, err, cldfdatastore.ErrAddressRefVersionRequired)
 }
 
 func TestDeleteAddressRefChangeset_Apply(t *testing.T) {
@@ -96,7 +117,7 @@ func TestDeleteAddressRefChangeset_Apply(t *testing.T) {
 				OperationsBundle: cldfoperations.NewBundle(t.Context, cldflogger.Test(t), cldfoperations.NewMemoryReporter()),
 			},
 			input: DeleteAddressRefChangesetInput{
-				AddressRefKeys: []cldfdatastore.AddressRefKey{addressRef1.Key(), addressRef2.Key()},
+				AddressRefKeys: []DeleteAddressRefKey{deleteAddressRefKey(addressRef1), deleteAddressRefKey(addressRef2)},
 			},
 			wantDeletedKeys: []string{addressRef1.Key().String(), addressRef2.Key().String()},
 		},
@@ -117,5 +138,14 @@ func TestDeleteAddressRefChangeset_Apply(t *testing.T) {
 				require.ErrorContains(t, err, tt.wantErr)
 			}
 		})
+	}
+}
+
+func deleteAddressRefKey(ref cldfdatastore.AddressRef) DeleteAddressRefKey {
+	return DeleteAddressRefKey{
+		ChainSelector: ref.ChainSelector,
+		Type:          ref.Type,
+		Version:       ref.Version,
+		Qualifier:     ref.Qualifier,
 	}
 }
