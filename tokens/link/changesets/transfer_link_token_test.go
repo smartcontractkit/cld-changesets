@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/stretchr/testify/require"
+
 	chain_selectors "github.com/smartcontractkit/chain-selectors"
 	cldf_chain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
@@ -15,9 +17,9 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/environment"
 	"github.com/smartcontractkit/chainlink-evm/gethwrappers/shared/generated/initial/link_token"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
-	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/cld-changesets/internal/semvers"
+	"github.com/smartcontractkit/cld-changesets/tokens/link/types"
 )
 
 func TestTransferLinkTokenRejectsPreconditions(t *testing.T) {
@@ -25,7 +27,7 @@ func TestTransferLinkTokenRejectsPreconditions(t *testing.T) {
 
 	selector := chain_selectors.TEST_90000001.Selector
 
-	linkTV := linkTokenTypeAndVersion()
+	linkTV := types.BurnMintLinkTokenTypeAndVersion
 	proposerTV := cldf.NewTypeAndVersion(mcmscontracts.ProposerManyChainMultisig, semvers.V1_0_0)
 	timelockTV := cldf.NewTypeAndVersion(mcmscontracts.RBACTimelock, semvers.V1_0_0)
 
@@ -177,7 +179,7 @@ func TestTransferLinkTokenBuildsProposal(t *testing.T) {
 	)
 
 	ds := datastore.NewMemoryDataStore()
-	require.NoError(t, saveAddressRef(ds, selector, linkAddr.Hex(), linkTokenTypeAndVersion(), ""))
+	require.NoError(t, saveAddressRef(ds, selector, linkAddr.Hex(), types.BurnMintLinkTokenTypeAndVersion, ""))
 	require.NoError(t, saveAddressRef(ds, selector, proposerAddr, proposerTV, ""))
 	require.NoError(t, saveAddressRef(ds, selector, timelockAddr, timelockTV, ""))
 	env.DataStore = ds.Seal()
@@ -221,7 +223,7 @@ func TestTransferLinkTokenValidUntilIsRespected(t *testing.T) {
 	)
 
 	ds := datastore.NewMemoryDataStore()
-	require.NoError(t, saveAddressRef(ds, selector, linkAddr.Hex(), linkTokenTypeAndVersion(), ""))
+	require.NoError(t, saveAddressRef(ds, selector, linkAddr.Hex(), types.BurnMintLinkTokenTypeAndVersion, ""))
 	require.NoError(t, saveAddressRef(ds, selector, proposerAddr, proposerTV, ""))
 	require.NoError(t, saveAddressRef(ds, selector, timelockAddr, timelockTV, ""))
 	env.DataStore = ds.Seal()

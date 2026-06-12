@@ -6,18 +6,7 @@ import (
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
-	linkcontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/link"
-
-	"github.com/smartcontractkit/cld-changesets/internal/semvers"
 )
-
-func linkTokenTypeAndVersion() cldf.TypeAndVersion {
-	return cldf.NewTypeAndVersion(linkcontracts.LinkToken, semvers.V1_0_0)
-}
-
-func staticLinkTokenTypeAndVersion() cldf.TypeAndVersion {
-	return cldf.NewTypeAndVersion(linkcontracts.StaticLinkToken, semvers.V1_0_0)
-}
 
 func saveAddressRef(ds datastore.MutableDataStore, chainSelector uint64, address string, tv cldf.TypeAndVersion, qualifier string) error {
 	return ds.Addresses().Add(datastore.AddressRef{
