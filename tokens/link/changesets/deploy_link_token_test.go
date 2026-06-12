@@ -4,9 +4,9 @@ import (
 	"testing"
 
 	"github.com/gagliardetto/solana-go"
-	chain_selectors "github.com/smartcontractkit/chain-selectors"
 	"github.com/stretchr/testify/require"
 
+	chain_selectors "github.com/smartcontractkit/chain-selectors"
 	cldf_chain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	cldf_solana "github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
@@ -17,6 +17,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/runtime"
 
 	"github.com/smartcontractkit/cld-changesets/internal/semvers"
+	"github.com/smartcontractkit/cld-changesets/tokens/link/types"
 )
 
 func TestDeployLinkToken(t *testing.T) {
@@ -166,7 +167,7 @@ func TestDeployLinkTokenRejectsExistingStateBeforeDeploy(t *testing.T) {
 				BlockChains: cldf_chain.NewBlockChainsFromSlice([]cldf_chain.BlockChain{
 					cldf_evm.Chain{Selector: evmSelector},
 				}),
-				DataStore: datastoreWith(t, evmSelector, evmAddress, linkTokenTypeAndVersion(), ""),
+				DataStore: datastoreWith(t, evmSelector, evmAddress, types.BurnMintLinkTokenTypeAndVersion, ""),
 			},
 			input:   DeployLinkTokenInput{EVM: map[uint64]EVMLinkConfig{evmSelector: {}}},
 			wantErr: "LinkToken contract already exists",
@@ -177,7 +178,7 @@ func TestDeployLinkTokenRejectsExistingStateBeforeDeploy(t *testing.T) {
 				BlockChains: cldf_chain.NewBlockChainsFromSlice([]cldf_chain.BlockChain{
 					cldf_evm.Chain{Selector: evmSelector},
 				}),
-				DataStore: datastoreWith(t, evmSelector, evmAddress, staticLinkTokenTypeAndVersion(), ""),
+				DataStore: datastoreWith(t, evmSelector, evmAddress, types.StaticLinkTokenTypeAndVersion, ""),
 			},
 			input:   DeployLinkTokenInput{EVM: map[uint64]EVMLinkConfig{evmSelector: {Variant: EVMLinkStatic}}},
 			wantErr: "StaticLinkToken contract already exists",
@@ -188,7 +189,7 @@ func TestDeployLinkTokenRejectsExistingStateBeforeDeploy(t *testing.T) {
 				BlockChains: cldf_chain.NewBlockChainsFromSlice([]cldf_chain.BlockChain{
 					cldf_solana.Chain{Selector: solSelector},
 				}),
-				DataStore: datastoreWith(t, solSelector, solAddress, linkTokenTypeAndVersion(), ""),
+				DataStore: datastoreWith(t, solSelector, solAddress, types.BurnMintLinkTokenTypeAndVersion, ""),
 			},
 			input: func() DeployLinkTokenInput {
 				key, err := solana.NewRandomPrivateKey()
@@ -293,7 +294,7 @@ func TestDeployLinkTokenDifferentQualifierDoesNotBlock(t *testing.T) {
 		BlockChains: cldf_chain.NewBlockChainsFromSlice([]cldf_chain.BlockChain{
 			cldf_evm.Chain{Selector: evmSelector},
 		}),
-		DataStore: datastoreWith(t, evmSelector, evmAddress, linkTokenTypeAndVersion(), "migrated"),
+		DataStore: datastoreWith(t, evmSelector, evmAddress, types.BurnMintLinkTokenTypeAndVersion, "migrated"),
 	}
 
 	err := DeployLinkTokenChangeset{}.VerifyPreconditions(env, DeployLinkTokenInput{

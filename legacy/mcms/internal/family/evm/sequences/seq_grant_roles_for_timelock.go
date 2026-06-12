@@ -1,21 +1,21 @@
-package seqs
+package sequences
 
 import (
 	"slices"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/ethereum/go-ethereum/common"
-	cldfproposalutils "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
-	evmMcms "github.com/smartcontractkit/mcms/sdk/evm"
-	mcmsTypes "github.com/smartcontractkit/mcms/types"
 
 	cldfevm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	cldfproposalutils "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
+	evmMcms "github.com/smartcontractkit/mcms/sdk/evm"
+	mcmsTypes "github.com/smartcontractkit/mcms/types"
 
-	"github.com/smartcontractkit/cld-changesets/pkg/contract/mcms/view/v1_0"
-
-	opsevm "github.com/smartcontractkit/cld-changesets/pkg/family/evm/operations"
+	"github.com/smartcontractkit/cld-changesets/internal/mcmsrole"
+	opevm "github.com/smartcontractkit/cld-changesets/legacy/mcms/internal/family/evm/operations"
+	oputils "github.com/smartcontractkit/cld-changesets/pkg/family/evm/operations"
 )
 
 type SeqGrantRolesTimelockDeps struct {
@@ -45,26 +45,26 @@ var SeqGrantRolesTimelock = operations.NewSequence(
 	"seq-grant-role-with-config",
 	semver.MustParse("1.0.0"),
 	"Grants appropriate roles to MCMS contracts in the EVM Timelock contract",
-	func(b operations.Bundle, deps SeqGrantRolesTimelockDeps, in SeqGrantRolesTimelockInput) (map[uint64][]opsevm.EVMCallOutput, error) {
+	func(b operations.Bundle, deps SeqGrantRolesTimelockDeps, in SeqGrantRolesTimelockInput) (map[uint64][]oputils.EVMCallOutput, error) {
 		var (
 			addressesInInspector []string
 			err2                 error
 		)
-		out := make([]opsevm.EVMCallOutput, 0)
+		out := make([]oputils.EVMCallOutput, 0)
 
 		timelockInspector := evmMcms.NewTimelockInspector(deps.Chain.Client)
 
 		for _, roleAndAddress := range in.RolesAndAddresses {
 			switch roleAndAddress.Role {
-			case v1_0.PROPOSER_ROLE.ID:
+			case mcmsrole.ProposerRole.ID:
 				addressesInInspector, err2 = timelockInspector.GetProposers(b.GetContext(), in.Timelock.Hex())
-			case v1_0.CANCELLER_ROLE.ID:
+			case mcmsrole.CancellerRole.ID:
 				addressesInInspector, err2 = timelockInspector.GetCancellers(b.GetContext(), in.Timelock.Hex())
-			case v1_0.BYPASSER_ROLE.ID:
+			case mcmsrole.BypasserRole.ID:
 				addressesInInspector, err2 = timelockInspector.GetBypassers(b.GetContext(), in.Timelock.Hex())
-			case v1_0.EXECUTOR_ROLE.ID:
+			case mcmsrole.ExecutorRole.ID:
 				addressesInInspector, err2 = timelockInspector.GetExecutors(b.GetContext(), in.Timelock.Hex())
-			case v1_0.ADMIN_ROLE.ID:
+			case mcmsrole.AdminRole.ID:
 				addressesInInspector = []string{}
 			}
 			if err2 != nil {
@@ -80,18 +80,18 @@ var SeqGrantRolesTimelock = operations.NewSequence(
 			}
 			for _, addressToGrantRole := range roleAndAddress.Addresses {
 				if !slices.Contains(addressesInInspector, addressToGrantRole.Hex()) {
-					opReport, err := operations.ExecuteOperation(b, opsevm.OpEVMGrantRole,
+					opReport, err := operations.ExecuteOperation(b, opevm.OpGrantRole,
 						deps.Chain,
-						opsevm.EVMCallInput[opsevm.OpEVMGrantRoleInput]{
+						oputils.EVMCallInput[opevm.OpGrantRoleInput]{
 							ChainSelector: in.ChainSelector,
-							CallInput: opsevm.OpEVMGrantRoleInput{
+							CallInput: opevm.OpGrantRoleInput{
 								Account: addressToGrantRole,
 								RoleID:  roleAndAddress.Role,
 							},
 							NoSend:  !in.IsDeployerKeyAdmin,
 							Address: in.Timelock,
 						},
-						opsevm.RetryCallWithGasBoost[opsevm.OpEVMGrantRoleInput](in.GasBoostConfig),
+						oputils.RetryCallWithGasBoost[opevm.OpGrantRoleInput](in.GasBoostConfig),
 					)
 					if err != nil {
 						b.Logger.Errorw("Failed to grant role",
@@ -119,7 +119,7 @@ var SeqGrantRolesTimelock = operations.NewSequence(
 			}
 		}
 
-		return map[uint64][]opsevm.EVMCallOutput{
+		return map[uint64][]oputils.EVMCallOutput{
 			in.ChainSelector: out,
 		}, nil
 	},

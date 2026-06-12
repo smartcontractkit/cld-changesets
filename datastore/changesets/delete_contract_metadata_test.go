@@ -1,6 +1,7 @@
 package changesets
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -10,6 +11,8 @@ import (
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	cldfoperations "github.com/smartcontractkit/chainlink-deployments-framework/operations"
 	cldflogger "github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
+
+	"github.com/smartcontractkit/cld-changesets/datastore/internal/keys"
 )
 
 func TestDeleteContractMetadataChangeset_VerifyPreconditions(t *testing.T) {
@@ -30,14 +33,14 @@ func TestDeleteContractMetadataChangeset_VerifyPreconditions(t *testing.T) {
 				DataStore: testDataStoreWithContractMetadata(t, contractMetadata1, contractMetadata2).Seal(),
 			},
 			input: DeleteContractMetadataChangesetInput{
-				ContractMetadataKeys: []cldfdatastore.ContractMetadataKey{contractMetadata1.Key(), contractMetadata2.Key()},
+				ContractMetadataKeys: []keys.ContractMetadataKey{{ChainSelector: contractMetadata1.ChainSelector, Address: contractMetadata1.Address}, {ChainSelector: contractMetadata2.ChainSelector, Address: contractMetadata2.Address}},
 			},
 		},
 		{
 			name: "failure: missing datastore",
 			env:  cldf.Environment{},
 			input: DeleteContractMetadataChangesetInput{
-				ContractMetadataKeys: []cldfdatastore.ContractMetadataKey{contractMetadata1.Key()},
+				ContractMetadataKeys: []keys.ContractMetadataKey{{ChainSelector: contractMetadata1.ChainSelector, Address: contractMetadata1.Address}},
 			},
 			wantErr: "missing datastore in environment",
 		},
@@ -46,7 +49,7 @@ func TestDeleteContractMetadataChangeset_VerifyPreconditions(t *testing.T) {
 			env: cldf.Environment{
 				DataStore: cldfdatastore.NewMemoryDataStore().Seal(),
 			},
-			input:   DeleteContractMetadataChangesetInput{ContractMetadataKeys: []cldfdatastore.ContractMetadataKey{}},
+			input:   DeleteContractMetadataChangesetInput{ContractMetadataKeys: []keys.ContractMetadataKey{}},
 			wantErr: "missing contract metadata keys input",
 		},
 		{
@@ -54,7 +57,7 @@ func TestDeleteContractMetadataChangeset_VerifyPreconditions(t *testing.T) {
 			env: cldf.Environment{
 				DataStore: cldfdatastore.NewMemoryDataStore().Seal(),
 			},
-			input:   DeleteContractMetadataChangesetInput{ContractMetadataKeys: []cldfdatastore.ContractMetadataKey{contractMetadata2.Key()}},
+			input:   DeleteContractMetadataChangesetInput{ContractMetadataKeys: []keys.ContractMetadataKey{{ChainSelector: contractMetadata2.ChainSelector, Address: contractMetadata2.Address}}},
 			wantErr: fmt.Sprintf("contract metadata entry for chain selector %v and address %v does not exist", contractMetadata2.ChainSelector, contractMetadata2.Address),
 		},
 	}
@@ -93,7 +96,7 @@ func TestDeleteContractMetadataChangeset_Apply(t *testing.T) {
 				OperationsBundle: cldfoperations.NewBundle(t.Context, cldflogger.Test(t), cldfoperations.NewMemoryReporter()),
 			},
 			input: DeleteContractMetadataChangesetInput{
-				ContractMetadataKeys: []cldfdatastore.ContractMetadataKey{contractMetadata1.Key(), contractMetadata2.Key()},
+				ContractMetadataKeys: []keys.ContractMetadataKey{{ChainSelector: contractMetadata1.ChainSelector, Address: contractMetadata1.Address}, {ChainSelector: contractMetadata2.ChainSelector, Address: contractMetadata2.Address}},
 			},
 			wantDeletedKeys: []string{contractMetadata1.Key().String(), contractMetadata2.Key().String()},
 		},
@@ -115,4 +118,35 @@ func TestDeleteContractMetadataChangeset_Apply(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestDeleteContractMetadataChangeset_JSONRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	contractMetadata1 := cldfdatastore.ContractMetadata{Address: "0x01", ChainSelector: 1234, Metadata: "value1"}
+	contractMetadata2 := cldfdatastore.ContractMetadata{Address: "0x02", ChainSelector: 5678, Metadata: "value2"}
+
+	raw := `{"contractMetadataKeys":[{"chainSelector":1234,"address":"0x01"},{"chainSelector":5678,"address":"0x02"}]}`
+
+	var got DeleteContractMetadataChangesetInput
+	require.NoError(t, json.Unmarshal([]byte(raw), &got))
+	require.Equal(t,
+		[]keys.ContractMetadataKey{{ChainSelector: 1234, Address: "0x01"}, {ChainSelector: 5678, Address: "0x02"}},
+		got.ContractMetadataKeys,
+	)
+
+	env := cldf.Environment{
+		DataStore:        testDataStoreWithContractMetadata(t, contractMetadata1, contractMetadata2).Seal(),
+		OperationsBundle: cldfoperations.NewBundle(t.Context, cldflogger.Test(t), cldfoperations.NewMemoryReporter()),
+	}
+
+	require.NoError(t, DeleteContractMetadataChangeset{}.VerifyPreconditions(env, got))
+
+	out, err := DeleteContractMetadataChangeset{}.Apply(env, got)
+	require.NoError(t, err)
+	memDS := out.DataStore.(*cldfdatastore.MemoryDataStore)
+	require.ElementsMatch(t,
+		[]string{contractMetadata1.Key().String(), contractMetadata2.Key().String()},
+		memDS.ContractMetadataStore.DeletedRemoteKeys,
+	)
 }

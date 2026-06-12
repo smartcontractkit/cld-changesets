@@ -8,6 +8,7 @@ import (
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	cldfops "github.com/smartcontractkit/chainlink-deployments-framework/operations"
 
+	"github.com/smartcontractkit/cld-changesets/datastore/internal/keys"
 	"github.com/smartcontractkit/cld-changesets/datastore/operations"
 )
 
@@ -15,7 +16,21 @@ import (
 type DeleteAddressRefChangeset struct{}
 
 type DeleteAddressRefChangesetInput struct {
-	AddressRefKeys []cldfdatastore.AddressRefKey `json:"addressRefKeys"`
+	AddressRefKeys []keys.AddressRefKey `json:"addressRefKeys"`
+}
+
+func (i DeleteAddressRefChangesetInput) addressRefKeys() ([]cldfdatastore.AddressRefKey, error) {
+	fwKeys := make([]cldfdatastore.AddressRefKey, 0, len(i.AddressRefKeys))
+	for idx, inputKey := range i.AddressRefKeys {
+		key, err := inputKey.ToFrameworkKey()
+		if err != nil {
+			return nil, fmt.Errorf("addressRefKeys[%d]: %w", idx, err)
+		}
+
+		fwKeys = append(fwKeys, key)
+	}
+
+	return fwKeys, nil
 }
 
 // VerifyPreconditions ensures the input is valid.
@@ -27,7 +42,12 @@ func (DeleteAddressRefChangeset) VerifyPreconditions(e cldf.Environment, input D
 		return errors.New("missing datastore in environment")
 	}
 
-	for _, key := range input.AddressRefKeys {
+	fwKeys, err := input.addressRefKeys()
+	if err != nil {
+		return fmt.Errorf("invalid address ref keys input: %w", err)
+	}
+
+	for _, key := range fwKeys {
 		_, err := e.DataStore.Addresses().Get(key)
 		if err != nil {
 			if errors.Is(err, cldfdatastore.ErrAddressRefNotFound) {
@@ -45,6 +65,10 @@ func (DeleteAddressRefChangeset) VerifyPreconditions(e cldf.Environment, input D
 
 // Apply executes the changeset, staging the address refs to be deleted from the Datastore.
 func (DeleteAddressRefChangeset) Apply(e cldf.Environment, input DeleteAddressRefChangesetInput) (cldf.ChangesetOutput, error) {
+	if _, err := input.addressRefKeys(); err != nil {
+		return cldf.ChangesetOutput{}, fmt.Errorf("invalid address ref keys input: %w", err)
+	}
+
 	deps := operations.DeleteAddressRefDeps{DataStore: e.DataStore}
 	opInput := operations.DeleteAddressRefInput{AddressRefKeys: input.AddressRefKeys}
 

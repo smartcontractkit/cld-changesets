@@ -30,6 +30,13 @@ type OpEVMOwnershipOutput struct {
 	Tx *gethtypes.Transaction `json:"tx"`
 }
 
+// This function is deprecated. Use opevm.OpTransferOwnership instead.
+//
+// This has been kept for backwards compatibility as the keystone domain still
+// uses this operation.
+//
+// Deprecated: To be removed once the keystone domain is updated to use
+// operations.OpEVMAcceptOwnership in the legacy package.
 var OpEVMTransferOwnership = operations.NewOperation(
 	"evm-transfer-ownership",
 	semver.MustParse("1.0.0"),
@@ -50,6 +57,13 @@ var OpEVMTransferOwnership = operations.NewOperation(
 		}, nil
 	})
 
+// This function is deprecated. Use opevm.OpTransferOwnership instead.
+//
+// This has been kept for backwards compatibility as the keystone and data
+// streams domain still uses this operation.
+//
+// Deprecated: To be removed once the keystone and data streams domains is updated to use
+// operations.OpEVMAcceptOwnership in the legacy package.
 var OpEVMAcceptOwnership = operations.NewOperation(
 	"evm-accept-ownership",
 	semver.MustParse("1.0.0"),

@@ -10,7 +10,8 @@ import (
 	chain_selectors "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/environment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/runtime"
-	"github.com/smartcontractkit/chainlink-evm/pkg/utils"
+
+	"github.com/smartcontractkit/cld-changesets/internal/testutil/evmtest"
 )
 
 func Test_TransferFunds_VerifyPreconditions(t *testing.T) {
@@ -99,7 +100,7 @@ func Test_TransferFundsChangeset(t *testing.T) {
 
 	t.Run("happy path", func(t *testing.T) {
 		t.Parallel()
-		addr := utils.RandomAddress()
+		addr := evmtest.RandomAddress()
 		transferVal := big.NewInt(1_000_000_000) // transfer 1gwei
 
 		input := TransferNativeInput{
@@ -129,7 +130,7 @@ func Test_TransferFundsChangeset(t *testing.T) {
 		bal, err := chain.Client.BalanceAt(t.Context(), chain.DeployerKey.From, nil)
 		require.NoError(t, err)
 
-		addr := utils.RandomAddress()
+		addr := evmtest.RandomAddress()
 		transferVal := bal // transfer entire balance, leaving no funds for gas
 
 		input := TransferNativeInput{

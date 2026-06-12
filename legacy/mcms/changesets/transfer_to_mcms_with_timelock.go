@@ -8,22 +8,21 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+
 	owner_helpers "github.com/smartcontractkit/ccip-owner-contracts/pkg/gethwrappers"
+	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	mcmscontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/mcms"
+	cldfproposalutils "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
+	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
+	"github.com/smartcontractkit/chainlink-evm/gethwrappers/shared/generated/initial/burn_mint_erc677"
 	mcmslib "github.com/smartcontractkit/mcms"
 	"github.com/smartcontractkit/mcms/sdk"
 	"github.com/smartcontractkit/mcms/sdk/evm"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 
-	evmstate "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/evm"
-	seqs "github.com/smartcontractkit/cld-changesets/pkg/family/evm/sequences"
-
-	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
-	cldfproposalutils "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
-	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
-	"github.com/smartcontractkit/chainlink-evm/gethwrappers/shared/generated/initial/burn_mint_erc677"
-
+	seqevm "github.com/smartcontractkit/cld-changesets/legacy/mcms/internal/family/evm/sequences"
 	"github.com/smartcontractkit/cld-changesets/legacy/mcms/proposeutils"
+	evmstate "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/evm"
 )
 
 type TransferToMCMSWithTimelockConfig struct {
@@ -135,11 +134,11 @@ func TransferToMCMSWithTimelockV2(
 		e.Logger.Infof("timelock on chain %d is %s, proposer is %s", chainSelector, timelockAddr, proposerAddr)
 		inspectorPerChain[chainSelector] = evm.NewInspector(evmChains[chainSelector].Client)
 
-		seqReport, err := operations.ExecuteSequence(e.OperationsBundle, seqs.SeqTransferToMCMSWithTimelockV2,
-			seqs.SeqTransferToMCMSWithTimelockV2Deps{
+		seqReport, err := operations.ExecuteSequence(e.OperationsBundle, seqevm.SeqTransferToMCMSWithTimelock,
+			seqevm.SeqTransferToMCMSWithTimelockDeps{
 				Chain: evmChains[chainSelector],
 			},
-			seqs.SeqTransferToMCMSWithTimelockV2Input{
+			seqevm.SeqTransferToMCMSWithTimelockInput{
 				ChainSelector:       chainSelector,
 				Timelock:            common.HexToAddress(timelockAddr),
 				Contracts:           contracts,
