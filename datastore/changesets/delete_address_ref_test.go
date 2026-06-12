@@ -1,6 +1,7 @@
 package changesets
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -11,6 +12,8 @@ import (
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	cldfoperations "github.com/smartcontractkit/chainlink-deployments-framework/operations"
 	cldflogger "github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
+
+	"github.com/smartcontractkit/cld-changesets/datastore/internal/keys"
 )
 
 func TestDeleteAddressRefChangeset_VerifyPreconditions(t *testing.T) {
@@ -32,14 +35,14 @@ func TestDeleteAddressRefChangeset_VerifyPreconditions(t *testing.T) {
 				DataStore: testDataStoreWithAddressRefs(t, addressRef1).Seal(),
 			},
 			input: DeleteAddressRefChangesetInput{
-				AddressRefKeys: []DeleteAddressRefKey{deleteAddressRefKey(addressRef1), deleteAddressRefKey(addressRef2)},
+				AddressRefKeys: []keys.AddressRefKey{addressRefKey(addressRef1), addressRefKey(addressRef2)},
 			},
 		},
 		{
 			name: "failure: missing datastore",
 			env:  cldf.Environment{},
 			input: DeleteAddressRefChangesetInput{
-				AddressRefKeys: []DeleteAddressRefKey{deleteAddressRefKey(addressRef1), deleteAddressRefKey(addressRef2)},
+				AddressRefKeys: []keys.AddressRefKey{addressRefKey(addressRef1), addressRefKey(addressRef2)},
 			},
 			wantErr: "missing datastore in environment",
 		},
@@ -48,7 +51,7 @@ func TestDeleteAddressRefChangeset_VerifyPreconditions(t *testing.T) {
 			env: cldf.Environment{
 				DataStore: cldfdatastore.NewMemoryDataStore().Seal(),
 			},
-			input:   DeleteAddressRefChangesetInput{AddressRefKeys: []DeleteAddressRefKey{}},
+			input:   DeleteAddressRefChangesetInput{AddressRefKeys: []keys.AddressRefKey{}},
 			wantErr: "missing address ref keys input",
 		},
 		{
@@ -56,7 +59,7 @@ func TestDeleteAddressRefChangeset_VerifyPreconditions(t *testing.T) {
 			env: cldf.Environment{
 				DataStore: cldfdatastore.NewMemoryDataStore().Seal(),
 			},
-			input:   DeleteAddressRefChangesetInput{AddressRefKeys: []DeleteAddressRefKey{deleteAddressRefKey(addressRef2)}},
+			input:   DeleteAddressRefChangesetInput{AddressRefKeys: []keys.AddressRefKey{addressRefKey(addressRef2)}},
 			wantErr: fmt.Sprintf("address ref entry for chain selector %v, type %v, version %v and qualifier %q does not exist", addressRef2.ChainSelector, addressRef2.Type, addressRef2.Version, addressRef2.Qualifier),
 		},
 	}
@@ -79,7 +82,7 @@ func TestDeleteAddressRefChangeset_MissingVersion(t *testing.T) {
 	t.Parallel()
 
 	input := DeleteAddressRefChangesetInput{
-		AddressRefKeys: []DeleteAddressRefKey{{
+		AddressRefKeys: []keys.AddressRefKey{{
 			ChainSelector: 1234,
 			Type:          "MyContract",
 			Qualifier:     "q1",
@@ -117,7 +120,7 @@ func TestDeleteAddressRefChangeset_Apply(t *testing.T) {
 				OperationsBundle: cldfoperations.NewBundle(t.Context, cldflogger.Test(t), cldfoperations.NewMemoryReporter()),
 			},
 			input: DeleteAddressRefChangesetInput{
-				AddressRefKeys: []DeleteAddressRefKey{deleteAddressRefKey(addressRef1), deleteAddressRefKey(addressRef2)},
+				AddressRefKeys: []keys.AddressRefKey{addressRefKey(addressRef1), addressRefKey(addressRef2)},
 			},
 			wantDeletedKeys: []string{addressRef1.Key().String(), addressRef2.Key().String()},
 		},
@@ -141,8 +144,37 @@ func TestDeleteAddressRefChangeset_Apply(t *testing.T) {
 	}
 }
 
-func deleteAddressRefKey(ref cldfdatastore.AddressRef) DeleteAddressRefKey {
-	return DeleteAddressRefKey{
+func TestDeleteAddressRefChangeset_JSONRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	version := semver.MustParse("1.0.0")
+	addressRef1 := cldfdatastore.AddressRef{Address: "0x01", ChainSelector: 1234, Type: "MyContract", Version: version, Qualifier: "q1"}
+	addressRef2 := cldfdatastore.AddressRef{Address: "0x02", ChainSelector: 5678, Type: "OtherContract", Version: version, Qualifier: ""}
+
+	raw := `{"addressRefKeys":[{"chainSelector":1234,"type":"MyContract","version":"1.0.0","qualifier":"q1"},{"chainSelector":5678,"type":"OtherContract","version":"1.0.0","qualifier":""}]}`
+
+	var got DeleteAddressRefChangesetInput
+	require.NoError(t, json.Unmarshal([]byte(raw), &got))
+	require.Equal(t, []keys.AddressRefKey{addressRefKey(addressRef1), addressRefKey(addressRef2)}, got.AddressRefKeys)
+
+	env := cldf.Environment{
+		DataStore:        testDataStoreWithAddressRefs(t, addressRef1, addressRef2).Seal(),
+		OperationsBundle: cldfoperations.NewBundle(t.Context, cldflogger.Test(t), cldfoperations.NewMemoryReporter()),
+	}
+
+	require.NoError(t, DeleteAddressRefChangeset{}.VerifyPreconditions(env, got))
+
+	out, err := DeleteAddressRefChangeset{}.Apply(env, got)
+	require.NoError(t, err)
+	memDS := out.DataStore.(*cldfdatastore.MemoryDataStore)
+	require.ElementsMatch(t,
+		[]string{addressRef1.Key().String(), addressRef2.Key().String()},
+		memDS.AddressRefStore.DeletedRemoteKeys,
+	)
+}
+
+func addressRefKey(ref cldfdatastore.AddressRef) keys.AddressRefKey {
+	return keys.AddressRefKey{
 		ChainSelector: ref.ChainSelector,
 		Type:          ref.Type,
 		Version:       ref.Version,

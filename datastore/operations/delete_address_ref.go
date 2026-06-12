@@ -6,6 +6,8 @@ import (
 	"github.com/Masterminds/semver/v3"
 	cldfdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldfops "github.com/smartcontractkit/chainlink-deployments-framework/operations"
+
+	"github.com/smartcontractkit/cld-changesets/datastore/internal/keys"
 )
 
 // DeleteAddressRefDeps holds non-serializable dependencies for the DeleteAddressRefOp operation.
@@ -15,7 +17,7 @@ type DeleteAddressRefDeps struct {
 
 // DeleteAddressRefInput is the serializable input of a DeleteAddressRefOp invocation.
 type DeleteAddressRefInput struct {
-	AddressRefKeys []cldfdatastore.AddressRefKey
+	AddressRefKeys []keys.AddressRefKey `json:"addressRefKeys"`
 }
 
 // DeleteAddressRefOutput is the serializable output of a DeleteAddressRefOp invocation.
@@ -36,7 +38,12 @@ var DeleteAddressRefOp = cldfops.NewOperation(
 		}
 
 		for i, key := range input.AddressRefKeys {
-			err = dataStore.Addresses().RemoteDelete(key)
+			fwKey, err := key.ToFrameworkKey()
+			if err != nil {
+				return DeleteAddressRefOutput{}, fmt.Errorf("addressRefKeys[%d]: %w", i, err)
+			}
+
+			err = dataStore.Addresses().RemoteDelete(fwKey)
 			if err != nil {
 				return DeleteAddressRefOutput{}, fmt.Errorf("failed to delete address ref entry %d in datastore: %w", i, err)
 			}

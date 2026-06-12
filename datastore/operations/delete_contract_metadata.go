@@ -6,6 +6,8 @@ import (
 	"github.com/Masterminds/semver/v3"
 	cldfdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldfops "github.com/smartcontractkit/chainlink-deployments-framework/operations"
+
+	"github.com/smartcontractkit/cld-changesets/datastore/internal/keys"
 )
 
 // DeleteContractMetadataDeps holds non-serializable dependencies for the DeleteContractMetadataOp operation.
@@ -15,7 +17,7 @@ type DeleteContractMetadataDeps struct {
 
 // DeleteContractMetadataInput is the serializable input of a DeleteContractMetadataOp invocation.
 type DeleteContractMetadataInput struct {
-	ContractMetadataKeys []cldfdatastore.ContractMetadataKey
+	ContractMetadataKeys []keys.ContractMetadataKey `json:"contractMetadataKeys"`
 }
 
 // DeleteContractMetadataOutput is the serializable output of a DeleteContractMetadataOp invocation.
@@ -36,7 +38,7 @@ var DeleteContractMetadataOp = cldfops.NewOperation(
 		}
 
 		for i, key := range input.ContractMetadataKeys {
-			err = dataStore.ContractMetadata().RemoteDelete(key)
+			err = dataStore.ContractMetadata().RemoteDelete(key.ToFrameworkKey())
 			if err != nil {
 				return DeleteContractMetadataOutput{}, fmt.Errorf("failed to delete contract metadata entry %d in datastore: %w", i, err)
 			}
