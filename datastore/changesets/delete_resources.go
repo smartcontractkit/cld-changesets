@@ -94,9 +94,6 @@ func (DeleteResourcesChangeset) Apply(e cldf.Environment, input DeleteResourcesC
 		datastoreseqs.DeleteResourcesSeq,
 		deps,
 		seqInput,
-		cldfops.WithSequenceIdempotencyKey[datastoreseqs.DeleteResourcesSeqInput, datastoreseqs.DeleteResourcesSeqDeps](
-			fmt.Sprintf("%T:%p", e.DataStore, e.DataStore),
-		),
 	)
 	out := cldf.ChangesetOutput{
 		DataStore: report.Output.DataStore,

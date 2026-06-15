@@ -42,7 +42,6 @@ var DeleteResourcesSeq = cldfops.NewSequence(
 			datastoreops.DeleteAddressRefOp,
 			datastoreops.DeleteAddressRefDeps{DataStore: deps.DataStore},
 			datastoreops.DeleteAddressRefInput{AddressRefKeys: input.AddressRefKeys},
-			cldfops.WithForceExecute[datastoreops.DeleteAddressRefInput, datastoreops.DeleteAddressRefDeps](),
 		)
 		if err != nil {
 			return DeleteResourcesSeqOutput{}, fmt.Errorf("failed to delete address refs: %w", err)
@@ -53,7 +52,6 @@ var DeleteResourcesSeq = cldfops.NewSequence(
 			datastoreops.DeleteContractMetadataOp,
 			datastoreops.DeleteContractMetadataDeps{DataStore: addressRefReport.Output.DataStore.Seal()},
 			datastoreops.DeleteContractMetadataInput{ContractMetadataKeys: input.ContractMetadataKeys},
-			cldfops.WithForceExecute[datastoreops.DeleteContractMetadataInput, datastoreops.DeleteContractMetadataDeps](),
 		)
 		if err != nil {
 			return DeleteResourcesSeqOutput{}, fmt.Errorf("failed to delete contract metadata: %w", err)
@@ -64,7 +62,6 @@ var DeleteResourcesSeq = cldfops.NewSequence(
 			datastoreops.DeleteChainMetadataOp,
 			datastoreops.DeleteChainMetadataDeps{DataStore: contractMetadataReport.Output.DataStore.Seal()},
 			datastoreops.DeleteChainMetadataInput{ChainMetadataKeys: input.ChainMetadataKeys},
-			cldfops.WithForceExecute[datastoreops.DeleteChainMetadataInput, datastoreops.DeleteChainMetadataDeps](),
 		)
 		if err != nil {
 			return DeleteResourcesSeqOutput{}, fmt.Errorf("failed to delete chain metadata: %w", err)
