@@ -9,20 +9,20 @@ import (
 	zkbindings "github.com/smartcontractkit/mcms/sdk/zksync/bindings"
 
 	"github.com/smartcontractkit/cld-changesets/internal/semvers"
-	"github.com/smartcontractkit/cld-changesets/pkg/family/evm/operations"
+	"github.com/smartcontractkit/cld-changesets/legacy/mcms/internal/family/evm/oputil"
 )
 
 type OpEVMDeployMCMOutput struct {
 	Address common.Address `json:"address"`
 }
 
-var OpDeployProposerMCM = operations.NewEVMDeployOperation(
+var OpDeployProposerMCM = oputil.NewEVMDeployOperation(
 	"evm-proposer-mcm-deploy",
 	semver.MustParse("1.0.0"),
 	"Deploys Proposer MCM contract",
 	mcmscontracts.ProposerManyChainMultisig,
 	bindings.ManyChainMultiSigMetaData,
-	&operations.ContractOpts{
+	&oputil.ContractOpts{
 		Version:          &semvers.V1_0_0,
 		EVMBytecode:      common.FromHex(bindings.ManyChainMultiSigBin),
 		ZkSyncVMBytecode: zkbindings.ManyChainMultiSigZkBytecode,
@@ -32,13 +32,13 @@ var OpDeployProposerMCM = operations.NewEVMDeployOperation(
 	},
 )
 
-var OpDeployBypasserMCM = operations.NewEVMDeployOperation(
+var OpDeployBypasserMCM = oputil.NewEVMDeployOperation(
 	"evm-bypasser-mcm-deploy",
 	semver.MustParse("1.0.0"),
 	"Deploys Bypasser MCM contract",
 	mcmscontracts.BypasserManyChainMultisig,
 	bindings.ManyChainMultiSigMetaData,
-	&operations.ContractOpts{
+	&oputil.ContractOpts{
 		Version:          &semvers.V1_0_0,
 		EVMBytecode:      common.FromHex(bindings.ManyChainMultiSigBin),
 		ZkSyncVMBytecode: zkbindings.ManyChainMultiSigZkBytecode,
@@ -48,13 +48,13 @@ var OpDeployBypasserMCM = operations.NewEVMDeployOperation(
 	},
 )
 
-var OpDeployCancellerMCM = operations.NewEVMDeployOperation(
+var OpDeployCancellerMCM = oputil.NewEVMDeployOperation(
 	"evm-canceller-mcm-deploy",
 	semver.MustParse("1.0.0"),
 	"Deploys Canceller MCM contract",
 	mcmscontracts.CancellerManyChainMultisig,
 	bindings.ManyChainMultiSigMetaData,
-	&operations.ContractOpts{
+	&oputil.ContractOpts{
 		Version:          &semvers.V1_0_0,
 		EVMBytecode:      common.FromHex(bindings.ManyChainMultiSigBin),
 		ZkSyncVMBytecode: zkbindings.ManyChainMultiSigZkBytecode,

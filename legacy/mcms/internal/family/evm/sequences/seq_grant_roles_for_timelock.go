@@ -15,7 +15,7 @@ import (
 
 	"github.com/smartcontractkit/cld-changesets/internal/mcmsrole"
 	opevm "github.com/smartcontractkit/cld-changesets/legacy/mcms/internal/family/evm/operations"
-	oputils "github.com/smartcontractkit/cld-changesets/pkg/family/evm/operations"
+	"github.com/smartcontractkit/cld-changesets/legacy/mcms/internal/family/evm/oputil"
 )
 
 type SeqGrantRolesTimelockDeps struct {
@@ -45,12 +45,12 @@ var SeqGrantRolesTimelock = operations.NewSequence(
 	"seq-grant-role-with-config",
 	semver.MustParse("1.0.0"),
 	"Grants appropriate roles to MCMS contracts in the EVM Timelock contract",
-	func(b operations.Bundle, deps SeqGrantRolesTimelockDeps, in SeqGrantRolesTimelockInput) (map[uint64][]oputils.EVMCallOutput, error) {
+	func(b operations.Bundle, deps SeqGrantRolesTimelockDeps, in SeqGrantRolesTimelockInput) (map[uint64][]oputil.EVMCallOutput, error) {
 		var (
 			addressesInInspector []string
 			err2                 error
 		)
-		out := make([]oputils.EVMCallOutput, 0)
+		out := make([]oputil.EVMCallOutput, 0)
 
 		timelockInspector := evmMcms.NewTimelockInspector(deps.Chain.Client)
 
@@ -82,7 +82,7 @@ var SeqGrantRolesTimelock = operations.NewSequence(
 				if !slices.Contains(addressesInInspector, addressToGrantRole.Hex()) {
 					opReport, err := operations.ExecuteOperation(b, opevm.OpGrantRole,
 						deps.Chain,
-						oputils.EVMCallInput[opevm.OpGrantRoleInput]{
+						oputil.EVMCallInput[opevm.OpGrantRoleInput]{
 							ChainSelector: in.ChainSelector,
 							CallInput: opevm.OpGrantRoleInput{
 								Account: addressToGrantRole,
@@ -91,7 +91,7 @@ var SeqGrantRolesTimelock = operations.NewSequence(
 							NoSend:  !in.IsDeployerKeyAdmin,
 							Address: in.Timelock,
 						},
-						oputils.RetryCallWithGasBoost[opevm.OpGrantRoleInput](in.GasBoostConfig),
+						oputil.RetryCallWithGasBoost[opevm.OpGrantRoleInput](in.GasBoostConfig),
 					)
 					if err != nil {
 						b.Logger.Errorw("Failed to grant role",
@@ -119,7 +119,7 @@ var SeqGrantRolesTimelock = operations.NewSequence(
 			}
 		}
 
-		return map[uint64][]oputils.EVMCallOutput{
+		return map[uint64][]oputil.EVMCallOutput{
 			in.ChainSelector: out,
 		}, nil
 	},
