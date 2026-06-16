@@ -9,7 +9,7 @@ import (
 	mcmscontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/mcms"
 	"github.com/smartcontractkit/mcms/sdk/evm/bindings"
 
-	"github.com/smartcontractkit/cld-changesets/pkg/family/evm/operations"
+	"github.com/smartcontractkit/cld-changesets/legacy/mcms/internal/family/evm/oputil"
 )
 
 type OpGrantRoleInput struct {
@@ -17,7 +17,7 @@ type OpGrantRoleInput struct {
 	RoleID  [32]byte       `json:"roleID"`
 }
 
-var OpGrantRole = operations.NewEVMCallOperation(
+var OpGrantRole = oputil.NewEVMCallOperation(
 	"evm-timelock-grant-role",
 	semver.MustParse("1.0.0"),
 	"Grants specified role to the ManyChainMultiSig contract on the EVM Timelock contract",
