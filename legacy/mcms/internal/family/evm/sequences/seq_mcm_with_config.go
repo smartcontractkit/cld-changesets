@@ -15,7 +15,7 @@ import (
 	mcmsTypes "github.com/smartcontractkit/mcms/types"
 
 	opevm "github.com/smartcontractkit/cld-changesets/legacy/mcms/internal/family/evm/operations"
-	"github.com/smartcontractkit/cld-changesets/legacy/mcms/internal/family/evm/oputil"
+	oputils "github.com/smartcontractkit/cld-changesets/pkg/family/evm/operations"
 )
 
 type SeqDeployMCMWithConfigInput struct {
@@ -34,41 +34,41 @@ var SeqDeployMCMWithConfig = operations.NewSequence(
 	"seq-deploy-mcm-with-config",
 	semver.MustParse("1.0.0"),
 	"Deploys MCM contract & sets config",
-	func(b operations.Bundle, deps cldf_evm.Chain, in SeqDeployMCMWithConfigInput) (oputil.EVMDeployOutput, error) {
+	func(b operations.Bundle, deps cldf_evm.Chain, in SeqDeployMCMWithConfigInput) (oputils.EVMDeployOutput, error) {
 		// Deploy MCM contract
-		var deployReport operations.Report[oputil.EVMDeployInput[any], oputil.EVMDeployOutput]
+		var deployReport operations.Report[oputils.EVMDeployInput[any], oputils.EVMDeployOutput]
 		var deployErr error
 		switch in.ContractType {
 		case mcmscontracts.BypasserManyChainMultisig:
-			deployReport, deployErr = operations.ExecuteOperation(b, opevm.OpDeployBypasserMCM, deps, oputil.EVMDeployInput[any]{
+			deployReport, deployErr = operations.ExecuteOperation(b, opevm.OpDeployBypasserMCM, deps, oputils.EVMDeployInput[any]{
 				ChainSelector: in.ChainSelector,
 				Qualifier:     in.Qualifier,
-			}, oputil.RetryDeploymentWithGasBoost[any](in.GasBoostConfig))
+			}, oputils.RetryDeploymentWithGasBoost[any](in.GasBoostConfig))
 		case mcmscontracts.ProposerManyChainMultisig:
-			deployReport, deployErr = operations.ExecuteOperation(b, opevm.OpDeployProposerMCM, deps, oputil.EVMDeployInput[any]{
+			deployReport, deployErr = operations.ExecuteOperation(b, opevm.OpDeployProposerMCM, deps, oputils.EVMDeployInput[any]{
 				ChainSelector: in.ChainSelector,
 				Qualifier:     in.Qualifier,
-			}, oputil.RetryDeploymentWithGasBoost[any](in.GasBoostConfig))
+			}, oputils.RetryDeploymentWithGasBoost[any](in.GasBoostConfig))
 		case mcmscontracts.CancellerManyChainMultisig:
-			deployReport, deployErr = operations.ExecuteOperation(b, opevm.OpDeployCancellerMCM, deps, oputil.EVMDeployInput[any]{
+			deployReport, deployErr = operations.ExecuteOperation(b, opevm.OpDeployCancellerMCM, deps, oputils.EVMDeployInput[any]{
 				ChainSelector: in.ChainSelector,
 				Qualifier:     in.Qualifier,
-			}, oputil.RetryDeploymentWithGasBoost[any](in.GasBoostConfig))
+			}, oputils.RetryDeploymentWithGasBoost[any](in.GasBoostConfig))
 		default:
-			return oputil.EVMDeployOutput{}, fmt.Errorf("unsupported contract type for seq-deploy-mcm-with-config: %s", in.ContractType)
+			return oputils.EVMDeployOutput{}, fmt.Errorf("unsupported contract type for seq-deploy-mcm-with-config: %s", in.ContractType)
 		}
 		if deployErr != nil {
-			return oputil.EVMDeployOutput{}, fmt.Errorf("failed to deploy %s: %w", in.ContractType, deployErr)
+			return oputils.EVMDeployOutput{}, fmt.Errorf("failed to deploy %s: %w", in.ContractType, deployErr)
 		}
 
 		// Set config
 		groupQuorums, groupParents, signerAddresses, signerGroups, err := sdk.ExtractSetConfigInputs(&in.MCMConfig)
 		if err != nil {
-			return oputil.EVMDeployOutput{}, err
+			return oputils.EVMDeployOutput{}, err
 		}
 		_, err = operations.ExecuteOperation(b, opevm.OpEVMSetConfigMCM,
 			deps,
-			oputil.EVMCallInput[opevm.OpEVMSetConfigMCMInput]{
+			oputils.EVMCallInput[opevm.OpEVMSetConfigMCMInput]{
 				ChainSelector: in.ChainSelector,
 				Address:       deployReport.Output.Address,
 				NoSend:        false,
@@ -79,10 +79,10 @@ var SeqDeployMCMWithConfig = operations.NewSequence(
 					GroupParents:    groupParents,
 				},
 			},
-			oputil.RetryCallWithGasBoost[opevm.OpEVMSetConfigMCMInput](in.GasBoostConfig),
+			oputils.RetryCallWithGasBoost[opevm.OpEVMSetConfigMCMInput](in.GasBoostConfig),
 		)
 		if err != nil {
-			return oputil.EVMDeployOutput{}, err
+			return oputils.EVMDeployOutput{}, err
 		}
 
 		return deployReport.Output, nil

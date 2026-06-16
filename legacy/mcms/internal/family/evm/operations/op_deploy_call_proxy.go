@@ -9,20 +9,20 @@ import (
 	zkbindings "github.com/smartcontractkit/mcms/sdk/zksync/bindings"
 
 	"github.com/smartcontractkit/cld-changesets/internal/semvers"
-	"github.com/smartcontractkit/cld-changesets/legacy/mcms/internal/family/evm/oputil"
+	"github.com/smartcontractkit/cld-changesets/pkg/family/evm/operations"
 )
 
 type OpDeployCallProxyInput struct {
 	Timelock common.Address `json:"timelock"`
 }
 
-var OpDeployCallProxy = oputil.NewEVMDeployOperation(
+var OpDeployCallProxy = operations.NewEVMDeployOperation(
 	"evm-call-proxy-deploy",
 	semver.MustParse("1.0.0"),
 	"Deploys CallProxy contract on the specified EVM chains",
 	mcmscontracts.CallProxy,
 	bindings.CallProxyMetaData,
-	&oputil.ContractOpts{
+	&operations.ContractOpts{
 		Version:          &semvers.V1_0_0,
 		EVMBytecode:      common.FromHex(bindings.CallProxyBin),
 		ZkSyncVMBytecode: zkbindings.CallProxyZkBytecode,
