@@ -4,7 +4,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -13,17 +12,6 @@ import (
 
 	"github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana/solutils"
 )
-
-// integrationMu serializes Solana CTF integration tests. MCMS Solana deploy paths set
-// package-global program IDs in chainlink-ccip gobindings; parallel tests (t.Parallel) can
-// otherwise race and produce "Program is not deployed" flakes.
-var integrationMu sync.Mutex
-
-func lockIntegration(t *testing.T) {
-	t.Helper()
-	integrationMu.Lock()
-	t.Cleanup(integrationMu.Unlock)
-}
 
 // LoadMCMSPrograms loads the MCMS program artifacts into the given directory.
 //
@@ -42,8 +30,6 @@ func LoadMCMSPrograms(t *testing.T, dir string) (string, map[string]string) {
 // book for a given selector.
 func PreloadMCMS(t *testing.T, selector uint64) (string, map[string]string, *cldf.AddressBookMap) {
 	t.Helper()
-
-	lockIntegration(t)
 
 	dir := t.TempDir()
 
