@@ -243,6 +243,22 @@ func assertEVMConfigEquals(t *testing.T, inspector *mcmsevm.Inspector, address c
 	require.Equal(t, want.Quorum, got.Quorum)
 }
 
+func TestSeqEVMSetConfig_chainSelectorMismatch(t *testing.T) {
+	t.Parallel()
+
+	selector := chainselectors.TEST_90000001.Selector
+	_, err := operations.ExecuteSequence(
+		optest.NewBundle(t),
+		SeqEVMSetConfig,
+		cldf_evm.Chain{Selector: selector},
+		SeqEVMSetConfigInput{
+			ChainSelector: chainselectors.TEST_90000002.Selector,
+			NoSend:        true,
+		},
+	)
+	require.ErrorContains(t, err, "mismatch between inputted chain selector")
+}
+
 func TestSetConfigTargets(t *testing.T) {
 	t.Parallel()
 

@@ -30,7 +30,14 @@ var SeqEVMSetConfig = operations.NewSequence(
 	semver.MustParse("1.0.0"),
 	"Sets MCMS config on one or more MCM contracts",
 	func(b operations.Bundle, deps cldf_evm.Chain, in SeqEVMSetConfigInput) (sequenceutils.OnChainOutput, error) {
-		outs := make([]EVMCallOutput, 0, len(in.Targets))
+		if in.ChainSelector != deps.Selector {
+			return sequenceutils.OnChainOutput{}, fmt.Errorf("mismatch between inputted chain selector and selector defined within dependencies: %d != %d", in.ChainSelector, deps.Selector)
+		}
+
+		var outs []EVMCallOutput
+		if in.NoSend {
+			outs = make([]EVMCallOutput, 0, len(in.Targets))
+		}
 
 		for _, target := range in.Targets {
 			opReport, err := operations.ExecuteOperation(
@@ -45,6 +52,10 @@ var SeqEVMSetConfig = operations.NewSequence(
 			)
 			if err != nil {
 				return sequenceutils.OnChainOutput{}, err
+			}
+
+			if !in.NoSend {
+				continue
 			}
 
 			out := opReport.Output
