@@ -4,8 +4,15 @@
 // # Usage
 //
 // Import the changeset and blank-import each chain family you use (plus MCMS
-// readers when building timelock proposals). This follows the Go plugin pattern
-// used by database/sql drivers:
+// readers when building timelock proposals). Registration follows the database/sql
+// driver pattern: drivers register in init(), and callers only side-effect import them:
+//
+//	import (
+//		"database/sql"
+//		_ "github.com/lib/pq" // registers the Postgres driver
+//	)
+//
+// For set-config:
 //
 //	import (
 //		setconfig "github.com/smartcontractkit/cld-changesets/mcms/changesets/set-config"
