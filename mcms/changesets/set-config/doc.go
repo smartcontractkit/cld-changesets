@@ -1,18 +1,10 @@
 // Package setconfig provides the SetConfigMCMS changeset and a registry for
-// per-chain-family set-config implementations.
+// per-chain-family set-config sequences.
 //
 // # Usage
 //
-// Import the changeset and blank-import each chain family you use (plus MCMS
-// readers when building timelock proposals). Registration follows the database/sql
-// driver pattern: drivers register in init(), and callers only side-effect import them:
-//
-//	import (
-//		"database/sql"
-//		_ "github.com/lib/pq" // registers the Postgres driver
-//	)
-//
-// For set-config:
+// Import the changeset and blank-import each chain family's set-config sequence
+// (plus MCMS readers when building timelock proposals):
 //
 //	import (
 //		setconfig "github.com/smartcontractkit/cld-changesets/mcms/changesets/set-config"
@@ -36,6 +28,8 @@
 // For pipelines that need every built-in family, blank-import [all] instead:
 //
 //	_ "github.com/smartcontractkit/cld-changesets/mcms/changesets/set-config/all"
+//
+// # Sequences
 //
 // [Changeset] groups targets by chain, runs each chain's set-config sequence,
 // merges batch operations with [sequenceutils.ExecuteOnChainSequenceAndMerge],
