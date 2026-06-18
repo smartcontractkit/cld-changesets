@@ -5,7 +5,6 @@ import (
 
 	solanago "github.com/gagliardetto/solana-go"
 	chainselectors "github.com/smartcontractkit/chain-selectors"
-	cldfsol "github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
 	"github.com/smartcontractkit/chainlink-deployments-framework/changeset/sequenceutils"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
@@ -16,54 +15,6 @@ import (
 	legacysolana "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana"
 	setconfig "github.com/smartcontractkit/cld-changesets/mcms/changesets/set-config"
 	familysolana "github.com/smartcontractkit/cld-changesets/pkg/family/solana"
-)
-
-// SeqSolanaSetConfigInput is the input for the generic Solana set-config sequence.
-type SeqSolanaSetConfigInput struct {
-	ChainSelector    uint64               `json:"chainSelector"`
-	NoSend           bool                 `json:"noSend"`
-	AuthorityAccount solanago.PublicKey   `json:"authorityAccount"`
-	Targets          []MCMSetConfigTarget `json:"targets"`
-}
-
-// SeqSolanaSetConfig sets config on each provided Solana MCM account via OpSolanaSetConfigMCM.
-// When NoSend is true, one batch operation is returned per target to respect Solana transaction size limits.
-var SeqSolanaSetConfig = operations.NewSequence(
-	"seq-solana-mcm-set-config",
-	&semvers.V1_0_0,
-	"Sets MCMS config on one or more Solana MCM accounts",
-	func(b operations.Bundle, deps cldfsol.Chain, in SeqSolanaSetConfigInput) (sequenceutils.OnChainOutput, error) {
-		if in.ChainSelector != deps.Selector {
-			return sequenceutils.OnChainOutput{}, fmt.Errorf("mismatch between inputted chain selector and selector defined within dependencies: %d != %d", in.ChainSelector, deps.Selector)
-		}
-
-		var batchOps []mcmstypes.BatchOperation
-		if in.NoSend {
-			batchOps = make([]mcmstypes.BatchOperation, 0, len(in.Targets))
-		}
-
-		for _, target := range in.Targets {
-			opReport, err := operations.ExecuteOperation(
-				b,
-				OpSolanaSetConfigMCM,
-				deps,
-				OpSolanaSetConfigInput{
-					Target:           target,
-					NoSend:           in.NoSend,
-					AuthorityAccount: in.AuthorityAccount,
-				},
-			)
-			if err != nil {
-				return sequenceutils.OnChainOutput{}, err
-			}
-
-			if in.NoSend {
-				batchOps = append(batchOps, opReport.Output.BatchOperation)
-			}
-		}
-
-		return sequenceutils.OnChainOutput{BatchOps: batchOps}, nil
-	},
 )
 
 var seqSetConfig = operations.NewSequence(
@@ -112,26 +63,36 @@ func runSolanaSetConfig(
 		return sequenceutils.OnChainOutput{}, err
 	}
 
-	seqReport, err := operations.ExecuteSequence(
-		b,
-		SeqSolanaSetConfig,
-		chain,
-		SeqSolanaSetConfigInput{
-			ChainSelector:    in.ChainSelector,
-			NoSend:           useMCMS,
-			AuthorityAccount: authorityAccount,
-			Targets:          targets,
-		},
-	)
-	if err != nil {
-		return sequenceutils.OnChainOutput{}, fmt.Errorf("failed to execute Solana set config sequence: %w", err)
+	var batchOps []mcmstypes.BatchOperation
+	if useMCMS {
+		batchOps = make([]mcmstypes.BatchOperation, 0, len(targets))
 	}
 
-	return seqReport.Output, nil
+	for _, target := range targets {
+		opReport, execErr := operations.ExecuteOperation(
+			b,
+			OpSolanaSetConfigMCM,
+			chain,
+			OpSolanaSetConfigInput{
+				Target:           target,
+				NoSend:           useMCMS,
+				AuthorityAccount: authorityAccount,
+			},
+		)
+		if execErr != nil {
+			return sequenceutils.OnChainOutput{}, execErr
+		}
+
+		if useMCMS {
+			batchOps = append(batchOps, opReport.Output.BatchOperation)
+		}
+	}
+
+	return sequenceutils.OnChainOutput{BatchOps: batchOps}, nil
 }
 
-func setConfigTargets(e cldf.Environment, configs []setconfig.ContractSetConfig) ([]MCMSetConfigTarget, error) {
-	targets := make([]MCMSetConfigTarget, 0, len(configs))
+func setConfigTargets(e cldf.Environment, configs []setconfig.ContractSetConfig) ([]mcmSetConfigTarget, error) {
+	targets := make([]mcmSetConfigTarget, 0, len(configs))
 
 	for i, cfg := range configs {
 		ref, err := cfg.Ref.Resolve(e)
@@ -139,7 +100,7 @@ func setConfigTargets(e cldf.Environment, configs []setconfig.ContractSetConfig)
 			return nil, fmt.Errorf("targets[%d]: %w", i, err)
 		}
 
-		targets = append(targets, MCMSetConfigTarget{
+		targets = append(targets, mcmSetConfigTarget{
 			Address:      ref.Address,
 			Config:       cfg.Config,
 			ContractType: string(ref.Type),

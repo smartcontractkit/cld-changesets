@@ -12,8 +12,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 )
 
-// MCMSetConfigTarget identifies one MCM account and the config to apply.
-type MCMSetConfigTarget struct {
+type mcmSetConfigTarget struct {
 	Address      string           `json:"address"`
 	Config       mcmstypes.Config `json:"config"`
 	ContractType string           `json:"contractType"`
@@ -21,7 +20,7 @@ type MCMSetConfigTarget struct {
 
 // OpSolanaSetConfigInput is the input for setting config on a single Solana MCM account.
 type OpSolanaSetConfigInput struct {
-	Target           MCMSetConfigTarget  `json:"target"`
+	Target           mcmSetConfigTarget  `json:"target"`
 	NoSend           bool                `json:"noSend"`
 	AuthorityAccount solanasdk.PublicKey `json:"authorityAccount"`
 }
