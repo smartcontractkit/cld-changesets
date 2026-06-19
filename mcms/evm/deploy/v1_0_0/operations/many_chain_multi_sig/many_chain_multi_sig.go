@@ -4,15 +4,10 @@ package many_chain_multi_sig
 
 import (
 	"github.com/Masterminds/semver/v3"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-
 	gobindings "github.com/smartcontractkit/ccip-owner-contracts/pkg/gethwrappers"
-	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/operations2/contract"
 	cldf_deployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
-	cld_ops "github.com/smartcontractkit/chainlink-deployments-framework/operations"
 	zkbindings "github.com/smartcontractkit/mcms/sdk/zksync/bindings"
 )
 
@@ -24,14 +19,6 @@ var BypasserManyChainMultiSigContractType cldf_deployment.ContractType = "Bypass
 var BypasserManyChainMultiSigTypeAndVersion = cldf_deployment.NewTypeAndVersion(BypasserManyChainMultiSigContractType, *Version)
 var CancellerManyChainMultiSigContractType cldf_deployment.ContractType = "CancellerManyChainMultiSig"
 var CancellerManyChainMultiSigTypeAndVersion = cldf_deployment.NewTypeAndVersion(CancellerManyChainMultiSigContractType, *Version)
-
-type SetConfigArgs struct {
-	SignerAddresses []common.Address `json:"signerAddresses"`
-	SignerGroups    []uint8          `json:"signerGroups"`
-	GroupQuorums    [32]uint8        `json:"groupQuorums"`
-	GroupParents    [32]uint8        `json:"groupParents"`
-	ClearRoot       bool             `json:"clearRoot"`
-}
 
 type ConstructorArgs = struct{}
 
@@ -55,24 +42,3 @@ var Deploy = contract.NewDeploy(contract.DeployParams[ConstructorArgs]{
 		},
 	},
 })
-
-func NewWriteSetConfig(c gobindings.ManyChainMultiSigInterface) *cld_ops.Operation[contract.FunctionInput[SetConfigArgs], contract.WriteOutput, cldf_evm.Chain] {
-	return contract.NewWrite(contract.WriteParams[SetConfigArgs, gobindings.ManyChainMultiSigInterface]{
-		Name:         "many-chain-multi-sig:set-config",
-		Version:      Version,
-		Description:  "Calls setConfig on the contract",
-		ContractType: ContractType,
-		ContractABI:  gobindings.ManyChainMultiSigMetaData.ABI,
-		Contract:     c,
-		IsAllowedCaller: func(c gobindings.ManyChainMultiSigInterface, opts *bind.CallOpts, caller common.Address, args SetConfigArgs) (bool, error) {
-			return contract.OnlyOwner(c, opts, caller, args)
-		},
-		CallContract: func(
-			c gobindings.ManyChainMultiSigInterface,
-			opts *bind.TransactOpts,
-			args SetConfigArgs,
-		) (*types.Transaction, error) {
-			return c.SetConfig(opts, args.SignerAddresses, args.SignerGroups, args.GroupQuorums, args.GroupParents, args.ClearRoot)
-		},
-	})
-}

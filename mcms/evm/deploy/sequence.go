@@ -23,6 +23,7 @@ import (
 	"github.com/smartcontractkit/cld-changesets/mcms/changesets/deploy"
 	callproxyops "github.com/smartcontractkit/cld-changesets/mcms/evm/deploy/v1_0_0/operations/call_proxy"
 	timelockops "github.com/smartcontractkit/cld-changesets/mcms/evm/deploy/v1_0_0/operations/rbac_timelock"
+	"github.com/smartcontractkit/cld-changesets/mcms/evm/internal/gasboost"
 )
 
 var seqDeployMCMSWithTimelock = operations.NewSequence(
@@ -133,7 +134,7 @@ func (d *deployer) deployTimelock(addrs deployedAddresses) (common.Address, erro
 				Bypassers:  []common.Address{addrs.Bypasser},
 			},
 		},
-		retryDeployWithGasBoost[timelockops.ConstructorArgs](d.config.GasBoostConfig),
+		gasboost.RetryDeploy[timelockops.ConstructorArgs](d.config.GasBoostConfig),
 		chainIdempotencyKey[opscontract.DeployInput[timelockops.ConstructorArgs], cldfevm.Chain](d.chain),
 	)
 	if err != nil {
@@ -156,7 +157,7 @@ func (d *deployer) deployCallProxy(timelockAddr common.Address) (common.Address,
 			Qualifier:      stringPtrIfNonEmpty(d.qualifier),
 			Args:           callproxyops.ConstructorArgs{Target: timelockAddr},
 		},
-		retryDeployWithGasBoost[callproxyops.ConstructorArgs](d.config.GasBoostConfig),
+		gasboost.RetryDeploy[callproxyops.ConstructorArgs](d.config.GasBoostConfig),
 		chainIdempotencyKey[opscontract.DeployInput[callproxyops.ConstructorArgs], cldfevm.Chain](d.chain),
 	)
 	if err != nil {

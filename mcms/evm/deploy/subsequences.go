@@ -15,13 +15,14 @@ import (
 	mcmscontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/mcms"
 	cldfproposalutils "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
-	"github.com/smartcontractkit/mcms/sdk"
 	evmMcms "github.com/smartcontractkit/mcms/sdk/evm"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 
 	"github.com/smartcontractkit/cld-changesets/internal/mcmsrole"
 	mcmops "github.com/smartcontractkit/cld-changesets/mcms/evm/deploy/v1_0_0/operations/many_chain_multi_sig"
 	timelockops "github.com/smartcontractkit/cld-changesets/mcms/evm/deploy/v1_0_0/operations/rbac_timelock"
+	"github.com/smartcontractkit/cld-changesets/mcms/evm/internal/gasboost"
+	evmsetconfig "github.com/smartcontractkit/cld-changesets/mcms/evm/set-config"
 )
 
 type deployMCMWithConfigInput struct {
@@ -50,38 +51,26 @@ var seqDeployMCMWithConfig = operations.NewSequence(
 				Qualifier:      in.Qualifier,
 				Args:           mcmops.ConstructorArgs{},
 			},
-			retryDeployWithGasBoost[mcmops.ConstructorArgs](in.GasBoostConfig),
+			gasboost.RetryDeploy[mcmops.ConstructorArgs](in.GasBoostConfig),
 			chainIdempotencyKey[opscontract.DeployInput[mcmops.ConstructorArgs], cldfevm.Chain](chain),
 		)
 		if err != nil {
 			return cldfdatastore.AddressRef{}, fmt.Errorf("deploy %s: %w", in.ContractType, err)
 		}
 
-		groupQuorums, groupParents, signerAddresses, signerGroups, err := sdk.ExtractSetConfigInputs(&in.MCMConfig)
-		if err != nil {
-			return cldfdatastore.AddressRef{}, err
-		}
-
-		mcm, err := bindings.NewManyChainMultiSig(common.HexToAddress(deployReport.Output.Address), chain.Client)
-		if err != nil {
-			return cldfdatastore.AddressRef{}, fmt.Errorf("bind %s: %w", in.ContractType, err)
-		}
-
 		_, err = operations.ExecuteOperation(
 			b,
-			mcmops.NewWriteSetConfig(mcm),
+			evmsetconfig.OpEVMSetConfigMCM,
 			chain,
-			opscontract.FunctionInput[mcmops.SetConfigArgs]{
-				Args: mcmops.SetConfigArgs{
-					SignerAddresses: signerAddresses,
-					SignerGroups:    signerGroups,
-					GroupQuorums:    groupQuorums,
-					GroupParents:    groupParents,
-					ClearRoot:       false,
+			evmsetconfig.OpEVMSetConfigInput{
+				Target: evmsetconfig.MCMSetConfigTarget{
+					Address:      common.HexToAddress(deployReport.Output.Address),
+					Config:       in.MCMConfig,
+					ContractType: in.ContractType,
 				},
 			},
-			retryWriteWithGasBoost[mcmops.SetConfigArgs](in.GasBoostConfig),
-			outputAddressIdempotencyKey[opscontract.FunctionInput[mcmops.SetConfigArgs], cldfevm.Chain](chain, deployReport.Output.Address),
+			gasboost.RetryWithGasBoost[evmsetconfig.OpEVMSetConfigInput](in.GasBoostConfig),
+			outputAddressIdempotencyKey[evmsetconfig.OpEVMSetConfigInput, cldfevm.Chain](chain, deployReport.Output.Address),
 		)
 		if err != nil {
 			return cldfdatastore.AddressRef{}, fmt.Errorf("set config on %s: %w", in.ContractType, err)
@@ -172,7 +161,7 @@ var seqGrantRolesTimelock = operations.NewSequence(
 							Account: addressToGrantRole,
 						},
 					},
-					retryWriteWithGasBoost[timelockops.GrantRoleArgs](in.GasBoostConfig),
+					gasboost.RetryWrite[timelockops.GrantRoleArgs](in.GasBoostConfig),
 					outputAddressIdempotencyKey[opscontract.FunctionInput[timelockops.GrantRoleArgs], cldfevm.Chain](chain, in.Timelock.Hex()),
 				)
 				if err != nil {

@@ -19,7 +19,7 @@ require (
 	github.com/smartcontractkit/chain-selectors v1.0.102
 	github.com/smartcontractkit/chainlink-ccip/chains/solana v0.0.0-20260415165642-49f23e4d76cc
 	github.com/smartcontractkit/chainlink-ccip/chains/solana/gobindings v0.0.0-20260415165642-49f23e4d76cc
-	github.com/smartcontractkit/chainlink-deployments-framework v0.113.0
+	github.com/smartcontractkit/chainlink-deployments-framework v0.114.1
 	github.com/smartcontractkit/chainlink-evm/gethwrappers v0.0.0-20260421142741-9c7fbaf7c828
 	github.com/smartcontractkit/chainlink-protos/job-distributor v0.19.0
 	github.com/smartcontractkit/mcms v0.48.1-0.20260616002102-085d81f76b05

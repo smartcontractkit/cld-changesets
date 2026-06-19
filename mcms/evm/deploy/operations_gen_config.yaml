@@ -17,9 +17,7 @@ contracts:
       - ProposerManyChainMultiSig
       - BypasserManyChainMultiSig
       - CancellerManyChainMultiSig
-    functions:
-      - name: setConfig
-        access: owner
+    functions: []
 
   - contract_name: RBACTimelock
     version: "1.0.0"
