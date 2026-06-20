@@ -1,4 +1,4 @@
-package oputil
+package operations
 
 import (
 	"context"

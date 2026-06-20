@@ -11,9 +11,9 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 
 	opevm "github.com/smartcontractkit/cld-changesets/legacy/mcms/internal/family/evm/operations"
-	"github.com/smartcontractkit/cld-changesets/legacy/mcms/internal/family/evm/oputil"
 	seqevm "github.com/smartcontractkit/cld-changesets/legacy/mcms/internal/family/evm/sequences"
 	evmstate "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/evm"
+	evmops "github.com/smartcontractkit/cld-changesets/mcms/evm/operations"
 )
 
 // DeployMCMSOption is a function that modifies a TypeAndVersion before or after deployment.
@@ -201,11 +201,11 @@ func DeployMCMSWithTimelockContracts(
 			env.OperationsBundle,
 			opevm.OpDeployTimelock,
 			chain,
-			oputil.EVMDeployInput[opevm.OpDeployTimelockInput]{
+			evmops.EVMDeployInput[opevm.OpDeployTimelockInput]{
 				ChainSelector: chain.Selector,
 				DeployInput:   opInput,
 			},
-			oputil.RetryDeploymentWithGasBoost[opevm.OpDeployTimelockInput](config.GasBoostConfig),
+			evmops.RetryDeploymentWithGasBoost[opevm.OpDeployTimelockInput](config.GasBoostConfig),
 		)
 		execReports = append(execReports, report.ToGenericReport())
 		if err != nil {
@@ -242,11 +242,11 @@ func DeployMCMSWithTimelockContracts(
 			env.OperationsBundle,
 			opevm.OpDeployCallProxy,
 			chain,
-			oputil.EVMDeployInput[opevm.OpDeployCallProxyInput]{
+			evmops.EVMDeployInput[opevm.OpDeployCallProxyInput]{
 				ChainSelector: chain.Selector,
 				DeployInput:   opInput,
 			},
-			oputil.RetryDeploymentWithGasBoost[opevm.OpDeployCallProxyInput](config.GasBoostConfig),
+			evmops.RetryDeploymentWithGasBoost[opevm.OpDeployCallProxyInput](config.GasBoostConfig),
 		)
 		execReports = append(execReports, report.ToGenericReport())
 		if err != nil {

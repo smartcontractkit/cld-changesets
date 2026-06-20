@@ -1,4 +1,4 @@
-package oputil_test
+package operations_test
 
 import (
 	"encoding/json"
@@ -29,8 +29,8 @@ import (
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 
 	mcmschangesets "github.com/smartcontractkit/cld-changesets/legacy/mcms/changesets"
-	"github.com/smartcontractkit/cld-changesets/legacy/mcms/internal/family/evm/oputil"
 	evmstate "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/evm"
+	evmops "github.com/smartcontractkit/cld-changesets/mcms/evm/operations"
 )
 
 func TestCloneTransactOptsWithGas(t *testing.T) {
@@ -40,16 +40,16 @@ func TestCloneTransactOptsWithGas(t *testing.T) {
 		GasPrice: big.NewInt(123),
 	}
 	// Should clone and override both
-	cloned := oputil.CloneTransactOptsWithGas(orig, 200, 456)
+	cloned := evmops.CloneTransactOptsWithGas(orig, 200, 456)
 	assert.NotSame(t, orig, cloned)
 	assert.Equal(t, uint64(200), cloned.GasLimit)
 	assert.Equal(t, big.NewInt(456), cloned.GasPrice)
 	// Should not override if zero
-	cloned2 := oputil.CloneTransactOptsWithGas(orig, 0, 0)
+	cloned2 := evmops.CloneTransactOptsWithGas(orig, 0, 0)
 	assert.Equal(t, orig.GasLimit, cloned2.GasLimit)
 	assert.Equal(t, orig.GasPrice, cloned2.GasPrice)
 	// Nil input
-	assert.Nil(t, oputil.CloneTransactOptsWithGas(nil, 1, 1))
+	assert.Nil(t, evmops.CloneTransactOptsWithGas(nil, 1, 1))
 }
 
 func TestGasBoostConfigsForChainMap(t *testing.T) {
@@ -58,22 +58,22 @@ func TestGasBoostConfigsForChainMap(t *testing.T) {
 	gasBoostConfigs := map[uint64]cldfproposalutils.GasBoostConfig{
 		1: {InitialGasLimit: 10},
 	}
-	cfgs := oputil.GasBoostConfigsForChainMap(chainMap, gasBoostConfigs)
+	cfgs := evmops.GasBoostConfigsForChainMap(chainMap, gasBoostConfigs)
 	assert.Len(t, cfgs, 2)
 	assert.NotNil(t, cfgs[1])
 	assert.Nil(t, cfgs[2])
 	// Nil configs
-	assert.Empty(t, oputil.GasBoostConfigsForChainMap[string](chainMap, nil))
-	assert.Empty(t, oputil.GasBoostConfigsForChainMap[string](nil, gasBoostConfigs))
+	assert.Empty(t, evmops.GasBoostConfigsForChainMap[string](chainMap, nil))
+	assert.Empty(t, evmops.GasBoostConfigsForChainMap[string](nil, gasBoostConfigs))
 }
 
 func TestGetBoostedGasForAttempt_DefaultsAndOverrides(t *testing.T) {
 	t.Parallel()
 	cfg := cldfproposalutils.GasBoostConfig{}
-	limit, price := oputil.GetBoostedGasForAttempt(cfg, 0)
+	limit, price := evmops.GetBoostedGasForAttempt(cfg, 0)
 	assert.Equal(t, uint64(200_000), limit)
 	assert.Equal(t, uint64(20_000_000_000), price)
-	limit, price = oputil.GetBoostedGasForAttempt(cfg, 2)
+	limit, price = evmops.GetBoostedGasForAttempt(cfg, 2)
 	assert.Equal(t, uint64(200_000+2*50_000), limit)
 	assert.Equal(t, uint64(20_000_000_000+2*10_000_000_000), price)
 
@@ -83,7 +83,7 @@ func TestGetBoostedGasForAttempt_DefaultsAndOverrides(t *testing.T) {
 		InitialGasPrice:   2000,
 		GasPriceIncrement: 100,
 	}
-	limit, price = oputil.GetBoostedGasForAttempt(cfg, 3)
+	limit, price = evmops.GetBoostedGasForAttempt(cfg, 3)
 	assert.Equal(t, uint64(1000+3*100), limit)
 	assert.Equal(t, uint64(2000+3*100), price)
 }
@@ -96,11 +96,11 @@ func TestRetryDeploymentWithGasBoost(t *testing.T) {
 		InitialGasPrice:   2000,
 		GasPriceIncrement: 100,
 	}
-	opt := oputil.RetryDeploymentWithGasBoost[any](cfg)
+	opt := evmops.RetryDeploymentWithGasBoost[any](cfg)
 	// Should not panic and should be non-nil
 	assert.NotNil(t, opt)
 	// Should fallback to default if nil
-	assert.NotNil(t, oputil.RetryDeploymentWithGasBoost[string](nil))
+	assert.NotNil(t, evmops.RetryDeploymentWithGasBoost[string](nil))
 }
 
 func TestAddEVMCallSequenceToCSOutput_SequenceError(t *testing.T) {
@@ -112,10 +112,10 @@ func TestAddEVMCallSequenceToCSOutput_SequenceError(t *testing.T) {
 	require.NoError(t, err)
 
 	csOutput := cldf.ChangesetOutput{}
-	seqReport := operations.SequenceReport[string, map[uint64][]oputil.EVMCallOutput]{}
+	seqReport := operations.SequenceReport[string, map[uint64][]evmops.EVMCallOutput]{}
 	seqErr := errors.New("sequence failed")
 
-	result, err := oputil.AddEVMCallSequenceToCSOutput(
+	result, err := evmops.AddEVMCallSequenceToCSOutput(
 		*env,
 		csOutput,
 		seqReport,
@@ -140,9 +140,9 @@ func TestAddEVMCallSequenceToCSOutput_NoMCMS(t *testing.T) {
 	require.NoError(t, err)
 
 	csOutput := cldf.ChangesetOutput{}
-	seqReport := operations.SequenceReport[string, map[uint64][]oputil.EVMCallOutput]{}
+	seqReport := operations.SequenceReport[string, map[uint64][]evmops.EVMCallOutput]{}
 
-	result, err := oputil.AddEVMCallSequenceToCSOutput(
+	result, err := evmops.AddEVMCallSequenceToCSOutput(
 		*env,
 		csOutput,
 		seqReport,
@@ -165,10 +165,10 @@ func TestAddEVMCallSequenceToCSOutput_AllConfirmed(t *testing.T) {
 	require.NoError(t, err)
 
 	csOutput := cldf.ChangesetOutput{}
-	seqReport := operations.SequenceReport[string, map[uint64][]oputil.EVMCallOutput]{}
+	seqReport := operations.SequenceReport[string, map[uint64][]evmops.EVMCallOutput]{}
 	mcmsCfg := &cldfproposalutils.TimelockConfig{}
 
-	result, err := oputil.AddEVMCallSequenceToCSOutput(
+	result, err := evmops.AddEVMCallSequenceToCSOutput(
 		*env,
 		csOutput,
 		seqReport,
@@ -257,9 +257,9 @@ func TestAddEVMCallSequenceToCSOutput_ProposalCombination(t *testing.T) {
 
 	// Sequence report with one unconfirmed call against selector2 — this forces
 	// a third proposal to be built and combined with the two existing ones.
-	seqReport := operations.SequenceReport[string, map[uint64][]oputil.EVMCallOutput]{
-		Report: operations.Report[string, map[uint64][]oputil.EVMCallOutput]{
-			Output: map[uint64][]oputil.EVMCallOutput{
+	seqReport := operations.SequenceReport[string, map[uint64][]evmops.EVMCallOutput]{
+		Report: operations.Report[string, map[uint64][]evmops.EVMCallOutput]{
+			Output: map[uint64][]evmops.EVMCallOutput{
 				selector2: {
 					{
 						To:           common.HexToAddress("0x3333333333333333333333333333333333333333"),
@@ -277,7 +277,7 @@ func TestAddEVMCallSequenceToCSOutput_ProposalCombination(t *testing.T) {
 		MCMSAction: mcmstypes.TimelockActionSchedule,
 	}
 
-	result, err := oputil.AddEVMCallSequenceToCSOutput(
+	result, err := evmops.AddEVMCallSequenceToCSOutput(
 		rt.Environment(),
 		csOutput,
 		seqReport,
@@ -331,7 +331,7 @@ func TestNewEVMCallOperation(t *testing.T) {
 	t.Run("ChainSelectorMismatch", func(t *testing.T) {
 		t.Parallel()
 
-		op := oputil.NewEVMCallOperation(
+		op := evmops.NewEVMCallOperation(
 			"test",
 			version,
 			"description",
@@ -345,7 +345,7 @@ func TestNewEVMCallOperation(t *testing.T) {
 			},
 		)
 
-		input := oputil.EVMCallInput[string]{
+		input := evmops.EVMCallInput[string]{
 			ChainSelector: 123,
 			Address:       common.HexToAddress("0x1234"),
 		}
@@ -359,7 +359,7 @@ func TestNewEVMCallOperation(t *testing.T) {
 	t.Run("ConstructorError", func(t *testing.T) {
 		t.Parallel()
 
-		op := oputil.NewEVMCallOperation[string, any](
+		op := evmops.NewEVMCallOperation[string, any](
 			"test",
 			version,
 			"description",
@@ -373,7 +373,7 @@ func TestNewEVMCallOperation(t *testing.T) {
 			},
 		)
 
-		input := oputil.EVMCallInput[string]{
+		input := evmops.EVMCallInput[string]{
 			ChainSelector: 123,
 			Address:       common.HexToAddress("0x1234"),
 		}
@@ -396,7 +396,7 @@ func TestNewEVMCallOperation(t *testing.T) {
 			big.NewInt(0),                 // gas price
 			nil,                           // data
 		)
-		op := oputil.NewEVMCallOperation[string, any](
+		op := evmops.NewEVMCallOperation[string, any](
 			"test",
 			version,
 			"description",
@@ -410,7 +410,7 @@ func TestNewEVMCallOperation(t *testing.T) {
 			},
 		)
 
-		input := oputil.EVMCallInput[string]{
+		input := evmops.EVMCallInput[string]{
 			ChainSelector: 123,
 			Address:       common.HexToAddress("0x1234"),
 			NoSend:        true,
@@ -438,7 +438,7 @@ func TestNewEVMCallOperation(t *testing.T) {
 			nil,                           // data
 		)
 
-		op := oputil.NewEVMCallOperation[string, any](
+		op := evmops.NewEVMCallOperation[string, any](
 			"test",
 			version,
 			"description",
@@ -453,7 +453,7 @@ func TestNewEVMCallOperation(t *testing.T) {
 			},
 		)
 
-		input := oputil.EVMCallInput[string]{
+		input := evmops.EVMCallInput[string]{
 			ChainSelector: 123,
 			Address:       common.HexToAddress("0x1234"),
 			GasLimit:      100000,
@@ -483,13 +483,13 @@ func TestContractOpts_Validate(t *testing.T) {
 
 	tests := []struct {
 		desc       string
-		opts       *oputil.ContractOpts
+		opts       *evmops.ContractOpts
 		isZkSyncVM bool
 		err        string
 	}{
 		{
 			desc: "valid evm opts",
-			opts: &oputil.ContractOpts{
+			opts: &evmops.ContractOpts{
 				Version:     semver.MustParse("1.0.0"),
 				EVMBytecode: []byte{0x01, 0x02, 0x03},
 			},
@@ -497,7 +497,7 @@ func TestContractOpts_Validate(t *testing.T) {
 		},
 		{
 			desc: "valid zksyncvm opts",
-			opts: &oputil.ContractOpts{
+			opts: &evmops.ContractOpts{
 				Version:          semver.MustParse("1.0.0"),
 				ZkSyncVMBytecode: []byte{0x05, 0x06, 0x07, 0x08},
 			},
@@ -505,12 +505,12 @@ func TestContractOpts_Validate(t *testing.T) {
 		},
 		{
 			desc: "nil version",
-			opts: &oputil.ContractOpts{},
+			opts: &evmops.ContractOpts{},
 			err:  "version must be defined",
 		},
 		{
 			desc: "missing evm bytecode",
-			opts: &oputil.ContractOpts{
+			opts: &evmops.ContractOpts{
 				Version: semver.MustParse("1.0.0"),
 			},
 			isZkSyncVM: false,
@@ -518,7 +518,7 @@ func TestContractOpts_Validate(t *testing.T) {
 		},
 		{
 			desc: "missing zkSyncVM bytecode",
-			opts: &oputil.ContractOpts{
+			opts: &evmops.ContractOpts{
 				Version: semver.MustParse("1.0.0"),
 			},
 			isZkSyncVM: true,
@@ -548,7 +548,7 @@ func TestNewEVMDeployOperation(t *testing.T) {
 	t.Run("ChainSelectorMismatch", func(t *testing.T) {
 		t.Parallel()
 
-		op := oputil.NewEVMDeployOperation(
+		op := evmops.NewEVMDeployOperation(
 			"test",
 			version,
 			"description",
@@ -558,7 +558,7 @@ func TestNewEVMDeployOperation(t *testing.T) {
 			func(string) []any { return nil },
 		)
 
-		input := oputil.EVMDeployInput[string]{
+		input := evmops.EVMDeployInput[string]{
 			ChainSelector: 123,
 			DeployInput:   "test",
 		}
@@ -572,7 +572,7 @@ func TestNewEVMDeployOperation(t *testing.T) {
 	t.Run("ContractMetadata undefined", func(t *testing.T) {
 		t.Parallel()
 
-		op := oputil.NewEVMDeployOperation(
+		op := evmops.NewEVMDeployOperation(
 			"test",
 			version,
 			"description",
@@ -582,7 +582,7 @@ func TestNewEVMDeployOperation(t *testing.T) {
 			func(string) []any { return nil },
 		)
 
-		input := oputil.EVMDeployInput[string]{
+		input := evmops.EVMDeployInput[string]{
 			ChainSelector: 123,
 			DeployInput:   "test",
 		}
@@ -596,7 +596,7 @@ func TestNewEVMDeployOperation(t *testing.T) {
 	t.Run("ContractOpts not defined", func(t *testing.T) {
 		t.Parallel()
 
-		op := oputil.NewEVMDeployOperation(
+		op := evmops.NewEVMDeployOperation(
 			"test",
 			version,
 			"description",
@@ -606,7 +606,7 @@ func TestNewEVMDeployOperation(t *testing.T) {
 			func(string) []any { return nil },
 		)
 
-		input := oputil.EVMDeployInput[string]{
+		input := evmops.EVMDeployInput[string]{
 			ChainSelector: 123,
 			DeployInput:   "test",
 		}
@@ -620,13 +620,13 @@ func TestNewEVMDeployOperation(t *testing.T) {
 	t.Run("Default ContractOpts not valid", func(t *testing.T) {
 		t.Parallel()
 
-		op := oputil.NewEVMDeployOperation(
+		op := evmops.NewEVMDeployOperation(
 			"test",
 			version,
 			"description",
 			contractType,
 			&bind.MetaData{},
-			&oputil.ContractOpts{
+			&evmops.ContractOpts{
 				Version:          semver.MustParse("0.1.0"),
 				EVMBytecode:      nil,
 				ZkSyncVMBytecode: []byte{0x05, 0x06, 0x07, 0x08},
@@ -634,7 +634,7 @@ func TestNewEVMDeployOperation(t *testing.T) {
 			func(string) []any { return nil },
 		)
 
-		input := oputil.EVMDeployInput[string]{
+		input := evmops.EVMDeployInput[string]{
 			ChainSelector: 123,
 			DeployInput:   "test",
 		}
@@ -648,7 +648,7 @@ func TestNewEVMDeployOperation(t *testing.T) {
 	t.Run("Inputted ContractOpts not valid", func(t *testing.T) {
 		t.Parallel()
 
-		op := oputil.NewEVMDeployOperation(
+		op := evmops.NewEVMDeployOperation(
 			"test",
 			version,
 			"description",
@@ -658,9 +658,9 @@ func TestNewEVMDeployOperation(t *testing.T) {
 			func(string) []any { return nil },
 		)
 
-		input := oputil.EVMDeployInput[string]{
+		input := evmops.EVMDeployInput[string]{
 			ChainSelector: 123,
-			ContractOpts: &oputil.ContractOpts{
+			ContractOpts: &evmops.ContractOpts{
 				Version:          semver.MustParse("0.1.0"),
 				EVMBytecode:      nil,
 				ZkSyncVMBytecode: []byte{0x05, 0x06, 0x07, 0x08},
@@ -677,7 +677,7 @@ func TestNewEVMDeployOperation(t *testing.T) {
 	t.Run("ABI parsing failure", func(t *testing.T) {
 		t.Parallel()
 
-		op := oputil.NewEVMDeployOperation(
+		op := evmops.NewEVMDeployOperation(
 			"test",
 			version,
 			"description",
@@ -687,9 +687,9 @@ func TestNewEVMDeployOperation(t *testing.T) {
 			func(string) []any { return nil },
 		)
 
-		input := oputil.EVMDeployInput[string]{
+		input := evmops.EVMDeployInput[string]{
 			ChainSelector: 123,
-			ContractOpts: &oputil.ContractOpts{
+			ContractOpts: &evmops.ContractOpts{
 				Version:          semver.MustParse("0.1.0"),
 				EVMBytecode:      []byte{0x01, 0x02, 0x03, 0x04},
 				ZkSyncVMBytecode: []byte{0x05, 0x06, 0x07, 0x08},
@@ -706,7 +706,7 @@ func TestNewEVMDeployOperation(t *testing.T) {
 	t.Run("EVM deployment failure", func(t *testing.T) {
 		t.Parallel()
 
-		op := oputil.NewEVMDeployOperation(
+		op := evmops.NewEVMDeployOperation(
 			"test",
 			version,
 			"description",
@@ -728,9 +728,9 @@ func TestNewEVMDeployOperation(t *testing.T) {
 		)
 		evmChain := chains.EVMChains()[5009297550715157269]
 
-		input := oputil.EVMDeployInput[string]{
+		input := evmops.EVMDeployInput[string]{
 			ChainSelector: 5009297550715157269,
-			ContractOpts: &oputil.ContractOpts{
+			ContractOpts: &evmops.ContractOpts{
 				Version:          semver.MustParse("0.1.0"),
 				EVMBytecode:      []byte{0x01, 0x02, 0x03, 0x04},
 				ZkSyncVMBytecode: []byte{0x05, 0x06, 0x07, 0x08},
@@ -746,7 +746,7 @@ func TestNewEVMDeployOperation(t *testing.T) {
 	t.Run("EVM confirmation failure", func(t *testing.T) {
 		t.Parallel()
 
-		op := oputil.NewEVMDeployOperation(
+		op := evmops.NewEVMDeployOperation(
 			"test",
 			version,
 			"description",
@@ -771,9 +771,9 @@ func TestNewEVMDeployOperation(t *testing.T) {
 			return 0, errors.New("confirmation failed")
 		}
 
-		input := oputil.EVMDeployInput[string]{
+		input := evmops.EVMDeployInput[string]{
 			ChainSelector: 5009297550715157269,
-			ContractOpts: &oputil.ContractOpts{
+			ContractOpts: &evmops.ContractOpts{
 				Version:          semver.MustParse("0.1.0"),
 				EVMBytecode:      []byte{0x00},
 				ZkSyncVMBytecode: []byte{0x00},
@@ -789,7 +789,7 @@ func TestNewEVMDeployOperation(t *testing.T) {
 	t.Run("EVM deployment success", func(t *testing.T) {
 		t.Parallel()
 
-		op := oputil.NewEVMDeployOperation(
+		op := evmops.NewEVMDeployOperation(
 			"test",
 			version,
 			"description",
@@ -811,9 +811,9 @@ func TestNewEVMDeployOperation(t *testing.T) {
 		)
 		evmChain := chains.EVMChains()[5009297550715157269]
 
-		input := oputil.EVMDeployInput[string]{
+		input := evmops.EVMDeployInput[string]{
 			ChainSelector: 5009297550715157269,
-			ContractOpts: &oputil.ContractOpts{
+			ContractOpts: &evmops.ContractOpts{
 				Version:          semver.MustParse("0.1.0"),
 				EVMBytecode:      []byte{0x00},
 				ZkSyncVMBytecode: []byte{0x00},

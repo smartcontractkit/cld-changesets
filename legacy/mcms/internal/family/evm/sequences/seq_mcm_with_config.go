@@ -14,8 +14,8 @@ import (
 	"github.com/smartcontractkit/mcms/sdk"
 	mcmsTypes "github.com/smartcontractkit/mcms/types"
 
-	opevm "github.com/smartcontractkit/cld-changesets/legacy/mcms/internal/family/evm/operations"
-	"github.com/smartcontractkit/cld-changesets/legacy/mcms/internal/family/evm/oputil"
+	opevmlegacy "github.com/smartcontractkit/cld-changesets/legacy/mcms/internal/family/evm/operations"
+	evmops "github.com/smartcontractkit/cld-changesets/mcms/evm/operations"
 )
 
 type SeqDeployMCMWithConfigInput struct {
@@ -34,55 +34,55 @@ var SeqDeployMCMWithConfig = operations.NewSequence(
 	"seq-deploy-mcm-with-config",
 	semver.MustParse("1.0.0"),
 	"Deploys MCM contract & sets config",
-	func(b operations.Bundle, deps cldf_evm.Chain, in SeqDeployMCMWithConfigInput) (oputil.EVMDeployOutput, error) {
+	func(b operations.Bundle, deps cldf_evm.Chain, in SeqDeployMCMWithConfigInput) (evmops.EVMDeployOutput, error) {
 		// Deploy MCM contract
-		var deployReport operations.Report[oputil.EVMDeployInput[any], oputil.EVMDeployOutput]
+		var deployReport operations.Report[evmops.EVMDeployInput[any], evmops.EVMDeployOutput]
 		var deployErr error
 		switch in.ContractType {
 		case mcmscontracts.BypasserManyChainMultisig:
-			deployReport, deployErr = operations.ExecuteOperation(b, opevm.OpDeployBypasserMCM, deps, oputil.EVMDeployInput[any]{
+			deployReport, deployErr = operations.ExecuteOperation(b, opevmlegacy.OpDeployBypasserMCM, deps, evmops.EVMDeployInput[any]{
 				ChainSelector: in.ChainSelector,
 				Qualifier:     in.Qualifier,
-			}, oputil.RetryDeploymentWithGasBoost[any](in.GasBoostConfig))
+			}, evmops.RetryDeploymentWithGasBoost[any](in.GasBoostConfig))
 		case mcmscontracts.ProposerManyChainMultisig:
-			deployReport, deployErr = operations.ExecuteOperation(b, opevm.OpDeployProposerMCM, deps, oputil.EVMDeployInput[any]{
+			deployReport, deployErr = operations.ExecuteOperation(b, opevmlegacy.OpDeployProposerMCM, deps, evmops.EVMDeployInput[any]{
 				ChainSelector: in.ChainSelector,
 				Qualifier:     in.Qualifier,
-			}, oputil.RetryDeploymentWithGasBoost[any](in.GasBoostConfig))
+			}, evmops.RetryDeploymentWithGasBoost[any](in.GasBoostConfig))
 		case mcmscontracts.CancellerManyChainMultisig:
-			deployReport, deployErr = operations.ExecuteOperation(b, opevm.OpDeployCancellerMCM, deps, oputil.EVMDeployInput[any]{
+			deployReport, deployErr = operations.ExecuteOperation(b, opevmlegacy.OpDeployCancellerMCM, deps, evmops.EVMDeployInput[any]{
 				ChainSelector: in.ChainSelector,
 				Qualifier:     in.Qualifier,
-			}, oputil.RetryDeploymentWithGasBoost[any](in.GasBoostConfig))
+			}, evmops.RetryDeploymentWithGasBoost[any](in.GasBoostConfig))
 		default:
-			return oputil.EVMDeployOutput{}, fmt.Errorf("unsupported contract type for seq-deploy-mcm-with-config: %s", in.ContractType)
+			return evmops.EVMDeployOutput{}, fmt.Errorf("unsupported contract type for seq-deploy-mcm-with-config: %s", in.ContractType)
 		}
 		if deployErr != nil {
-			return oputil.EVMDeployOutput{}, fmt.Errorf("failed to deploy %s: %w", in.ContractType, deployErr)
+			return evmops.EVMDeployOutput{}, fmt.Errorf("failed to deploy %s: %w", in.ContractType, deployErr)
 		}
 
 		// Set config
 		groupQuorums, groupParents, signerAddresses, signerGroups, err := sdk.ExtractSetConfigInputs(&in.MCMConfig)
 		if err != nil {
-			return oputil.EVMDeployOutput{}, err
+			return evmops.EVMDeployOutput{}, err
 		}
-		_, err = operations.ExecuteOperation(b, opevm.OpEVMSetConfigMCM,
+		_, err = operations.ExecuteOperation(b, opevmlegacy.OpEVMSetConfigMCM,
 			deps,
-			oputil.EVMCallInput[opevm.OpEVMSetConfigMCMInput]{
+			evmops.EVMCallInput[opevmlegacy.OpEVMSetConfigMCMInput]{
 				ChainSelector: in.ChainSelector,
 				Address:       deployReport.Output.Address,
 				NoSend:        false,
-				CallInput: opevm.OpEVMSetConfigMCMInput{
+				CallInput: opevmlegacy.OpEVMSetConfigMCMInput{
 					SignerAddresses: signerAddresses,
 					SignerGroups:    signerGroups,
 					GroupQuorums:    groupQuorums,
 					GroupParents:    groupParents,
 				},
 			},
-			oputil.RetryCallWithGasBoost[opevm.OpEVMSetConfigMCMInput](in.GasBoostConfig),
+			evmops.RetryCallWithGasBoost[opevmlegacy.OpEVMSetConfigMCMInput](in.GasBoostConfig),
 		)
 		if err != nil {
-			return oputil.EVMDeployOutput{}, err
+			return evmops.EVMDeployOutput{}, err
 		}
 
 		return deployReport.Output, nil

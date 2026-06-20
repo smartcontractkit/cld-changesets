@@ -14,8 +14,8 @@ import (
 	mcmsTypes "github.com/smartcontractkit/mcms/types"
 
 	"github.com/smartcontractkit/cld-changesets/internal/mcmsrole"
-	opevm "github.com/smartcontractkit/cld-changesets/legacy/mcms/internal/family/evm/operations"
-	"github.com/smartcontractkit/cld-changesets/legacy/mcms/internal/family/evm/oputil"
+	opevmlegacy "github.com/smartcontractkit/cld-changesets/legacy/mcms/internal/family/evm/operations"
+	evmops "github.com/smartcontractkit/cld-changesets/mcms/evm/operations"
 )
 
 type SeqGrantRolesTimelockDeps struct {
@@ -45,12 +45,12 @@ var SeqGrantRolesTimelock = operations.NewSequence(
 	"seq-grant-role-with-config",
 	semver.MustParse("1.0.0"),
 	"Grants appropriate roles to MCMS contracts in the EVM Timelock contract",
-	func(b operations.Bundle, deps SeqGrantRolesTimelockDeps, in SeqGrantRolesTimelockInput) (map[uint64][]oputil.EVMCallOutput, error) {
+	func(b operations.Bundle, deps SeqGrantRolesTimelockDeps, in SeqGrantRolesTimelockInput) (map[uint64][]evmops.EVMCallOutput, error) {
 		var (
 			addressesInInspector []string
 			err2                 error
 		)
-		out := make([]oputil.EVMCallOutput, 0)
+		out := make([]evmops.EVMCallOutput, 0)
 
 		timelockInspector := evmMcms.NewTimelockInspector(deps.Chain.Client)
 
@@ -80,18 +80,18 @@ var SeqGrantRolesTimelock = operations.NewSequence(
 			}
 			for _, addressToGrantRole := range roleAndAddress.Addresses {
 				if !slices.Contains(addressesInInspector, addressToGrantRole.Hex()) {
-					opReport, err := operations.ExecuteOperation(b, opevm.OpGrantRole,
+					opReport, err := operations.ExecuteOperation(b, opevmlegacy.OpGrantRole,
 						deps.Chain,
-						oputil.EVMCallInput[opevm.OpGrantRoleInput]{
+						evmops.EVMCallInput[opevmlegacy.OpGrantRoleInput]{
 							ChainSelector: in.ChainSelector,
-							CallInput: opevm.OpGrantRoleInput{
+							CallInput: opevmlegacy.OpGrantRoleInput{
 								Account: addressToGrantRole,
 								RoleID:  roleAndAddress.Role,
 							},
 							NoSend:  !in.IsDeployerKeyAdmin,
 							Address: in.Timelock,
 						},
-						oputil.RetryCallWithGasBoost[opevm.OpGrantRoleInput](in.GasBoostConfig),
+						evmops.RetryCallWithGasBoost[opevmlegacy.OpGrantRoleInput](in.GasBoostConfig),
 					)
 					if err != nil {
 						b.Logger.Errorw("Failed to grant role",
@@ -119,7 +119,7 @@ var SeqGrantRolesTimelock = operations.NewSequence(
 			}
 		}
 
-		return map[uint64][]oputil.EVMCallOutput{
+		return map[uint64][]evmops.EVMCallOutput{
 			in.ChainSelector: out,
 		}, nil
 	},

@@ -21,9 +21,9 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 
 	evmchangesets "github.com/smartcontractkit/cld-changesets/legacy/mcms/internal/family/evm/changesets"
-	"github.com/smartcontractkit/cld-changesets/legacy/mcms/internal/family/evm/oputil"
 	"github.com/smartcontractkit/cld-changesets/legacy/pkg/family/evm"
 	solchangesets "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana/changesets"
+	evmops "github.com/smartcontractkit/cld-changesets/mcms/evm/operations"
 )
 
 // migrateAddressBookWithQualifiers migrates an address book to a data store,
@@ -256,7 +256,7 @@ func grantRoleLogic(e cldf.Environment, cfg GrantRoleInput) (cldf.ChangesetOutpu
 	}
 
 	out := cldf.ChangesetOutput{}
-	gasBoostConfigs := oputil.GasBoostConfigsForChainMap(cfg.ExistingProposerByChain, cfg.GasBoostConfigPerChain)
+	gasBoostConfigs := evmops.GasBoostConfigsForChainMap(cfg.ExistingProposerByChain, cfg.GasBoostConfigPerChain)
 	for chain := range cfg.ExistingProposerByChain {
 		stateForChain := mcmsState[chain]
 		evmChains := e.BlockChains.EVMChains()
@@ -268,7 +268,7 @@ func grantRoleLogic(e cldf.Environment, cfg GrantRoleInput) (cldf.ChangesetOutpu
 				Timelock:     stateForChain.Timelock,
 				CallProxy:    stateForChain.CallProxy,
 			}, false, gasBoostConfigs[chain])
-		out, err = oputil.AddEVMCallSequenceToCSOutput(e, out, seqReport, err, mcmsStateForProposal, cfg.MCMS, fmt.Sprintf("GrantRolesForTimelock on %s", evmChains[chain]))
+		out, err = evmops.AddEVMCallSequenceToCSOutput(e, out, seqReport, err, mcmsStateForProposal, cfg.MCMS, fmt.Sprintf("GrantRolesForTimelock on %s", evmChains[chain]))
 		if err != nil {
 			return out, fmt.Errorf("failed to grant roles for timelock on chain %d: %w", chain, err)
 		}
