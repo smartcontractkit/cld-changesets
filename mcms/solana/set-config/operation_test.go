@@ -20,7 +20,7 @@ import (
 //nolint:paralleltest // global mcm.SetProgramID state; serialized via soltestutils.PreloadMCMS lock
 func TestSolanaSetConfig(t *testing.T) {
 	t.Run("operation", testOpSolanaSetConfigMCM)
-	t.Run("sequence", testSeqSolanaSetConfig)
+	t.Run("sequence", testRunSolanaSetConfig)
 }
 
 func testOpSolanaSetConfigMCM(t *testing.T) {
