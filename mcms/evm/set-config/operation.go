@@ -15,6 +15,8 @@ import (
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	cldfproposalutils "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
+
+	"github.com/smartcontractkit/cld-changesets/mcms/evm/internal/gasboost"
 )
 
 // MCMSetConfigTarget identifies one MCM contract and the config to apply.
@@ -30,6 +32,17 @@ type OpEVMSetConfigInput struct {
 	NoSend   bool               `json:"noSend"`
 	GasPrice uint64             `json:"gasPrice"`
 	GasLimit uint64             `json:"gasLimit"`
+}
+
+func (in OpEVMSetConfigInput) GasBoostValues() (gasLimit, gasPrice uint64) {
+	return in.GasLimit, in.GasPrice
+}
+
+func (in OpEVMSetConfigInput) WithGasBoost(gasLimit, gasPrice uint64) OpEVMSetConfigInput {
+	in.GasLimit = gasLimit
+	in.GasPrice = gasPrice
+
+	return in
 }
 
 // OpEVMSetConfigMCM sets MCMS config on an EVM MCM contract via the MCMS SDK configurer.
@@ -81,22 +94,10 @@ var OpEVMSetConfigMCM = operations.NewOperation(
 	},
 )
 
-// retrySetConfigWithGasBoost is an ExecuteOption that retries EVM set-config with gas boosting.
 func retrySetConfigWithGasBoost(cfg *cldfproposalutils.GasBoostConfig) operations.ExecuteOption[OpEVMSetConfigInput, cldf_evm.Chain] {
 	if cfg == nil {
 		return operations.WithRetry[OpEVMSetConfigInput, cldf_evm.Chain]()
 	}
-	c := *cfg
 
-	return operations.WithRetryInput(func(attempt uint, err error, in OpEVMSetConfigInput, deps cldf_evm.Chain) OpEVMSetConfigInput {
-		if in.NoSend {
-			return in
-		}
-
-		gasLimit, gasPrice := getBoostedGasForAttempt(c, attempt)
-		in.GasLimit = gasLimit
-		in.GasPrice = gasPrice
-
-		return in
-	})
+	return gasboost.RetryWithGasBoost[OpEVMSetConfigInput](cfg)
 }
