@@ -33,7 +33,6 @@ type OpEVMSetConfigInput struct {
 }
 
 // OpEVMSetConfigMCM sets MCMS config on an EVM MCM contract via the MCMS SDK configurer.
-// TODO: this may be removed if we generate operations via operations gen tool.
 var OpEVMSetConfigMCM = operations.NewOperation(
 	"evm-mcm-set-config",
 	semver.MustParse("1.0.0"),
