@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
+	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	mcmscontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/mcms"
 	cldfproposalutils "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/environment"
@@ -19,12 +20,56 @@ import (
 
 	"github.com/smartcontractkit/cld-changesets/internal/semvers"
 	"github.com/smartcontractkit/cld-changesets/internal/testutil/evmtest"
-	evmstate "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/evm"
 	"github.com/smartcontractkit/cld-changesets/mcms/changesets/deploy"
+	evmreaders "github.com/smartcontractkit/cld-changesets/mcms/evm/readers"
 
 	// Import EVM deploy package to auto-register the EVM family via init().
 	_ "github.com/smartcontractkit/cld-changesets/mcms/evm/deploy"
 )
+
+type mcmsTimelockRefs struct {
+	Bypasser  common.Address
+	Canceller common.Address
+	Proposer  common.Address
+	Timelock  common.Address
+	CallProxy common.Address
+}
+
+func loadMCMSTimelockRefs(t *testing.T, env cldf.Environment, chainSelector uint64) mcmsTimelockRefs {
+	t.Helper()
+
+	reader := evmreaders.Reader{}
+	proposalInput := cldf.MCMSTimelockProposalInput{}
+
+	timelockRef, err := reader.GetTimelockRef(env, chainSelector, proposalInput)
+	require.NoError(t, err)
+
+	proposerRef, err := reader.GetMCMSRef(env, chainSelector, cldf.MCMSTimelockProposalInput{
+		TimelockAction: mcmstypes.TimelockActionSchedule,
+	})
+	require.NoError(t, err)
+
+	cancellerRef, err := reader.GetMCMSRef(env, chainSelector, cldf.MCMSTimelockProposalInput{
+		TimelockAction: mcmstypes.TimelockActionCancel,
+	})
+	require.NoError(t, err)
+
+	bypasserRef, err := reader.GetMCMSRef(env, chainSelector, cldf.MCMSTimelockProposalInput{
+		TimelockAction: mcmstypes.TimelockActionBypass,
+	})
+	require.NoError(t, err)
+
+	callProxyRef, err := reader.GetCallProxyRef(env, chainSelector, proposalInput.Qualifier)
+	require.NoError(t, err)
+
+	return mcmsTimelockRefs{
+		Bypasser:  common.HexToAddress(bypasserRef.Address),
+		Canceller: common.HexToAddress(cancellerRef.Address),
+		Proposer:  common.HexToAddress(proposerRef.Address),
+		Timelock:  common.HexToAddress(timelockRef.Address),
+		CallProxy: common.HexToAddress(callProxyRef.Address),
+	}
+}
 
 // mcmsConfig returns a minimal valid MCMS+timelock config for tests.
 func mcmsConfig(t *testing.T, minDelay int64) cldfproposalutils.MCMSWithTimelockConfig {
@@ -87,33 +132,31 @@ func TestDeployMCMSWithTimelock_FreshDeploy(t *testing.T) {
 	require.Contains(t, contractTypes, datastore.ContractType(mcmscontracts.RBACTimelock))
 	require.Contains(t, contractTypes, datastore.ContractType(mcmscontracts.CallProxy))
 
-	state, err := evmstate.MaybeLoadMCMSWithTimelockStateDataStore(rt.Environment(), []uint64{selector})
-	require.NoError(t, err)
-	require.NoError(t, state[selector].Validate())
+	addresses := loadMCMSTimelockRefs(t, rt.Environment(), selector)
 
 	chain := rt.Environment().BlockChains.EVMChains()[selector]
 	timelockInspector := mcmsevmsdk.NewTimelockInspector(chain.Client)
-	timelockAddr := state[selector].Timelock.Address().Hex()
+	timelockAddr := addresses.Timelock.Hex()
 
 	proposers, err := timelockInspector.GetProposers(t.Context(), timelockAddr)
 	require.NoError(t, err)
-	require.Equal(t, []string{state[selector].ProposerMcm.Address().Hex()}, proposers)
+	require.Equal(t, []string{addresses.Proposer.Hex()}, proposers)
 
 	executors, err := timelockInspector.GetExecutors(t.Context(), timelockAddr)
 	require.NoError(t, err)
-	require.Equal(t, []string{state[selector].CallProxy.Address().Hex()}, executors)
+	require.Equal(t, []string{addresses.CallProxy.Hex()}, executors)
 
 	cancellers, err := timelockInspector.GetCancellers(t.Context(), timelockAddr)
 	require.NoError(t, err)
 	require.ElementsMatch(t, []string{
-		state[selector].CancellerMcm.Address().Hex(),
-		state[selector].ProposerMcm.Address().Hex(),
-		state[selector].BypasserMcm.Address().Hex(),
+		addresses.Canceller.Hex(),
+		addresses.Proposer.Hex(),
+		addresses.Bypasser.Hex(),
 	}, cancellers)
 
 	bypassers, err := timelockInspector.GetBypassers(t.Context(), timelockAddr)
 	require.NoError(t, err)
-	require.Equal(t, []string{state[selector].BypasserMcm.Address().Hex()}, bypassers)
+	require.Equal(t, []string{addresses.Bypasser.Hex()}, bypassers)
 }
 
 func TestDeployMCMSWithTimelock_PartialDeploy(t *testing.T) {
@@ -157,11 +200,9 @@ func TestDeployMCMSWithTimelock_PartialDeploy(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, refs, 5)
 
-	state, err := evmstate.MaybeLoadMCMSWithTimelockStateDataStore(rt.Environment(), []uint64{selector})
-	require.NoError(t, err)
-	require.NoError(t, state[selector].Validate())
-	require.Equal(t, bypasserAddr, state[selector].BypasserMcm.Address())
-	require.Equal(t, cancellerAddr, state[selector].CancellerMcm.Address())
+	addresses := loadMCMSTimelockRefs(t, rt.Environment(), selector)
+	require.Equal(t, bypasserAddr, addresses.Bypasser)
+	require.Equal(t, cancellerAddr, addresses.Canceller)
 }
 
 func TestDeployMCMSWithTimelock_MultiChain(t *testing.T) {
@@ -189,8 +230,7 @@ func TestDeployMCMSWithTimelock_MultiChain(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, refs, 10, "expected 5 contracts per chain")
 
-	state, err := evmstate.MaybeLoadMCMSWithTimelockStateDataStore(rt.Environment(), selectors)
-	require.NoError(t, err)
-	require.NoError(t, state[selector1].Validate())
-	require.NoError(t, state[selector2].Validate())
+	for _, selector := range selectors {
+		loadMCMSTimelockRefs(t, rt.Environment(), selector)
+	}
 }

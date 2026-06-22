@@ -3,7 +3,6 @@ package deploy
 import (
 	"errors"
 	"fmt"
-	"slices"
 
 	chainselectors "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-deployments-framework/changeset/sequenceutils"
@@ -11,6 +10,8 @@ import (
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	cldfproposalutils "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
+
+	"github.com/smartcontractkit/cld-changesets/internal/maputil"
 )
 
 var _ cldf.ChangeSetV2[Input] = Changeset{}
@@ -62,7 +63,7 @@ func (Changeset) Apply(env cldf.Environment, input Input) (cldf.ChangesetOutput,
 		reports []operations.Report[any, any]
 	)
 
-	for _, selector := range sortedChainSelectors(input.ConfigByChain) {
+	for _, selector := range maputil.SortedMapKeys(input.ConfigByChain) {
 		cfg := input.ConfigByChain[selector]
 
 		family, err := chainselectors.GetSelectorFamily(selector)
@@ -102,16 +103,6 @@ func (Changeset) Apply(env cldf.Environment, input Input) (cldf.ChangesetOutput,
 	}
 
 	return cldf.NewOutputBuilder(env, ds).WithOperationsReports(reports).Build()
-}
-
-func sortedChainSelectors(cfgByChain map[uint64]cldfproposalutils.MCMSWithTimelockConfig) []uint64 {
-	selectors := make([]uint64, 0, len(cfgByChain))
-	for selector := range cfgByChain {
-		selectors = append(selectors, selector)
-	}
-	slices.Sort(selectors)
-
-	return selectors
 }
 
 // mergeOutputs combines all per-chain OnChainOutput results into a single
