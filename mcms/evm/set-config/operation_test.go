@@ -12,7 +12,6 @@ import (
 	chainselectors "github.com/smartcontractkit/chain-selectors"
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	mcmscontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/mcms"
-	cldfproposalutils "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
 	cldftesthelpers "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils/testhelpers"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/runtime"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
@@ -54,63 +53,17 @@ func TestCloneTransactOptsWithGas(t *testing.T) {
 	require.Equal(t, uint64(30_000_000_000), got.GasPrice.Uint64())
 }
 
-func TestGetBoostedGasForAttempt(t *testing.T) {
+func TestOpEVMSetConfigInputGasOverridable(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name      string
-		cfg       cldfproposalutils.GasBoostConfig
-		attempt   uint
-		wantLimit uint64
-		wantPrice uint64
-	}{
-		{
-			name:      "defaults attempt zero",
-			attempt:   0,
-			wantLimit: 200_000,
-			wantPrice: 20_000_000_000,
-		},
-		{
-			name:      "defaults attempt two",
-			attempt:   2,
-			wantLimit: 300_000,
-			wantPrice: 40_000_000_000,
-		},
-		{
-			name: "custom config",
-			cfg: cldfproposalutils.GasBoostConfig{
-				InitialGasLimit:   100_000,
-				GasLimitIncrement: 10_000,
-				InitialGasPrice:   1_000,
-				GasPriceIncrement: 500,
-			},
-			attempt:   3,
-			wantLimit: 130_000,
-			wantPrice: 2_500,
-		},
-	}
+	in := OpEVMSetConfigInput{GasLimit: 100, GasPrice: 200}
+	gotLimit, gotPrice := in.GasBoostValues()
+	require.Equal(t, uint64(100), gotLimit)
+	require.Equal(t, uint64(200), gotPrice)
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			gotLimit, gotPrice := getBoostedGasForAttempt(tt.cfg, tt.attempt)
-			require.Equal(t, tt.wantLimit, gotLimit)
-			require.Equal(t, tt.wantPrice, gotPrice)
-		})
-	}
-}
-
-func TestRetrySetConfigWithGasBoost(t *testing.T) {
-	t.Parallel()
-
-	require.NotNil(t, retrySetConfigWithGasBoost(nil))
-	require.NotNil(t, retrySetConfigWithGasBoost(&cldfproposalutils.GasBoostConfig{
-		InitialGasLimit:   100_000,
-		GasLimitIncrement: 10_000,
-		InitialGasPrice:   1_000,
-		GasPriceIncrement: 500,
-	}))
+	boosted := in.WithGasBoost(500, 600)
+	require.Equal(t, uint64(500), boosted.GasLimit)
+	require.Equal(t, uint64(600), boosted.GasPrice)
 }
 
 func TestOpEVMSetConfigMCM(t *testing.T) {
