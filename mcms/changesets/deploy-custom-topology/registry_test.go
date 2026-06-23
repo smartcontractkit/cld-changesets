@@ -26,7 +26,7 @@ func testSequence(id string) *Sequence {
 func TestSequenceForChainSelector(t *testing.T) {
 	t.Parallel()
 
-	_, err := SequenceForChainSelector(0)
+	_, err := Sequences.SequenceForChainSelector(0)
 	require.Error(t, err)
 }
 
@@ -35,7 +35,7 @@ func TestRegister_andLookup(t *testing.T) {
 
 	const family = "test-topology-family-a"
 
-	Register(Registration{
+	Sequences.Register(Registration{
 		Family:   family,
 		Sequence: testSequence("test-topology-seq-a"),
 		Verify: func(_ cldf.Environment, chains []ChainInput) error {
@@ -47,9 +47,9 @@ func TestRegister_andLookup(t *testing.T) {
 		},
 	})
 
-	require.Contains(t, RegisteredFamilies(), family)
+	require.Contains(t, Sequences.RegisteredFamilies(), family)
 
-	seq, err := SequenceForFamily(family)
+	seq, err := Sequences.SequenceForFamily(family)
 	require.NoError(t, err)
 	require.NotNil(t, seq)
 
@@ -66,7 +66,7 @@ func TestRegister_andLookup(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			err := VerifyForFamily(family, cldf.Environment{}, tt.chains)
+			err := Sequences.VerifyForFamily(family, cldf.Environment{}, tt.chains)
 			if tt.wantErr {
 				require.Error(t, err)
 				return
@@ -91,7 +91,7 @@ func TestRegister_validationPanics(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			require.Panics(t, func() { Register(tt.reg) })
+			require.Panics(t, func() { Sequences.Register(tt.reg) })
 		})
 	}
 }
@@ -100,10 +100,10 @@ func TestRegister_duplicatePanics(t *testing.T) {
 	t.Parallel()
 
 	const family = "test-topology-family-c"
-	Register(Registration{Family: family, Sequence: testSequence("test-topology-seq-c")})
+	Sequences.Register(Registration{Family: family, Sequence: testSequence("test-topology-seq-c")})
 
 	require.Panics(t, func() {
-		Register(Registration{Family: family, Sequence: testSequence("test-topology-seq-c-dup")})
+		Sequences.Register(Registration{Family: family, Sequence: testSequence("test-topology-seq-c-dup")})
 	})
 }
 
@@ -111,7 +111,7 @@ func TestSequenceForFamily_errors(t *testing.T) {
 	t.Parallel()
 
 	const family = "test-topology-family-missing"
-	_, err := SequenceForFamily(family)
+	_, err := Sequences.SequenceForFamily(family)
 	require.ErrorContains(t, err, fmt.Sprintf(`no sequence registered for family %q`, family))
 }
 
@@ -119,10 +119,10 @@ func TestVerifyForFamily(t *testing.T) {
 	t.Parallel()
 
 	const nilHookFamily = "test-topology-family-d"
-	Register(Registration{Family: nilHookFamily, Sequence: testSequence("test-topology-seq-d")})
+	Sequences.Register(Registration{Family: nilHookFamily, Sequence: testSequence("test-topology-seq-d")})
 
 	const wrapFamily = "test-topology-family-e"
-	Register(Registration{
+	Sequences.Register(Registration{
 		Family:   wrapFamily,
 		Sequence: testSequence("test-topology-seq-e"),
 		Verify: func(_ cldf.Environment, _ []ChainInput) error {
@@ -145,7 +145,7 @@ func TestVerifyForFamily(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			err := VerifyForFamily(tt.family, cldf.Environment{}, tt.chains)
+			err := Sequences.VerifyForFamily(tt.family, cldf.Environment{}, tt.chains)
 			if tt.wantErr == "" {
 				require.NoError(t, err)
 				return

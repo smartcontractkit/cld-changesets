@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/stretchr/testify/require"
+
 	chain_selectors "github.com/smartcontractkit/chain-selectors"
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	cldfdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
@@ -15,13 +17,237 @@ import (
 	cldftesthelpers "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils/testhelpers"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/environment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/runtime"
+	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 	mcmsevmsdk "github.com/smartcontractkit/mcms/sdk/evm"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
-	"github.com/stretchr/testify/require"
 
 	deploycustomtopology "github.com/smartcontractkit/cld-changesets/mcms/changesets/deploy-custom-topology"
 )
+
+// TestRunEVMDeployTopology_StandardTopology deploys the classic 3-MCM + timelock +
+// call-proxy stack and asserts MCM configs and the standard role wiring.
+func TestRunEVMDeployTopology_StandardTopology(t *testing.T) {
+	t.Parallel()
+
+	sel := chain_selectors.TEST_90000001.Selector
+	rt := newEVMRuntime(t, sel)
+	env := rt.Environment()
+	chain := env.BlockChains.EVMChains()[sel]
+	cfg := mcmConfig(t)
+
+	out := runDeployTopologySequence(t, rt, chainTopologyConfig(sel, deploycustomtopology.ChainTopologyConfig{
+		MCMs: []deploycustomtopology.MCMSpec{
+			mcmSpec("proposer", mcmscontracts.ProposerManyChainMultisig, "CCIP", cfg),
+			mcmSpec("canceller", mcmscontracts.CancellerManyChainMultisig, "CCIP", cfg),
+			mcmSpec("bypasser", mcmscontracts.BypasserManyChainMultisig, "CCIP", cfg),
+		},
+		Timelocks: []deploycustomtopology.TimelockSpec{{
+			Ref:       "timelock",
+			MinDelay:  big.NewInt(0),
+			Qualifier: "CCIP",
+			Roles: deploycustomtopology.RoleAssignments{
+				Proposers:  []deploycustomtopology.RoleHolder{{MCMRef: "proposer"}},
+				Cancellers: []deploycustomtopology.RoleHolder{{MCMRef: "proposer"}, {MCMRef: "canceller"}, {MCMRef: "bypasser"}},
+				Bypassers:  []deploycustomtopology.RoleHolder{{MCMRef: "bypasser"}},
+			},
+		}},
+	}))
+
+	proposer := fetchAddrFromOutput(t, out, sel, mcmscontracts.ProposerManyChainMultisig, "CCIP")
+	canceller := fetchAddrFromOutput(t, out, sel, mcmscontracts.CancellerManyChainMultisig, "CCIP")
+	bypasser := fetchAddrFromOutput(t, out, sel, mcmscontracts.BypasserManyChainMultisig, "CCIP")
+	timelock := fetchAddrFromOutput(t, out, sel, mcmscontracts.RBACTimelock, "CCIP")
+	callProxy := fetchAddrFromOutput(t, out, sel, mcmscontracts.CallProxy, "CCIP")
+
+	ctx := t.Context()
+	inspector := mcmsevmsdk.NewInspector(chain.Client)
+	for _, addr := range []common.Address{proposer, canceller, bypasser} {
+		got, err := inspector.GetConfig(ctx, addr.Hex())
+		require.NoError(t, err)
+		require.ElementsMatch(t, cfg.Signers, got.Signers)
+		require.Equal(t, cfg.Quorum, got.Quorum)
+	}
+
+	requireTimelockRoleMembers(
+		ctx, t, chain, timelock,
+		[]string{proposer.Hex()},
+		[]string{callProxy.Hex()},
+		[]string{proposer.Hex(), canceller.Hex(), bypasser.Hex()},
+		[]string{bypasser.Hex()},
+	)
+}
+
+// TestRunEVMDeployTopology_ProposerOnly deploys a single proposer MCM + timelock + call proxy.
+func TestRunEVMDeployTopology_ProposerOnly(t *testing.T) {
+	t.Parallel()
+
+	sel := chain_selectors.TEST_90000001.Selector
+	rt := newEVMRuntime(t, sel)
+	env := rt.Environment()
+	chain := env.BlockChains.EVMChains()[sel]
+	cfg := mcmConfig(t)
+
+	out := runDeployTopologySequence(t, rt, chainTopologyConfig(sel, deploycustomtopology.ChainTopologyConfig{
+		MCMs: []deploycustomtopology.MCMSpec{
+			mcmSpec("proposer", mcmscontracts.ProposerManyChainMultisig, "CCIP", cfg),
+		},
+		Timelocks: []deploycustomtopology.TimelockSpec{{
+			Ref:       "timelock",
+			MinDelay:  big.NewInt(3600),
+			Qualifier: "CCIP",
+			Roles: deploycustomtopology.RoleAssignments{
+				Proposers: []deploycustomtopology.RoleHolder{{MCMRef: "proposer"}},
+			},
+		}},
+	}))
+
+	proposer := fetchAddrFromOutput(t, out, sel, mcmscontracts.ProposerManyChainMultisig, "CCIP")
+	timelock := fetchAddrFromOutput(t, out, sel, mcmscontracts.RBACTimelock, "CCIP")
+	callProxy := fetchAddrFromOutput(t, out, sel, mcmscontracts.CallProxy, "CCIP")
+	require.Empty(t, fetchAddrsFromOutput(t, out, sel, mcmscontracts.CancellerManyChainMultisig, "CCIP"))
+
+	requireTimelockRoleMembers(
+		t.Context(), t, chain, timelock,
+		[]string{proposer.Hex()},
+		[]string{callProxy.Hex()},
+		nil,
+		nil,
+	)
+}
+
+// TestRunEVMDeployTopology_ExtraArgsDisablesCallProxy disables the call proxy for a
+// timelock via ExtraArgs.
+func TestRunEVMDeployTopology_ExtraArgsDisablesCallProxy(t *testing.T) {
+	t.Parallel()
+
+	sel := chain_selectors.TEST_90000001.Selector
+	rt := newEVMRuntime(t, sel)
+	env := rt.Environment()
+	chain := env.BlockChains.EVMChains()[sel]
+	cfg := mcmConfig(t)
+
+	out := runDeployTopologySequence(t, rt, chainTopologyConfig(sel, deploycustomtopology.ChainTopologyConfig{
+		MCMs: []deploycustomtopology.MCMSpec{
+			mcmSpec("proposer", mcmscontracts.ProposerManyChainMultisig, "CCIP", cfg),
+		},
+		Timelocks: []deploycustomtopology.TimelockSpec{{
+			Ref:       "timelock",
+			MinDelay:  big.NewInt(0),
+			Qualifier: "CCIP",
+			Roles: deploycustomtopology.RoleAssignments{
+				Proposers: []deploycustomtopology.RoleHolder{{MCMRef: "proposer"}},
+			},
+		}},
+		ExtraArgs: EVMExtraArgs{
+			DeployCallProxyByTimelockRef: map[string]bool{"timelock": false},
+		},
+	}))
+
+	require.Empty(t, fetchAddrsFromOutput(t, out, sel, mcmscontracts.CallProxy, "CCIP"))
+
+	proposer := fetchAddrFromOutput(t, out, sel, mcmscontracts.ProposerManyChainMultisig, "CCIP")
+	timelock := fetchAddrFromOutput(t, out, sel, mcmscontracts.RBACTimelock, "CCIP")
+
+	requireTimelockRoleMembers(
+		t.Context(), t, chain, timelock,
+		[]string{proposer.Hex()},
+		nil,
+		nil,
+		nil,
+	)
+}
+
+// TestRunEVMDeployTopology_TwoTimelocksWithOwnershipTransfer deploys two independent
+// stacks (CCIP + RMN) on one chain, each taking ownership of its bypasser MCM, and
+// emits accept-ownership batch ops grouped per timelock qualifier.
+func TestRunEVMDeployTopology_TwoTimelocksWithOwnershipTransfer(t *testing.T) {
+	t.Parallel()
+
+	sel := chain_selectors.TEST_90000001.Selector
+	rt := newEVMRuntime(t, sel)
+	env := rt.Environment()
+	chain := env.BlockChains.EVMChains()[sel]
+	cfg := mcmConfig(t)
+
+	stack := func(qualifier string) deploycustomtopology.ChainTopologyConfig {
+		return deploycustomtopology.ChainTopologyConfig{
+			MCMs: []deploycustomtopology.MCMSpec{
+				mcmSpec(qualifier+"-proposer", mcmscontracts.ProposerManyChainMultisig, qualifier, cfg),
+				mcmSpec(qualifier+"-bypasser", mcmscontracts.BypasserManyChainMultisig, qualifier, cfg),
+			},
+			Timelocks: []deploycustomtopology.TimelockSpec{{
+				Ref:       qualifier + "-timelock",
+				MinDelay:  big.NewInt(0),
+				Qualifier: qualifier,
+				Roles: deploycustomtopology.RoleAssignments{
+					Proposers: []deploycustomtopology.RoleHolder{{MCMRef: qualifier + "-proposer"}},
+					Bypassers: []deploycustomtopology.RoleHolder{{MCMRef: qualifier + "-bypasser"}},
+				},
+				TransferOwnership: []deploycustomtopology.RoleHolder{{MCMRef: qualifier + "-bypasser"}},
+			}},
+		}
+	}
+
+	ccip := stack("CCIP")
+	rmn := stack("RMN")
+	merged := deploycustomtopology.ChainTopologyConfig{
+		MCMs:      append(append([]deploycustomtopology.MCMSpec{}, ccip.MCMs...), rmn.MCMs...),
+		Timelocks: append(append([]deploycustomtopology.TimelockSpec{}, ccip.Timelocks...), rmn.Timelocks...),
+	}
+
+	out := runDeployTopologySequence(t, rt, deploycustomtopology.ChainInput{
+		ChainSelector: sel,
+		Config:        merged,
+		MCMS: &cldf.MCMSTimelockProposalInput{
+			TimelockAction: mcmstypes.TimelockActionSchedule,
+			ValidUntil:     uint32(time.Now().Add(2 * time.Hour).UTC().Unix()), //nolint:gosec // test timestamp
+			TimelockDelay:  mcmstypes.NewDuration(time.Second),
+			Description:    "accept ownership",
+		},
+	})
+
+	require.Len(t, out.ProposalGroups, 2)
+
+	ccipProposer := fetchAddrFromOutput(t, out, sel, mcmscontracts.ProposerManyChainMultisig, "CCIP")
+	ccipBypasser := fetchAddrFromOutput(t, out, sel, mcmscontracts.BypasserManyChainMultisig, "CCIP")
+	ccipTimelock := fetchAddrFromOutput(t, out, sel, mcmscontracts.RBACTimelock, "CCIP")
+	ccipCallProxy := fetchAddrFromOutput(t, out, sel, mcmscontracts.CallProxy, "CCIP")
+
+	rmnProposer := fetchAddrFromOutput(t, out, sel, mcmscontracts.ProposerManyChainMultisig, "RMN")
+	rmnBypasser := fetchAddrFromOutput(t, out, sel, mcmscontracts.BypasserManyChainMultisig, "RMN")
+	rmnTimelock := fetchAddrFromOutput(t, out, sel, mcmscontracts.RBACTimelock, "RMN")
+	rmnCallProxy := fetchAddrFromOutput(t, out, sel, mcmscontracts.CallProxy, "RMN")
+
+	ctx := t.Context()
+	requireTimelockRoleMembers(
+		ctx, t, chain, ccipTimelock,
+		[]string{ccipProposer.Hex()},
+		[]string{ccipCallProxy.Hex()},
+		nil,
+		[]string{ccipBypasser.Hex()},
+	)
+	requireTimelockRoleMembers(
+		ctx, t, chain, rmnTimelock,
+		[]string{rmnProposer.Hex()},
+		[]string{rmnCallProxy.Hex()},
+		nil,
+		[]string{rmnBypasser.Hex()},
+	)
+
+	gotQualifiers := map[string]bool{}
+	gotAcceptTargets := map[string]bool{}
+	for _, g := range out.ProposalGroups {
+		gotQualifiers[g.Qualifier] = true
+		for _, batch := range g.BatchOps {
+			for _, tx := range batch.Transactions {
+				gotAcceptTargets[common.HexToAddress(tx.To).Hex()] = true
+			}
+		}
+	}
+	require.Equal(t, map[string]bool{"CCIP": true, "RMN": true}, gotQualifiers)
+	require.Equal(t, map[string]bool{ccipBypasser.Hex(): true, rmnBypasser.Hex(): true}, gotAcceptTargets)
+}
 
 func TestResolveHolders(t *testing.T) {
 	t.Parallel()
@@ -53,220 +279,6 @@ func TestResolveHolders(t *testing.T) {
 	})
 }
 
-// TestDeployStandardTopology deploys the classic 3-MCM + timelock + call-proxy
-// stack and asserts MCM configs and the standard role wiring.
-func TestDeployStandardTopology(t *testing.T) {
-	t.Parallel()
-
-	sel := chain_selectors.TEST_90000001.Selector
-	rt := newEVMRuntime(t, sel)
-	env := rt.Environment()
-	chain := env.BlockChains.EVMChains()[sel]
-	cfg := mcmConfig(t)
-
-	input := deploycustomtopology.Input{Cfg: deploycustomtopology.Config{
-		ChainConfigs: map[uint64]deploycustomtopology.ChainTopologyConfig{
-			sel: {
-				MCMs: []deploycustomtopology.MCMSpec{
-					mcmSpec("proposer", mcmscontracts.ProposerManyChainMultisig, "CCIP", cfg),
-					mcmSpec("canceller", mcmscontracts.CancellerManyChainMultisig, "CCIP", cfg),
-					mcmSpec("bypasser", mcmscontracts.BypasserManyChainMultisig, "CCIP", cfg),
-				},
-				Timelocks: []deploycustomtopology.TimelockSpec{{
-					Ref:       "timelock",
-					MinDelay:  big.NewInt(0),
-					Qualifier: "CCIP",
-					Roles: deploycustomtopology.RoleAssignments{
-						Proposers:  []deploycustomtopology.RoleHolder{{MCMRef: "proposer"}},
-						Cancellers: []deploycustomtopology.RoleHolder{{MCMRef: "proposer"}, {MCMRef: "canceller"}, {MCMRef: "bypasser"}},
-						Bypassers:  []deploycustomtopology.RoleHolder{{MCMRef: "bypasser"}},
-					},
-				}},
-			},
-		},
-	}}
-
-	require.NoError(t, deploycustomtopology.Changeset{}.VerifyPreconditions(env, input))
-	out, err := deploycustomtopology.Changeset{}.Apply(env, input)
-	require.NoError(t, err)
-	require.Empty(t, out.MCMSTimelockProposals)
-
-	proposer := fetchAddr(t, out.DataStore, sel, mcmscontracts.ProposerManyChainMultisig, "CCIP")
-	canceller := fetchAddr(t, out.DataStore, sel, mcmscontracts.CancellerManyChainMultisig, "CCIP")
-	bypasser := fetchAddr(t, out.DataStore, sel, mcmscontracts.BypasserManyChainMultisig, "CCIP")
-	timelock := fetchAddr(t, out.DataStore, sel, mcmscontracts.RBACTimelock, "CCIP")
-	callProxy := fetchAddr(t, out.DataStore, sel, mcmscontracts.CallProxy, "CCIP")
-
-	ctx := t.Context()
-	inspector := mcmsevmsdk.NewInspector(chain.Client)
-	for _, addr := range []common.Address{proposer, canceller, bypasser} {
-		got, err := inspector.GetConfig(ctx, addr.Hex())
-		require.NoError(t, err)
-		require.ElementsMatch(t, cfg.Signers, got.Signers)
-		require.Equal(t, cfg.Quorum, got.Quorum)
-	}
-
-	proposers, executors, cancellers, bypassers := timelockRoles(ctx, t, chain, timelock)
-	require.Equal(t, []string{proposer.Hex()}, proposers)
-	require.Equal(t, []string{callProxy.Hex()}, executors)
-	require.ElementsMatch(t, []string{proposer.Hex(), canceller.Hex(), bypasser.Hex()}, cancellers)
-	require.Equal(t, []string{bypasser.Hex()}, bypassers)
-}
-
-// TestDeployProposerOnlyTopology deploys a single proposer MCM + timelock + call proxy.
-func TestDeployProposerOnlyTopology(t *testing.T) {
-	t.Parallel()
-
-	sel := chain_selectors.TEST_90000001.Selector
-	rt := newEVMRuntime(t, sel)
-	env := rt.Environment()
-	chain := env.BlockChains.EVMChains()[sel]
-	cfg := mcmConfig(t)
-
-	input := deploycustomtopology.Input{Cfg: deploycustomtopology.Config{
-		ChainConfigs: map[uint64]deploycustomtopology.ChainTopologyConfig{
-			sel: {
-				MCMs: []deploycustomtopology.MCMSpec{
-					mcmSpec("proposer", mcmscontracts.ProposerManyChainMultisig, "CCIP", cfg),
-				},
-				Timelocks: []deploycustomtopology.TimelockSpec{{
-					Ref:       "timelock",
-					MinDelay:  big.NewInt(3600),
-					Qualifier: "CCIP",
-					Roles: deploycustomtopology.RoleAssignments{
-						Proposers: []deploycustomtopology.RoleHolder{{MCMRef: "proposer"}},
-					},
-				}},
-			},
-		},
-	}}
-
-	out, err := deploycustomtopology.Changeset{}.Apply(env, input)
-	require.NoError(t, err)
-
-	proposer := fetchAddr(t, out.DataStore, sel, mcmscontracts.ProposerManyChainMultisig, "CCIP")
-	timelock := fetchAddr(t, out.DataStore, sel, mcmscontracts.RBACTimelock, "CCIP")
-	callProxy := fetchAddr(t, out.DataStore, sel, mcmscontracts.CallProxy, "CCIP")
-	require.Empty(t, fetchAddrs(t, out.DataStore, sel, mcmscontracts.CancellerManyChainMultisig, "CCIP"))
-
-	proposers, executors, _, _ := timelockRoles(t.Context(), t, chain, timelock)
-	require.Equal(t, []string{proposer.Hex()}, proposers)
-	require.Equal(t, []string{callProxy.Hex()}, executors)
-}
-
-// TestExtraArgsDisablesCallProxy disables the call proxy for a timelock via ExtraArgs.
-func TestExtraArgsDisablesCallProxy(t *testing.T) {
-	t.Parallel()
-
-	sel := chain_selectors.TEST_90000001.Selector
-	rt := newEVMRuntime(t, sel)
-	env := rt.Environment()
-	chain := env.BlockChains.EVMChains()[sel]
-	cfg := mcmConfig(t)
-
-	input := deploycustomtopology.Input{Cfg: deploycustomtopology.Config{
-		ChainConfigs: map[uint64]deploycustomtopology.ChainTopologyConfig{
-			sel: {
-				MCMs: []deploycustomtopology.MCMSpec{
-					mcmSpec("proposer", mcmscontracts.ProposerManyChainMultisig, "CCIP", cfg),
-				},
-				Timelocks: []deploycustomtopology.TimelockSpec{{
-					Ref:       "timelock",
-					MinDelay:  big.NewInt(0),
-					Qualifier: "CCIP",
-					Roles: deploycustomtopology.RoleAssignments{
-						Proposers: []deploycustomtopology.RoleHolder{{MCMRef: "proposer"}},
-					},
-				}},
-				ExtraArgs: map[string]any{
-					"deployCallProxyByTimelockRef": map[string]bool{"timelock": false},
-				},
-			},
-		},
-	}}
-
-	out, err := deploycustomtopology.Changeset{}.Apply(env, input)
-	require.NoError(t, err)
-
-	require.Empty(t, fetchAddrs(t, out.DataStore, sel, mcmscontracts.CallProxy, "CCIP"))
-
-	timelock := fetchAddr(t, out.DataStore, sel, mcmscontracts.RBACTimelock, "CCIP")
-	executors, err := mcmsevmsdk.NewTimelockInspector(chain.Client).GetExecutors(t.Context(), timelock.Hex())
-	require.NoError(t, err)
-	require.Empty(t, executors)
-}
-
-// TestDeployTwoTimelocksWithOwnershipTransfer deploys two independent stacks
-// (CCIP + RMN) on one chain, each taking ownership of its bypasser MCM, and
-// asserts one accept-ownership proposal is built per timelock qualifier.
-func TestDeployTwoTimelocksWithOwnershipTransfer(t *testing.T) {
-	t.Parallel()
-
-	sel := chain_selectors.TEST_90000001.Selector
-	rt := newEVMRuntime(t, sel)
-	env := rt.Environment()
-	cfg := mcmConfig(t)
-
-	stack := func(qualifier string) deploycustomtopology.ChainTopologyConfig {
-		return deploycustomtopology.ChainTopologyConfig{
-			MCMs: []deploycustomtopology.MCMSpec{
-				mcmSpec(qualifier+"-proposer", mcmscontracts.ProposerManyChainMultisig, qualifier, cfg),
-				mcmSpec(qualifier+"-bypasser", mcmscontracts.BypasserManyChainMultisig, qualifier, cfg),
-			},
-			Timelocks: []deploycustomtopology.TimelockSpec{{
-				Ref:       qualifier + "-timelock",
-				MinDelay:  big.NewInt(0),
-				Qualifier: qualifier,
-				Roles: deploycustomtopology.RoleAssignments{
-					Proposers: []deploycustomtopology.RoleHolder{{MCMRef: qualifier + "-proposer"}},
-					Bypassers: []deploycustomtopology.RoleHolder{{MCMRef: qualifier + "-bypasser"}},
-				},
-				TransferOwnership: []deploycustomtopology.RoleHolder{{MCMRef: qualifier + "-bypasser"}},
-			}},
-		}
-	}
-
-	// Merge the two stacks into one chain config.
-	ccip := stack("CCIP")
-	rmn := stack("RMN")
-	merged := deploycustomtopology.ChainTopologyConfig{
-		MCMs:      append(append([]deploycustomtopology.MCMSpec{}, ccip.MCMs...), rmn.MCMs...),
-		Timelocks: append(append([]deploycustomtopology.TimelockSpec{}, ccip.Timelocks...), rmn.Timelocks...),
-	}
-
-	input := deploycustomtopology.Input{
-		Cfg:  deploycustomtopology.Config{ChainConfigs: map[uint64]deploycustomtopology.ChainTopologyConfig{sel: merged}},
-		MCMS: newMCMSInput(),
-	}
-
-	require.NoError(t, deploycustomtopology.Changeset{}.VerifyPreconditions(env, input))
-	out, err := deploycustomtopology.Changeset{}.Apply(env, input)
-	require.NoError(t, err)
-
-	// One proposal per timelock qualifier.
-	require.Len(t, out.MCMSTimelockProposals, 2)
-
-	ccipTimelock := fetchAddr(t, out.DataStore, sel, mcmscontracts.RBACTimelock, "CCIP")
-	rmnTimelock := fetchAddr(t, out.DataStore, sel, mcmscontracts.RBACTimelock, "RMN")
-	ccipBypasser := fetchAddr(t, out.DataStore, sel, mcmscontracts.BypasserManyChainMultisig, "CCIP")
-	rmnBypasser := fetchAddr(t, out.DataStore, sel, mcmscontracts.BypasserManyChainMultisig, "RMN")
-
-	gotTimelocks := map[string]bool{}
-	gotAcceptTargets := map[string]bool{}
-	for _, p := range out.MCMSTimelockProposals {
-		for _, addr := range p.TimelockAddresses {
-			gotTimelocks[common.HexToAddress(addr).Hex()] = true
-		}
-		for _, batch := range p.Operations {
-			for _, tx := range batch.Transactions {
-				gotAcceptTargets[common.HexToAddress(tx.To).Hex()] = true
-			}
-		}
-	}
-	require.Equal(t, map[string]bool{ccipTimelock.Hex(): true, rmnTimelock.Hex(): true}, gotTimelocks)
-	require.Equal(t, map[string]bool{ccipBypasser.Hex(): true, rmnBypasser.Hex(): true}, gotAcceptTargets)
-}
-
 func newEVMRuntime(t *testing.T, selectors ...uint64) *runtime.Runtime {
 	t.Helper()
 
@@ -279,26 +291,57 @@ func newEVMRuntime(t *testing.T, selectors ...uint64) *runtime.Runtime {
 	return rt
 }
 
-func fetchAddrs(t *testing.T, ds cldfdatastore.MutableDataStore, sel uint64, ct cldf.ContractType, qualifier string) []common.Address {
+func runDeployTopologySequence(
+	t *testing.T,
+	rt *runtime.Runtime,
+	chainInput deploycustomtopology.ChainInput,
+) deploycustomtopology.ChainOutput {
 	t.Helper()
 
-	refs, err := ds.Addresses().Fetch()
+	env := rt.Environment()
+	report, err := operations.ExecuteSequence(
+		env.OperationsBundle,
+		Registration().Sequence,
+		deploycustomtopology.Deps{
+			BlockChains: env.BlockChains,
+			DataStore:   env.DataStore,
+		},
+		chainInput,
+	)
 	require.NoError(t, err)
 
+	return report.Output
+}
+
+func fetchAddrsFromOutput(
+	t *testing.T,
+	out deploycustomtopology.ChainOutput,
+	sel uint64,
+	ct cldf.ContractType,
+	qualifier string,
+) []common.Address {
+	t.Helper()
+
 	var addrs []common.Address
-	for _, r := range refs {
-		if r.ChainSelector == sel && r.Type == cldfdatastore.ContractType(ct) && r.Qualifier == qualifier {
-			addrs = append(addrs, common.HexToAddress(r.Address))
+	for _, ref := range out.Metadata.Addresses {
+		if ref.ChainSelector == sel && ref.Type == cldfdatastore.ContractType(ct) && ref.Qualifier == qualifier {
+			addrs = append(addrs, common.HexToAddress(ref.Address))
 		}
 	}
 
 	return addrs
 }
 
-func fetchAddr(t *testing.T, ds cldfdatastore.MutableDataStore, sel uint64, ct cldf.ContractType, qualifier string) common.Address {
+func fetchAddrFromOutput(
+	t *testing.T,
+	out deploycustomtopology.ChainOutput,
+	sel uint64,
+	ct cldf.ContractType,
+	qualifier string,
+) common.Address {
 	t.Helper()
 
-	addrs := fetchAddrs(t, ds, sel, ct, qualifier)
+	addrs := fetchAddrsFromOutput(t, out, sel, ct, qualifier)
 	require.Lenf(t, addrs, 1, "expected exactly one %s (%s)", ct, qualifier)
 
 	return addrs[0]
@@ -312,6 +355,14 @@ func mcmConfig(t *testing.T) mcmstypes.Config {
 
 func mcmSpec(ref string, ct cldf.ContractType, qualifier string, cfg mcmstypes.Config) deploycustomtopology.MCMSpec {
 	return deploycustomtopology.MCMSpec{Ref: ref, Config: cfg, ContractType: ct, Qualifier: qualifier}
+}
+
+func chainTopologyConfig(sel uint64, cfg deploycustomtopology.ChainTopologyConfig) deploycustomtopology.ChainInput {
+	return deploycustomtopology.ChainInput{
+		ChainSelector: sel,
+		Config:        cfg,
+		ExtraArgs:     cfg.ExtraArgs,
+	}
 }
 
 func timelockRoles(ctx context.Context, t *testing.T, chain cldf_evm.Chain, timelock common.Address) (proposers, executors, cancellers, bypassers []string) {
@@ -331,11 +382,27 @@ func timelockRoles(ctx context.Context, t *testing.T, chain cldf_evm.Chain, time
 	return proposers, executors, cancellers, bypassers
 }
 
-func newMCMSInput() *cldf.MCMSTimelockProposalInput {
-	return &cldf.MCMSTimelockProposalInput{
-		TimelockAction: mcmstypes.TimelockActionSchedule,
-		ValidUntil:     uint32(time.Now().Add(2 * time.Hour).UTC().Unix()), //nolint:gosec // test timestamp
-		TimelockDelay:  mcmstypes.NewDuration(time.Second),
-		Description:    "test",
+// requireTimelockRoleMembers asserts timelock role membership via the on-chain inspector.
+func requireTimelockRoleMembers(
+	ctx context.Context,
+	t *testing.T,
+	chain cldf_evm.Chain,
+	timelock common.Address,
+	wantProposers, wantExecutors, wantCancellers, wantBypassers []string,
+) {
+	t.Helper()
+
+	proposers, executors, cancellers, bypassers := timelockRoles(ctx, t, chain, timelock)
+	require.Equal(t, normalizeRoleMembers(wantProposers), proposers, "proposer role members")
+	require.Equal(t, normalizeRoleMembers(wantExecutors), executors, "executor role members")
+	require.Equal(t, normalizeRoleMembers(wantCancellers), cancellers, "canceller role members")
+	require.Equal(t, normalizeRoleMembers(wantBypassers), bypassers, "bypasser role members")
+}
+
+func normalizeRoleMembers(addrs []string) []string {
+	if addrs == nil {
+		return []string{}
 	}
+
+	return addrs
 }

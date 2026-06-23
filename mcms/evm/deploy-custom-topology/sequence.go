@@ -1,31 +1,35 @@
 package evmdeploytopology
 
 import (
-	"encoding/json"
 	"fmt"
 	"slices"
+	"strconv"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
+	opscontract "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/operations2/contract"
 	cldfdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
-
-	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	mcmscontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/mcms"
 	cldfproposalutils "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
-	"github.com/smartcontractkit/chainlink-evm/gethwrappers/shared/generated/initial/burn_mint_erc677"
+	gobindings "github.com/smartcontractkit/chainlink-evm/gethwrappers/shared/generated/initial/burn_mint_erc677"
 	mcmsevmsdk "github.com/smartcontractkit/mcms/sdk/evm"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 
 	"github.com/smartcontractkit/cld-changesets/internal/mcmsrole"
 	"github.com/smartcontractkit/cld-changesets/internal/semvers"
 	deploycustomtopology "github.com/smartcontractkit/cld-changesets/mcms/changesets/deploy-custom-topology"
+	callproxyops "github.com/smartcontractkit/cld-changesets/mcms/evm/deploy/v1_0_0/operations/call_proxy"
+	mcmops "github.com/smartcontractkit/cld-changesets/mcms/evm/deploy/v1_0_0/operations/many_chain_multi_sig"
+	timelockops "github.com/smartcontractkit/cld-changesets/mcms/evm/deploy/v1_0_0/operations/rbac_timelock"
 	evmgrantrole "github.com/smartcontractkit/cld-changesets/mcms/evm/grant-role"
+	"github.com/smartcontractkit/cld-changesets/mcms/evm/internal/gasboost"
 	evmops "github.com/smartcontractkit/cld-changesets/mcms/evm/operations"
 	evmsetconfig "github.com/smartcontractkit/cld-changesets/mcms/evm/set-config"
-	evmtransferownership "github.com/smartcontractkit/cld-changesets/mcms/evm/transfer-ownership"
+	ownableops "github.com/smartcontractkit/cld-changesets/mcms/evm/transfer-to-mcms/v1_0_0/operations/burn_mint_erc677"
 )
 
 // seqDeployTopology is the single sequence for this changeset; it calls the
@@ -62,7 +66,7 @@ func runEVMDeployTopology(
 
 	// 1. Deploy MCMs (each with its signer config).
 	for _, m := range in.Config.MCMs {
-		addr, err := deployMCMWithConfig(b, chain, in.ChainSelector, gasBoost, m)
+		addr, err := deployMCMWithConfig(b, chain, gasBoost, m)
 		if err != nil {
 			return out, fmt.Errorf("deploy MCM %q on chain %d: %w", m.Ref, in.ChainSelector, err)
 		}
@@ -73,7 +77,8 @@ func runEVMDeployTopology(
 
 	// 2. Deploy and wire each timelock.
 	for _, tl := range in.Config.Timelocks {
-		if err := deployTimelock(b, chain, in.ChainSelector, gasBoost, extra, tl, refToAddr, &out); err != nil {
+		err := deployTimelockAndSetRoles(b, chain, in.ChainSelector, gasBoost, extra, tl, refToAddr, &out)
+		if err != nil {
 			return out, err
 		}
 	}
@@ -87,35 +92,31 @@ func runEVMDeployTopology(
 func deployMCMWithConfig(
 	b operations.Bundle,
 	chain cldf_evm.Chain,
-	chainSelector uint64,
 	gasBoost *cldfproposalutils.GasBoostConfig,
 	spec deploycustomtopology.MCMSpec,
 ) (common.Address, error) {
-	deployInput := evmops.EVMDeployInput[any]{
-		ChainSelector: chainSelector,
-		Qualifier:     &spec.Qualifier,
+	typeAndVersion, err := mcmTypeVersion(spec.ContractType)
+	if err != nil {
+		return common.Address{}, err
 	}
 
-	var (
-		deployReport operations.Report[evmops.EVMDeployInput[any], evmops.EVMDeployOutput]
-		err          error
+	deployReport, err := operations.ExecuteOperation(
+		b,
+		mcmops.Deploy,
+		chain,
+		opscontract.DeployInput[mcmops.ConstructorArgs]{
+			TypeAndVersion: typeAndVersion,
+			Qualifier:      &spec.Qualifier,
+			Args:           mcmops.ConstructorArgs{},
+		},
+		gasboost.RetryDeploy[mcmops.ConstructorArgs](gasBoost),
+		operations.WithIdempotencyKey[opscontract.DeployInput[mcmops.ConstructorArgs], cldf_evm.Chain](fmt.Sprintf("%d:mcm:%s", chain.Selector, spec.Ref)),
 	)
-	switch spec.ContractType {
-	case mcmscontracts.BypasserManyChainMultisig:
-		deployReport, err = operations.ExecuteOperation(b, OpDeployBypasserMCM, chain, deployInput,
-			evmops.RetryDeploymentWithGasBoost[any](gasBoost))
-	case mcmscontracts.ProposerManyChainMultisig:
-		deployReport, err = operations.ExecuteOperation(b, OpDeployProposerMCM, chain, deployInput,
-			evmops.RetryDeploymentWithGasBoost[any](gasBoost))
-	case mcmscontracts.CancellerManyChainMultisig:
-		deployReport, err = operations.ExecuteOperation(b, OpDeployCancellerMCM, chain, deployInput,
-			evmops.RetryDeploymentWithGasBoost[any](gasBoost))
-	default:
-		return common.Address{}, fmt.Errorf("unsupported contract type for deploy-custom-topology: %s", spec.ContractType)
-	}
 	if err != nil {
 		return common.Address{}, fmt.Errorf("failed to deploy %s: %w", spec.ContractType, err)
 	}
+
+	addr := common.HexToAddress(deployReport.Output.Address)
 
 	_, err = operations.ExecuteOperation(
 		b,
@@ -123,21 +124,53 @@ func deployMCMWithConfig(
 		chain,
 		evmsetconfig.OpEVMSetConfigInput{
 			Target: evmsetconfig.MCMSetConfigTarget{
-				Address:      deployReport.Output.Address,
+				Address:      addr,
 				Config:       spec.Config,
 				ContractType: spec.ContractType,
 			},
 			NoSend: false,
 		},
+		gasboost.RetryWithGasBoost[evmsetconfig.OpEVMSetConfigInput](gasBoost),
+		outputAddressIdempotencyKey[evmsetconfig.OpEVMSetConfigInput, cldf_evm.Chain](chain, deployReport.Output.Address),
 	)
 	if err != nil {
-		return common.Address{}, fmt.Errorf("failed to set config on %s: %w", deployReport.Output.Address.Hex(), err)
+		return common.Address{}, fmt.Errorf("failed to set config on %s: %w", addr.Hex(), err)
 	}
 
-	return deployReport.Output.Address, nil
+	return addr, nil
 }
 
-func deployTimelock(
+// deployCallProxy deploys a call proxy address and sets the given address as target.
+func deployCallProxy(
+	b operations.Bundle,
+	chain cldf_evm.Chain,
+	chainSelector uint64,
+	targetAddr common.Address,
+	gasBoost *cldfproposalutils.GasBoostConfig,
+	timelockSpec deploycustomtopology.TimelockSpec) (common.Address, error) {
+	cpReport, err := operations.ExecuteOperation(
+		b,
+		callproxyops.Deploy,
+		chain,
+		opscontract.DeployInput[callproxyops.ConstructorArgs]{
+			TypeAndVersion: callproxyops.TypeAndVersion,
+			Qualifier:      &timelockSpec.Qualifier,
+			Args:           callproxyops.ConstructorArgs{Target: targetAddr},
+		},
+		gasboost.RetryDeploy[callproxyops.ConstructorArgs](gasBoost),
+		operations.WithIdempotencyKey[opscontract.DeployInput[callproxyops.ConstructorArgs], cldf_evm.Chain](fmt.Sprintf("%d:callproxy:%s", chain.Selector, timelockSpec.Ref)),
+	)
+	if err != nil {
+		return common.Address{}, fmt.Errorf("deploy call proxy for timelock %q on chain %d: %w", timelockSpec.Ref, chainSelector, err)
+	}
+	callProxyAddr := common.HexToAddress(cpReport.Output.Address)
+
+	return callProxyAddr, nil
+}
+
+// deployTimelockAndSetRoles deploys a timelock contract and configures the roles according to the
+// provided ref spec. Can also deploy a call proxy if specified in the configuration.
+func deployTimelockAndSetRoles(
 	b operations.Bundle,
 	chain cldf_evm.Chain,
 	chainSelector uint64,
@@ -173,50 +206,48 @@ func deployTimelock(
 	// timelock, and explicit executors are granted alongside it).
 	tlReport, err := operations.ExecuteOperation(
 		b,
-		OpDeployTimelock,
+		timelockops.Deploy,
 		chain,
-		evmops.EVMDeployInput[OpDeployTimelockInput]{
-			ChainSelector: chainSelector,
-			DeployInput: OpDeployTimelockInput{
-				TimelockMinDelay: tl.MinDelay,
-				Admin:            chain.DeployerKey.From,
-				Proposers:        proposers,
-				Executors:        []common.Address{},
-				Cancellers:       cancellers,
-				Bypassers:        bypassers,
+		opscontract.DeployInput[timelockops.ConstructorArgs]{
+			TypeAndVersion: timelockops.TypeAndVersion,
+			Qualifier:      &tl.Qualifier,
+			Args: timelockops.ConstructorArgs{
+				MinDelay:   tl.MinDelay,
+				Admin:      chain.DeployerKey.From,
+				Proposers:  proposers,
+				Executors:  []common.Address{},
+				Cancellers: cancellers,
+				Bypassers:  bypassers,
 			},
 		},
-		evmops.RetryDeploymentWithGasBoost[OpDeployTimelockInput](gasBoost),
+		gasboost.RetryDeploy[timelockops.ConstructorArgs](gasBoost),
+		operations.WithIdempotencyKey[opscontract.DeployInput[timelockops.ConstructorArgs], cldf_evm.Chain](fmt.Sprintf("%d:timelock:%s", chain.Selector, tl.Ref)),
 	)
 	if err != nil {
 		return fmt.Errorf("deploy timelock %q on chain %d: %w", tl.Ref, chainSelector, err)
 	}
-	timelockAddr := tlReport.Output.Address
+	timelockAddr := common.HexToAddress(tlReport.Output.Address)
 	refToAddr[tl.Ref] = timelockAddr
 	out.Metadata.Addresses = append(out.Metadata.Addresses,
-		newAddressRef(chainSelector, timelockAddr, mcmscontracts.RBACTimelock, tl.Qualifier, tl.Label))
-
-	// Optionally deploy a call proxy and grant it the executor role.
+		newAddressRef(chainSelector,
+			timelockAddr,
+			mcmscontracts.RBACTimelock,
+			tl.Qualifier,
+			tl.Label,
+		),
+	)
+	// Deploy call proxy
 	var callProxyAddr common.Address
-	if extra.deployCallProxy(tl.Ref) {
-		cpReport, err := operations.ExecuteOperation(
-			b,
-			OpDeployCallProxy,
-			chain,
-			evmops.EVMDeployInput[OpDeployCallProxyInput]{
-				ChainSelector: chainSelector,
-				DeployInput:   OpDeployCallProxyInput{Timelock: timelockAddr},
-			},
-			evmops.RetryDeploymentWithGasBoost[OpDeployCallProxyInput](gasBoost),
-		)
+	if extra.shouldDeployCallProxy(tl.Ref) {
+		callProxyAddr, err = deployCallProxy(b, chain, chainSelector, timelockAddr, gasBoost, tl)
 		if err != nil {
-			return fmt.Errorf("deploy call proxy for timelock %q on chain %d: %w", tl.Ref, chainSelector, err)
+			return fmt.Errorf("failed to deploy call proxy for timelock %q on chain %d: %w", tl.Ref, chainSelector, err)
 		}
-		callProxyAddr = cpReport.Output.Address
 		out.Metadata.Addresses = append(out.Metadata.Addresses,
 			newAddressRef(chainSelector, callProxyAddr, mcmscontracts.CallProxy, tl.Qualifier, tl.Label))
 	}
 
+	// Grant roles for all deployed contracts
 	if err := grantRoles(b, chain, chainSelector, gasBoost, timelockAddr, callProxyAddr,
 		proposers, cancellers, bypassers, executors, admins); err != nil {
 		return fmt.Errorf("grant roles for timelock %q on chain %d: %w", tl.Ref, chainSelector, err)
@@ -229,7 +260,7 @@ func deployTimelock(
 		if err != nil {
 			return fmt.Errorf("timelock %q transferOwnership: %w", tl.Ref, err)
 		}
-		ops, err := transferOwnershipToTimelock(b, chain, chainSelector, timelockAddr, contracts)
+		ops, err := transferContractsToTimelock(b, chain, timelockAddr, contracts)
 		if err != nil {
 			return fmt.Errorf("transfer ownership to timelock %q on chain %d: %w", tl.Ref, chainSelector, err)
 		}
@@ -306,7 +337,7 @@ func grantRoles(
 		case mcmsrole.ExecutorRole.ID:
 			existing, err = timelockInspector.GetExecutors(b.GetContext(), timelockAddr.Hex())
 		case mcmsrole.AdminRole.ID:
-			existing = nil // TODO: change once inspector supports get Admin.
+			existing = nil
 		}
 		if err != nil {
 			b.Logger.Errorw("Failed to get addresses from Timelock Inspector",
@@ -316,6 +347,7 @@ func grantRoles(
 				"Role", g.Name,
 				"Error", err,
 			)
+
 			return err
 		}
 
@@ -329,7 +361,7 @@ func grantRoles(
 					ChainSelector: chainSelector,
 					CallInput: evmgrantrole.OpGrantRoleInput{
 						Account: addr,
-						RoleID:  g.Role,
+						RoleID:  [32]byte(g.Role),
 					},
 					Address: timelockAddr,
 				},
@@ -343,6 +375,7 @@ func grantRoles(
 					"Role Name", g.Name,
 					"Address", addr.Hex(),
 				)
+
 				return err
 			}
 			b.Logger.Infow("Role granted",
@@ -358,76 +391,101 @@ func grantRoles(
 	return nil
 }
 
-// transferOwnershipToTimelock runs transferOwnership() (deployer-key send) and
-// then simulates acceptOwnership() so the resulting calldata can be routed
-// through the timelock as MCMS batch operations.
-func transferOwnershipToTimelock(
+// transferContractsToTimelock sends transferOwnership from the deployer and
+// returns acceptOwnership transactions for MCMS batching via autogenerated ownable ops.
+func transferContractsToTimelock(
 	b operations.Bundle,
 	chain cldf_evm.Chain,
-	chainSelector uint64,
 	timelock common.Address,
 	contracts []common.Address,
 ) ([]mcmstypes.Transaction, error) {
-	var mcsmOps []mcmstypes.Transaction
-
+	var transactions []mcmstypes.Transaction
 	for _, contract := range contracts {
-		owner, c, err := LoadOwnableContract(contract, chain.Client)
+		txs, err := transferContractToTimelock(b, chain, timelock, contract)
 		if err != nil {
-			b.Logger.Errorf("failed to load ownable contract %s: %v", contract.Hex(), err)
-			return nil, fmt.Errorf("error loading ownable contract %s: %w", contract.Hex(), err)
+			return nil, fmt.Errorf("contract %s: %w", contract.Hex(), err)
 		}
-
-		if owner.String() == timelock.Hex() {
-			b.Logger.Infof("contract %s already owned by timelock", contract)
-			continue
-		}
-
-		deps := evmtransferownership.OpOwnershipDeps{Chain: chain, OwnableC: c}
-		_, err = operations.ExecuteOperation(b, evmtransferownership.OpTransferOwnership, deps,
-			evmtransferownership.OpTransferOwnershipInput{
-				ChainSelector:   chainSelector,
-				TimelockAddress: timelock,
-				Address:         contract,
-			},
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		acceptReport, err := operations.ExecuteOperation(b, evmtransferownership.OpAcceptOwnership, deps,
-			evmtransferownership.OpTransferOwnershipInput{
-				ChainSelector:   chainSelector,
-				TimelockAddress: timelock,
-				Address:         contract,
-			},
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		mcsmOps = append(mcsmOps, mcmstypes.Transaction{
-			To:               contract.Hex(),
-			Data:             acceptReport.Output.Tx.Data(),
-			AdditionalFields: json.RawMessage(`{"value": 0}`),
-		})
+		transactions = append(transactions, txs...)
 	}
 
-	return mcsmOps, nil
+	return transactions, nil
 }
 
-// LoadOwnableContract loads an ownable contract using the shared ownership ABI
-// and returns its current owner and an Ownable handle.
-func LoadOwnableContract(addr common.Address, client bind.ContractBackend) (common.Address, evmtransferownership.Ownable, error) {
-	c, err := burn_mint_erc677.NewBurnMintERC677(addr, client)
+func transferContractToTimelock(
+	b operations.Bundle,
+	chain cldf_evm.Chain,
+	timelock common.Address,
+	contract common.Address,
+) ([]mcmstypes.Transaction, error) {
+	binding, err := bindOwnableContract(contract, chain.Client)
 	if err != nil {
-		return common.Address{}, nil, fmt.Errorf("failed to create contract: %w", err)
-	}
-	owner, err := c.Owner(nil)
-	if err != nil {
-		return common.Address{}, nil, fmt.Errorf("failed to get owner of contract %s: %w", c.Address(), err)
+		return nil, err
 	}
 
-	return owner, c, nil
+	owner, err := ownableOwner(binding)
+	if err != nil {
+		return nil, err
+	}
+
+	if owner == timelock {
+		b.Logger.Infof("contract %s already owned by timelock", contract.Hex())
+		return nil, nil
+	}
+
+	_, err = operations.ExecuteOperation(
+		b,
+		ownableops.NewWriteTransferOwnership(binding),
+		chain,
+		opscontract.FunctionInput[common.Address]{Args: timelock},
+		ownableContractIdempotencyKey[opscontract.FunctionInput[common.Address]](chain, contract),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("transfer ownership: %w", err)
+	}
+
+	owner, err = ownableOwner(binding)
+	if err != nil {
+		return nil, err
+	}
+	if owner == timelock {
+		b.Logger.Infof("contract %s already owned by timelock after transfer", contract.Hex())
+		return nil, nil
+	}
+
+	acceptReport, err := operations.ExecuteOperation(
+		b,
+		ownableops.NewWriteAcceptOwnership(binding),
+		chain,
+		opscontract.FunctionInput[struct{}]{},
+		ownableContractIdempotencyKey[opscontract.FunctionInput[struct{}]](chain, contract),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("accept ownership: %w", err)
+	}
+
+	return []mcmstypes.Transaction{acceptReport.Output.Tx}, nil
+}
+
+func bindOwnableContract(addr common.Address, client bind.ContractBackend) (gobindings.BurnMintERC677Interface, error) {
+	c, err := gobindings.NewBurnMintERC677(addr, client)
+	if err != nil {
+		return nil, fmt.Errorf("create ownable contract binding: %w", err)
+	}
+
+	return c, nil
+}
+
+func ownableOwner(c gobindings.BurnMintERC677Interface) (common.Address, error) {
+	owner, err := c.Owner(nil)
+	if err != nil {
+		return common.Address{}, fmt.Errorf("get owner of contract %s: %w", c.Address().Hex(), err)
+	}
+
+	return owner, nil
+}
+
+func ownableContractIdempotencyKey[IN any](chain cldf_evm.Chain, contract common.Address) operations.ExecuteOption[IN, cldf_evm.Chain] {
+	return operations.WithIdempotencyKey[IN, cldf_evm.Chain](strconv.FormatUint(chain.Selector, 10) + ":" + contract.Hex())
 }
 
 // resolveHolders maps role holders to concrete addresses: an MCMRef resolves to a
@@ -435,20 +493,20 @@ func LoadOwnableContract(addr common.Address, client bind.ContractBackend) (comm
 func resolveHolders(holders []deploycustomtopology.RoleHolder, refToAddr map[string]common.Address) ([]common.Address, error) {
 	addrs := make([]common.Address, 0, len(holders))
 	for i, h := range holders {
-		if h.MCMRef != "" {
+		switch {
+		case h.MCMRef != "":
 			a, ok := refToAddr[h.MCMRef]
 			if !ok {
 				return nil, fmt.Errorf("holder[%d]: mcmRef %q has not been deployed", i, h.MCMRef)
 			}
 			addrs = append(addrs, a)
-			continue
-		}
-		if h.Address != nil {
+		case h.Address != nil:
 			addrs = append(addrs, *h.Address)
-			continue
+		default:
+			return nil, fmt.Errorf("holder[%d]: exactly one of mcmRef or address is required", i)
 		}
-		return nil, fmt.Errorf("holder[%d]: exactly one of mcmRef or address is required", i)
 	}
+
 	return addrs, nil
 }
 
@@ -468,4 +526,25 @@ func newAddressRef(chainSelector uint64, addr common.Address, contractType cldf.
 	}
 
 	return ref
+}
+
+func mcmTypeVersion(contractType cldf.ContractType) (cldf.TypeAndVersion, error) {
+	switch contractType {
+	case mcmscontracts.ProposerManyChainMultisig:
+		return mcmops.ProposerManyChainMultiSigTypeAndVersion, nil
+	case mcmscontracts.BypasserManyChainMultisig:
+		return mcmops.BypasserManyChainMultiSigTypeAndVersion, nil
+	case mcmscontracts.CancellerManyChainMultisig:
+		return mcmops.CancellerManyChainMultiSigTypeAndVersion, nil
+	default:
+		return cldf.TypeAndVersion{}, fmt.Errorf("unsupported contract type for deploy-custom-topology: %s", contractType)
+	}
+}
+
+func chainIdempotencyKey[IN, DEP any](chain cldf_evm.Chain) operations.ExecuteOption[IN, DEP] {
+	return operations.WithIdempotencyKey[IN, DEP](strconv.FormatUint(chain.Selector, 10))
+}
+
+func outputAddressIdempotencyKey[IN, DEP any](chain cldf_evm.Chain, address string) operations.ExecuteOption[IN, DEP] {
+	return operations.WithIdempotencyKey[IN, DEP](strconv.FormatUint(chain.Selector, 10) + ":" + address)
 }

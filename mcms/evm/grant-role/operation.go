@@ -1,11 +1,8 @@
-// Package evmgrantrole houses the EVM operation(s) for granting timelock
-// roles. It lives alongside where its dedicated changeset would (once it is
-// added) so all related code is colocated.
 package evmgrantrole
 
 import (
 	"github.com/Masterminds/semver/v3"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind/v2"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 
@@ -22,10 +19,11 @@ type OpGrantRoleInput struct {
 }
 
 // OpGrantRole grants the given role to the given account on the EVM Timelock contract.
+// TODO: refactor to use mcms lib
 var OpGrantRole = evmops.NewEVMCallOperation(
 	"evm-timelock-grant-role",
 	semver.MustParse("1.0.0"),
-	"Grants specified role to the ManyChainMultiSig contract on the EVM Timelock contract",
+	"Grants the specified role to the given account on the EVM Timelock contract",
 	bindings.RBACTimelockABI,
 	mcmscontracts.RBACTimelock,
 	bindings.NewRBACTimelock,
