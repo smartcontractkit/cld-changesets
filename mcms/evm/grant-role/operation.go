@@ -26,9 +26,8 @@ type OpGrantRoleInput struct {
 var OpGrantRole = evmops.NewEVMCallOperation(
 	"evm-timelock-grant-role",
 	semver.MustParse("1.0.0"),
-	"Grants specified role to the ManyChainMultiSig contract on the EVM Timelock contract",
+	"Grants the specified role to the given account on the EVM Timelock contract", 
 	bindings.RBACTimelockABI,
-	mcmscontracts.RBACTimelock,
 	bindings.NewRBACTimelock,
 	func(timelock *bindings.RBACTimelock, opts *bind.TransactOpts, input OpGrantRoleInput) (*types.Transaction, error) {
 		return timelock.GrantRole(opts, input.RoleID, input.Account)
