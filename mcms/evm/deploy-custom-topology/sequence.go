@@ -1,7 +1,6 @@
 package evmdeploytopology
 
 import (
-	"encoding/json"
 	"fmt"
 	"slices"
 	"strconv"
@@ -28,7 +27,7 @@ import (
 	"github.com/smartcontractkit/cld-changesets/mcms/evm/internal/gasboost"
 	evmops "github.com/smartcontractkit/cld-changesets/mcms/evm/operations"
 	evmsetconfig "github.com/smartcontractkit/cld-changesets/mcms/evm/set-config"
-	evmtransferownership "github.com/smartcontractkit/cld-changesets/mcms/evm/transfer-ownership"
+	evmtransfertomcms "github.com/smartcontractkit/cld-changesets/mcms/evm/transfer-to-mcms"
 )
 
 // seqDeployTopology is the single sequence for this changeset; it calls the
@@ -107,9 +106,11 @@ func deployMCMWithConfig(
 			TypeAndVersion: typeAndVersion,
 			Qualifier:      &spec.Qualifier,
 			Args:           mcmops.ConstructorArgs{},
+		},
 		gasboost.RetryDeploy[mcmops.ConstructorArgs](gasBoost),
 		operations.WithIdempotencyKey[opscontract.DeployInput[mcmops.ConstructorArgs], cldf_evm.Chain](fmt.Sprintf("%d:mcm:%s", chain.Selector, spec.Ref)),
 	)
+	if err != nil {
 		return common.Address{}, fmt.Errorf("failed to deploy %s: %w", spec.ContractType, err)
 	}
 
@@ -152,6 +153,8 @@ func deployCallProxy(
 		opscontract.DeployInput[callproxyops.ConstructorArgs]{
 			TypeAndVersion: callproxyops.TypeAndVersion,
 			Qualifier:      &timelockSpec.Qualifier,
+			Args:           callproxyops.ConstructorArgs{Target: targetAddr},
+		},
 		gasboost.RetryDeploy[callproxyops.ConstructorArgs](gasBoost),
 		operations.WithIdempotencyKey[opscontract.DeployInput[callproxyops.ConstructorArgs], cldf_evm.Chain](fmt.Sprintf("%d:callproxy:%s", chain.Selector, timelockSpec.Ref)),
 	)
@@ -213,6 +216,8 @@ func deployTimelockAndSetRoles(
 				Executors:  []common.Address{},
 				Cancellers: cancellers,
 				Bypassers:  bypassers,
+			},
+		},
 		gasboost.RetryDeploy[timelockops.ConstructorArgs](gasBoost),
 		operations.WithIdempotencyKey[opscontract.DeployInput[timelockops.ConstructorArgs], cldf_evm.Chain](fmt.Sprintf("%d:timelock:%s", chain.Selector, tl.Ref)),
 	)
@@ -253,7 +258,7 @@ func deployTimelockAndSetRoles(
 		if err != nil {
 			return fmt.Errorf("timelock %q transferOwnership: %w", tl.Ref, err)
 		}
-		ops, err := transferOwnershipToTimelock(b, chain, chainSelector, timelockAddr, contracts)
+		ops, err := evmtransfertomcms.TransferContractsToTimelock(b, chain, timelockAddr, contracts, false)
 		if err != nil {
 			return fmt.Errorf("transfer ownership to timelock %q on chain %d: %w", tl.Ref, chainSelector, err)
 		}
@@ -382,63 +387,6 @@ func grantRoles(
 	}
 
 	return nil
-}
-
-// transferOwnershipToTimelock runs transferOwnership() (deployer-key send) and
-// then simulates acceptOwnership() so the resulting calldata can be routed
-// through the timelock as MCMS batch operations.
-func transferOwnershipToTimelock(
-	b operations.Bundle,
-	chain cldf_evm.Chain,
-	chainSelector uint64,
-	timelock common.Address,
-	contracts []common.Address,
-) ([]mcmstypes.Transaction, error) {
-	var mcsmOps []mcmstypes.Transaction
-
-	for _, contract := range contracts {
-		owner, c, err := evmtransferownership.LoadOwnable(contract, chain.Client)
-		if err != nil {
-			b.Logger.Errorf("failed to load ownable contract %s: %v", contract.Hex(), err)
-			return nil, fmt.Errorf("error loading ownable contract %s: %w", contract.Hex(), err)
-		}
-
-		if owner.String() == timelock.Hex() {
-			b.Logger.Infof("contract %s already owned by timelock", contract)
-			continue
-		}
-
-		deps := evmtransferownership.OpOwnershipDeps{Chain: chain, OwnableC: c}
-		_, err = operations.ExecuteOperation(b, evmtransferownership.OpTransferOwnership, deps,
-			evmtransferownership.OpTransferOwnershipInput{
-				ChainSelector:   chainSelector,
-				TimelockAddress: timelock,
-				Address:         contract,
-			},
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		acceptReport, err := operations.ExecuteOperation(b, evmtransferownership.OpAcceptOwnership, deps,
-			evmtransferownership.OpTransferOwnershipInput{
-				ChainSelector:   chainSelector,
-				TimelockAddress: timelock,
-				Address:         contract,
-			},
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		mcsmOps = append(mcsmOps, mcmstypes.Transaction{
-			To:               contract.Hex(),
-			Data:             acceptReport.Output.Tx.Data(),
-			AdditionalFields: json.RawMessage(`{"value": 0}`),
-		})
-	}
-
-	return mcsmOps, nil
 }
 
 // resolveHolders maps role holders to concrete addresses: an MCMRef resolves to a

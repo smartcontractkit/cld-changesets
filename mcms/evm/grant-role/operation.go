@@ -25,6 +25,7 @@ var OpGrantRole = evmops.NewEVMCallOperation(
 	semver.MustParse("1.0.0"),
 	"Grants the specified role to the given account on the EVM Timelock contract",
 	bindings.RBACTimelockABI,
+	mcmscontracts.RBACTimelock,
 	bindings.NewRBACTimelock,
 	func(timelock *bindings.RBACTimelock, opts *bind.TransactOpts, input OpGrantRoleInput) (*types.Transaction, error) {
 		return timelock.GrantRole(opts, input.RoleID, input.Account)
