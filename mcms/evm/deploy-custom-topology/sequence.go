@@ -154,10 +154,8 @@ func deployCallProxy(
 		opscontract.DeployInput[callproxyops.ConstructorArgs]{
 			TypeAndVersion: callproxyops.TypeAndVersion,
 			Qualifier:      stringPtrIfNonEmpty(timelockSpec.Qualifier),
-			Args:           callproxyops.ConstructorArgs{Target: targetAddr},
-		},
 		gasboost.RetryDeploy[callproxyops.ConstructorArgs](gasBoost),
-		chainIdempotencyKey[opscontract.DeployInput[callproxyops.ConstructorArgs], cldf_evm.Chain](chain),
+		operations.WithIdempotencyKey[opscontract.DeployInput[callproxyops.ConstructorArgs], cldf_evm.Chain](fmt.Sprintf("%d:callproxy:%s", chain.Selector, timelockSpec.Ref)),
 	)
 	if err != nil {
 		return common.Address{}, fmt.Errorf("deploy call proxy for timelock %q on chain %d: %w", timelockSpec.Ref, chainSelector, err)
