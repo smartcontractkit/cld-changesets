@@ -109,11 +109,9 @@ func deployMCMWithConfig(
 			TypeAndVersion: typeAndVersion,
 			Qualifier:      stringPtrIfNonEmpty(spec.Qualifier),
 			Args:           mcmops.ConstructorArgs{},
-		},
 		gasboost.RetryDeploy[mcmops.ConstructorArgs](gasBoost),
-		chainIdempotencyKey[opscontract.DeployInput[mcmops.ConstructorArgs], cldf_evm.Chain](chain),
+		operations.WithIdempotencyKey[opscontract.DeployInput[mcmops.ConstructorArgs], cldf_evm.Chain](fmt.Sprintf("%d:mcm:%s", chain.Selector, spec.Ref)),
 	)
-	if err != nil {
 		return common.Address{}, fmt.Errorf("failed to deploy %s: %w", spec.ContractType, err)
 	}
 
