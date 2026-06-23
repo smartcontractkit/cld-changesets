@@ -215,10 +215,8 @@ func deployTimelockAndSetRoles(
 				Executors:  []common.Address{},
 				Cancellers: cancellers,
 				Bypassers:  bypassers,
-			},
-		},
 		gasboost.RetryDeploy[timelockops.ConstructorArgs](gasBoost),
-		chainIdempotencyKey[opscontract.DeployInput[timelockops.ConstructorArgs], cldf_evm.Chain](chain),
+		operations.WithIdempotencyKey[opscontract.DeployInput[timelockops.ConstructorArgs], cldf_evm.Chain](fmt.Sprintf("%d:timelock:%s", chain.Selector, tl.Ref)),
 	)
 	if err != nil {
 		return fmt.Errorf("deploy timelock %q on chain %d: %w", tl.Ref, chainSelector, err)
