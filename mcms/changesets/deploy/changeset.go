@@ -114,7 +114,7 @@ func mergeOutputs(outputs []sequenceutils.OnChainOutput) sequenceutils.OnChainOu
 		agg.Metadata.Addresses = append(agg.Metadata.Addresses, out.Metadata.Addresses...)
 		agg.Metadata.Contracts = append(agg.Metadata.Contracts, out.Metadata.Contracts...)
 		agg.Metadata.Chains = append(agg.Metadata.Chains, out.Metadata.Chains...)
-		if out.Metadata.Env != nil {
+		if agg.Metadata.Env == nil && out.Metadata.Env != nil {
 			agg.Metadata.Env = out.Metadata.Env
 		}
 	}

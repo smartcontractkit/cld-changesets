@@ -9,23 +9,13 @@ import (
 	"github.com/smartcontractkit/cld-changesets/mcms/changesets/deploy"
 )
 
-// init auto-registers the EVM family when this package is imported, unless it
-// is already registered. Importing this package (or a blank import) is
-// sufficient to enable EVM chain support in [deploy.Changeset].
+// init auto-registers the EVM family when this package is imported.
 func init() {
-	registered := deploy.RegisteredFamilies()
-	for _, f := range registered {
-		if f == chainselectors.FamilyEVM {
-			return
-		}
-	}
 	deploy.Register(Registration())
 }
 
 // Registration returns the EVM chain-family deploy registration for MCMS with
-// timelock. Importing this package registers EVM automatically via init; use
-// Registration() only in tests that call [deploy.Register] manually without
-// importing this package (for example to control registration order).
+// timelock.
 func Registration() deploy.Registration {
 	return deploy.Registration{
 		Family:   chainselectors.FamilyEVM,

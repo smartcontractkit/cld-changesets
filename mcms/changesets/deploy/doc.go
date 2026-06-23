@@ -25,10 +25,14 @@
 // deploy sequence sequentially, merges newly deployed addresses into the
 // datastore, and returns operation reports.
 //
-// # Built-in EVM support
+// # Built-in chain family support
 //
-// EVM registers itself via init when its package is imported (blank import is
-// enough). No call to [RegisterFamilies] is required for EVM-only deployments.
+// EVM and Solana register themselves via init when their packages are imported
+// (blank import is enough). No call to [RegisterFamilies] is required when only
+// using built-in families:
+//
+//	_ "github.com/smartcontractkit/cld-changesets/mcms/evm/deploy"
+//	_ "github.com/smartcontractkit/cld-changesets/mcms/solana/deploy"
 //
 // # Adding a new chain family
 //
@@ -84,6 +88,5 @@
 //
 // # Reference implementation
 //
-// See mcms/evm/deploy for a complete EVM implementation: idempotent deploy from
-// the datastore, timelock role grants, and address metadata output.
+// See mcms/evm/deploy and mcms/solana/deploy for complete implementations.
 package deploy

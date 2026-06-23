@@ -175,6 +175,7 @@ func initAccessController(b operations.Bundle, deps Deps, in InitAccessControlle
 		Address:       account.PublicKey().String(),
 		ChainSelector: deps.Chain.Selector,
 		Type:          datastore.ContractType(in.ContractType),
+		Version:       &semvers.V1_0_0,
 	})
 	if err != nil {
 		return out, fmt.Errorf("failed to save address to datastore: %w", err)
@@ -286,6 +287,7 @@ func initMCM(b operations.Bundle, deps Deps, in InitMCMInput) (InitMCMOutput, er
 		Address:       mcmAddress,
 		ChainSelector: deps.Chain.Selector,
 		Type:          datastore.ContractType(in.ContractType),
+		Version:       &semvers.V1_0_0,
 	})
 	if err != nil {
 		return out, fmt.Errorf("failed to save address to datastore: %w", err)
@@ -395,6 +397,7 @@ func initTimelock(b operations.Bundle, deps Deps, in InitTimelockInput) (InitTim
 		Address:       timelockAddress,
 		ChainSelector: deps.Chain.Selector,
 		Type:          datastore.ContractType(in.ContractType),
+		Version:       &semvers.V1_0_0,
 	})
 	if err != nil {
 		return out, fmt.Errorf("failed to save address to datastore: %w", err)
