@@ -59,6 +59,8 @@ type MCMSpec struct {
 // TimelockSpec is one timelock (RBACTimelock on EVM) to deploy, with its role
 // wiring and optional ownership transfers.
 type TimelockSpec struct {
+	// Ref is a logical handle, unique within the chain and distinct from every
+	// MCMSpec.Ref on the same chain.
 	Ref string `json:"ref"`
 
 	MinDelay  *big.Int `json:"minDelay"`

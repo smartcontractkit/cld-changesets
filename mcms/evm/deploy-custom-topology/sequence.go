@@ -82,7 +82,6 @@ func runEVMDeployTopology(
 		if err != nil {
 			return out, err
 		}
-
 	}
 
 	return out, nil
@@ -166,6 +165,7 @@ func deployCallProxy(
 		return common.Address{}, fmt.Errorf("deploy call proxy for timelock %q on chain %d: %w", timelockSpec.Ref, chainSelector, err)
 	}
 	callProxyAddr := common.HexToAddress(cpReport.Output.Address)
+
 	return callProxyAddr, nil
 }
 
@@ -191,15 +191,15 @@ func deployTimelockAndSetRoles(
 	}
 	bypassers, err := resolveHolders(tl.Roles.Bypassers, refToAddr)
 	if err != nil {
-		fmt.Errorf("timelock %q bypassers: %w", tl.Ref, err)
+		return fmt.Errorf("timelock %q bypassers: %w", tl.Ref, err)
 	}
 	executors, err := resolveHolders(tl.Roles.Executors, refToAddr)
 	if err != nil {
-		fmt.Errorf("timelock %q executors: %w", tl.Ref, err)
+		return fmt.Errorf("timelock %q executors: %w", tl.Ref, err)
 	}
 	admins, err := resolveHolders(tl.Roles.Admins, refToAddr)
 	if err != nil {
-		fmt.Errorf("timelock %q admins: %w", tl.Ref, err)
+		return fmt.Errorf("timelock %q admins: %w", tl.Ref, err)
 	}
 
 	// Deploy the timelock with the deployer as initial admin. Executors are left
@@ -225,7 +225,7 @@ func deployTimelockAndSetRoles(
 		chainIdempotencyKey[opscontract.DeployInput[timelockops.ConstructorArgs], cldf_evm.Chain](chain),
 	)
 	if err != nil {
-		fmt.Errorf("deploy timelock %q on chain %d: %w", tl.Ref, chainSelector, err)
+		return fmt.Errorf("deploy timelock %q on chain %d: %w", tl.Ref, chainSelector, err)
 	}
 	timelockAddr := common.HexToAddress(tlReport.Output.Address)
 	refToAddr[tl.Ref] = timelockAddr
@@ -348,6 +348,7 @@ func grantRoles(
 				"Role", g.Name,
 				"Error", err,
 			)
+
 			return err
 		}
 
@@ -375,6 +376,7 @@ func grantRoles(
 					"Role Name", g.Name,
 					"Address", addr.Hex(),
 				)
+
 				return err
 			}
 			b.Logger.Infow("Role granted",

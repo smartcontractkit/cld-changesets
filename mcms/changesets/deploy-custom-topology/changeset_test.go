@@ -113,6 +113,16 @@ func TestChangeset_VerifyPreconditions(t *testing.T) {
 	dupMCM := validChainConfig()
 	dupMCM.MCMs = append(dupMCM.MCMs, MCMSpec{Ref: "proposer", Qualifier: "CCIP"})
 
+	dupTimelock := validChainConfig()
+	dupTimelock.Timelocks = append(dupTimelock.Timelocks, TimelockSpec{
+		Ref:       "timelock",
+		MinDelay:  big.NewInt(0),
+		Qualifier: "RMN",
+	})
+
+	mcmTimelockRefCollision := validChainConfig()
+	mcmTimelockRefCollision.Timelocks[0].Ref = "proposer"
+
 	undeclaredRef := validChainConfig()
 	undeclaredRef.Timelocks[0].Roles.Proposers = []RoleHolder{{MCMRef: "missing"}}
 
@@ -149,6 +159,16 @@ func TestChangeset_VerifyPreconditions(t *testing.T) {
 			name:    "duplicate MCM ref",
 			input:   Input{Cfg: Config{ChainConfigs: map[uint64]ChainTopologyConfig{fakeEVMFamilySelector: dupMCM}}},
 			wantErr: "duplicate MCM ref",
+		},
+		{
+			name:    "duplicate timelock ref",
+			input:   Input{Cfg: Config{ChainConfigs: map[uint64]ChainTopologyConfig{fakeEVMFamilySelector: dupTimelock}}},
+			wantErr: "duplicate timelock ref",
+		},
+		{
+			name:    "timelock ref conflicts with MCM ref",
+			input:   Input{Cfg: Config{ChainConfigs: map[uint64]ChainTopologyConfig{fakeEVMFamilySelector: mcmTimelockRefCollision}}},
+			wantErr: "conflicts with an MCM ref",
 		},
 		{
 			name:    "undeclared mcmRef",
@@ -254,13 +274,6 @@ func TestChangeset_Apply_unregisteredFamilyErrors(t *testing.T) {
 		Cfg: Config{ChainConfigs: map[uint64]ChainTopologyConfig{1: validChainConfig()}},
 	})
 	require.ErrorContains(t, err, "chain selector 1")
-}
-
-func TestSortedChainSelectors(t *testing.T) {
-	t.Parallel()
-
-	got := sortedChainSelectors(map[uint64]ChainTopologyConfig{3: {}, 1: {}, 2: {}})
-	require.Equal(t, []uint64{1, 2, 3}, got)
 }
 
 func TestMergeChainOutputs(t *testing.T) {

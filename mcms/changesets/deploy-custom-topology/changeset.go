@@ -11,6 +11,8 @@ import (
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
+
+	"github.com/smartcontractkit/cld-changesets/internal/maputil"
 )
 
 var _ cldf.ChangeSetV2[Input] = Changeset{}
@@ -40,7 +42,7 @@ func (Changeset) Apply(e cldf.Environment, input Input) (cldf.ChangesetOutput, e
 	var agg ChainOutput
 	var reports []operations.Report[any, any]
 
-	for _, chainSelector := range sortedChainSelectors(input.Cfg.ChainConfigs) {
+	for _, chainSelector := range maputil.SortedMapKeys(input.Cfg.ChainConfigs) {
 		seq, seqErr := SequenceForChainSelector(chainSelector)
 		if seqErr != nil {
 			return buildOutput(e, input.MCMS, agg, reports, fmt.Errorf("chain selector %d: %w", chainSelector, seqErr))
@@ -140,7 +142,7 @@ func validateConfig(e cldf.Environment, cfg Config, mcms *cldf.MCMSTimelockPropo
 	}
 
 	byFamily := make(map[string][]ChainInput)
-	for _, chainSelector := range sortedChainSelectors(cfg.ChainConfigs) {
+	for _, chainSelector := range maputil.SortedMapKeys(cfg.ChainConfigs) {
 		chainCfg := cfg.ChainConfigs[chainSelector]
 		family, err := chain_selectors.GetSelectorFamily(chainSelector)
 		if err != nil {
@@ -173,29 +175,39 @@ func validateConfig(e cldf.Environment, cfg Config, mcms *cldf.MCMSTimelockPropo
 	return nil
 }
 
-// validateChainConfig checks a single chain's topology: unique MCM refs, every
-// referenced MCMRef is declared, every RoleHolder is well-formed, and ownership
-// transfers require an MCMS input.
+// validateChainConfig checks a single chain's topology: unique refs within MCMs
+// and timelocks (with no overlap between the two), every referenced MCMRef is
+// declared, every RoleHolder is well-formed, and ownership transfers require an
+// MCMS input.
 func validateChainConfig(chainSelector uint64, cfg ChainTopologyConfig, mcms *cldf.MCMSTimelockProposalInput) error {
 	if len(cfg.MCMs) == 0 && len(cfg.Timelocks) == 0 {
 		return fmt.Errorf("chain %d: no MCMs or timelocks to deploy", chainSelector)
 	}
 
-	declared := make(map[string]struct{}, len(cfg.MCMs))
+	mcmRefs := make(map[string]struct{}, len(cfg.MCMs))
 	for i, m := range cfg.MCMs {
 		if m.Ref == "" {
 			return fmt.Errorf("chain %d: mcms[%d]: ref is required", chainSelector, i)
 		}
-		if _, dup := declared[m.Ref]; dup {
+		if _, dup := mcmRefs[m.Ref]; dup {
 			return fmt.Errorf("chain %d: duplicate MCM ref %q", chainSelector, m.Ref)
 		}
-		declared[m.Ref] = struct{}{}
+		mcmRefs[m.Ref] = struct{}{}
 	}
 
+	timelockRefs := make(map[string]struct{}, len(cfg.Timelocks))
 	for i, t := range cfg.Timelocks {
 		if t.Ref == "" {
 			return fmt.Errorf("chain %d: timelocks[%d]: ref is required", chainSelector, i)
 		}
+		if _, dup := timelockRefs[t.Ref]; dup {
+			return fmt.Errorf("chain %d: duplicate timelock ref %q", chainSelector, t.Ref)
+		}
+		if _, collides := mcmRefs[t.Ref]; collides {
+			return fmt.Errorf("chain %d: timelock ref %q conflicts with an MCM ref", chainSelector, t.Ref)
+		}
+		timelockRefs[t.Ref] = struct{}{}
+
 		if t.Qualifier == "" {
 			return fmt.Errorf("chain %d: timelock %q: qualifier is required", chainSelector, t.Ref)
 		}
@@ -207,11 +219,11 @@ func validateChainConfig(chainSelector uint64, cfg ChainTopologyConfig, mcms *cl
 			"admins":     t.Roles.Admins,
 		}
 		for name, holders := range roleSets {
-			if err := validateRoleHolders(chainSelector, t.Ref, name, holders, declared); err != nil {
+			if err := validateRoleHolders(chainSelector, t.Ref, name, holders, mcmRefs); err != nil {
 				return err
 			}
 		}
-		if err := validateRoleHolders(chainSelector, t.Ref, "transferOwnership", t.TransferOwnership, declared); err != nil {
+		if err := validateRoleHolders(chainSelector, t.Ref, "transferOwnership", t.TransferOwnership, mcmRefs); err != nil {
 			return err
 		}
 		if len(t.TransferOwnership) > 0 && mcms == nil {
@@ -237,16 +249,6 @@ func validateRoleHolders(chainSelector uint64, timelockRef, field string, holder
 	}
 
 	return nil
-}
-
-func sortedChainSelectors(byChain map[uint64]ChainTopologyConfig) []uint64 {
-	selectors := make([]uint64, 0, len(byChain))
-	for chainSelector := range byChain {
-		selectors = append(selectors, chainSelector)
-	}
-	slices.Sort(selectors)
-
-	return selectors
 }
 
 // mergeChainOutputs concatenates metadata and proposal groups from one chain's
