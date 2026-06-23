@@ -141,7 +141,7 @@ func deployMCMWithConfig(
 	return addr, nil
 }
 
-// deployCallProxy deploys a call proxy address and serts the given address as target.
+// deployCallProxy deploys a call proxy address and sets the given address as target.
 func deployCallProxy(
 	b operations.Bundle,
 	chain cldf_evm.Chain,
