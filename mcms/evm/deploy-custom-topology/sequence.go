@@ -356,7 +356,7 @@ func grantRoles(
 					ChainSelector: chainSelector,
 					CallInput: evmgrantrole.OpGrantRoleInput{
 						Account: addr,
-						RoleID:  g.Role,
+						RoleID:  [32]byte(g.Role),
 					},
 					Address: timelockAddr,
 				},
