@@ -46,6 +46,11 @@ func TestOpTransferAndAcceptOwnership(t *testing.T) {
 	mcm, err := bindings.NewManyChainMultiSig(mcmAddr, chain.Client)
 	require.NoError(t, err)
 
+	owner, loaded, err := evmtransferownership.LoadOwnable(mcmAddr, chain.Client)
+	require.NoError(t, err)
+	require.Equal(t, chain.DeployerKey.From, owner)
+	require.Equal(t, mcmAddr, loaded.Address())
+
 	target := common.HexToAddress("0x00000000000000000000000000000000000000bb")
 	deps := evmtransferownership.OpOwnershipDeps{Chain: chain, OwnableC: mcm}
 	_, err = operations.ExecuteOperation(bundle, evmtransferownership.OpTransferOwnership, deps,

@@ -1,6 +1,3 @@
-// Package evmgrantrole houses the EVM operation(s) for granting timelock
-// roles. It lives alongside where its dedicated changeset would (once it is
-// added) so all related code is colocated.
 package evmgrantrole
 
 import (
@@ -26,7 +23,7 @@ type OpGrantRoleInput struct {
 var OpGrantRole = evmops.NewEVMCallOperation(
 	"evm-timelock-grant-role",
 	semver.MustParse("1.0.0"),
-	"Grants the specified role to the given account on the EVM Timelock contract", 
+	"Grants the specified role to the given account on the EVM Timelock contract",
 	bindings.RBACTimelockABI,
 	bindings.NewRBACTimelock,
 	func(timelock *bindings.RBACTimelock, opts *bind.TransactOpts, input OpGrantRoleInput) (*types.Transaction, error) {

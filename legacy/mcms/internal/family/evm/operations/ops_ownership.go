@@ -1,12 +1,12 @@
 package operations
 
 import (
-	evmtransferownership "github.com/smartcontractkit/cld-changesets/mcms/evm/transfer-ownership"
+	"github.com/smartcontractkit/cld-changesets/internal/evmownership"
 )
 
-type OpOwnershipDeps = evmtransferownership.OpOwnershipDeps
-type OpTransferOwnershipInput = evmtransferownership.OpTransferOwnershipInput
-type OpOwnershipOutput = evmtransferownership.OpOwnershipOutput
+type OpOwnershipDeps = evmownership.OpOwnershipDeps
+type OpTransferOwnershipInput = evmownership.OpTransferOwnershipInput
+type OpOwnershipOutput = evmownership.OpOwnershipOutput
 
-var OpTransferOwnership = evmtransferownership.OpTransferOwnership
-var OpAcceptOwnership = evmtransferownership.OpAcceptOwnership
+var OpTransferOwnership = evmownership.OpTransferOwnership
+var OpAcceptOwnership = evmownership.OpAcceptOwnership

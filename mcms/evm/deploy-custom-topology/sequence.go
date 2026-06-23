@@ -7,7 +7,6 @@ import (
 	"strconv"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	opscontract "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/operations2/contract"
@@ -16,7 +15,6 @@ import (
 	mcmscontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/mcms"
 	cldfproposalutils "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
-	"github.com/smartcontractkit/chainlink-evm/gethwrappers/shared/generated/initial/burn_mint_erc677"
 	mcmsevmsdk "github.com/smartcontractkit/mcms/sdk/evm"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 
@@ -107,7 +105,7 @@ func deployMCMWithConfig(
 		chain,
 		opscontract.DeployInput[mcmops.ConstructorArgs]{
 			TypeAndVersion: typeAndVersion,
-			Qualifier:      stringPtrIfNonEmpty(spec.Qualifier),
+			Qualifier:      &spec.Qualifier,
 			Args:           mcmops.ConstructorArgs{},
 		gasboost.RetryDeploy[mcmops.ConstructorArgs](gasBoost),
 		operations.WithIdempotencyKey[opscontract.DeployInput[mcmops.ConstructorArgs], cldf_evm.Chain](fmt.Sprintf("%d:mcm:%s", chain.Selector, spec.Ref)),
@@ -153,7 +151,7 @@ func deployCallProxy(
 		chain,
 		opscontract.DeployInput[callproxyops.ConstructorArgs]{
 			TypeAndVersion: callproxyops.TypeAndVersion,
-			Qualifier:      stringPtrIfNonEmpty(timelockSpec.Qualifier),
+			Qualifier:      &timelockSpec.Qualifier,
 		gasboost.RetryDeploy[callproxyops.ConstructorArgs](gasBoost),
 		operations.WithIdempotencyKey[opscontract.DeployInput[callproxyops.ConstructorArgs], cldf_evm.Chain](fmt.Sprintf("%d:callproxy:%s", chain.Selector, timelockSpec.Ref)),
 	)
@@ -207,7 +205,7 @@ func deployTimelockAndSetRoles(
 		chain,
 		opscontract.DeployInput[timelockops.ConstructorArgs]{
 			TypeAndVersion: timelockops.TypeAndVersion,
-			Qualifier:      stringPtrIfNonEmpty(tl.Qualifier),
+			Qualifier:      &tl.Qualifier,
 			Args: timelockops.ConstructorArgs{
 				MinDelay:   tl.MinDelay,
 				Admin:      chain.DeployerKey.From,
@@ -399,7 +397,7 @@ func transferOwnershipToTimelock(
 	var mcsmOps []mcmstypes.Transaction
 
 	for _, contract := range contracts {
-		owner, c, err := LoadOwnableContract(contract, chain.Client)
+		owner, c, err := evmtransferownership.LoadOwnable(contract, chain.Client)
 		if err != nil {
 			b.Logger.Errorf("failed to load ownable contract %s: %v", contract.Hex(), err)
 			return nil, fmt.Errorf("error loading ownable contract %s: %w", contract.Hex(), err)
@@ -441,21 +439,6 @@ func transferOwnershipToTimelock(
 	}
 
 	return mcsmOps, nil
-}
-
-// LoadOwnableContract loads an ownable contract using the shared ownership ABI
-// and returns its current owner and an Ownable handle.
-func LoadOwnableContract(addr common.Address, client bind.ContractBackend) (common.Address, evmtransferownership.Ownable, error) {
-	c, err := burn_mint_erc677.NewBurnMintERC677(addr, client)
-	if err != nil {
-		return common.Address{}, nil, fmt.Errorf("failed to create contract: %w", err)
-	}
-	owner, err := c.Owner(nil)
-	if err != nil {
-		return common.Address{}, nil, fmt.Errorf("failed to get owner of contract %s: %w", c.Address(), err)
-	}
-
-	return owner, c, nil
 }
 
 // resolveHolders maps role holders to concrete addresses: an MCMRef resolves to a
@@ -509,14 +492,6 @@ func mcmTypeVersion(contractType cldf.ContractType) (cldf.TypeAndVersion, error)
 	default:
 		return cldf.TypeAndVersion{}, fmt.Errorf("unsupported contract type for deploy-custom-topology: %s", contractType)
 	}
-}
-
-func stringPtrIfNonEmpty(s string) *string {
-	if s == "" {
-		return nil
-	}
-
-	return &s
 }
 
 func chainIdempotencyKey[IN, DEP any](chain cldf_evm.Chain) operations.ExecuteOption[IN, DEP] {

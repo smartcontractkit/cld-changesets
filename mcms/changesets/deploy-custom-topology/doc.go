@@ -53,5 +53,5 @@
 // accept-ownership batch operations (only when running with MCMS input).
 //
 // Each family may only be registered once; duplicate registration panics. Use
-// [RegisteredFamilies] to inspect the registry in tests.
+// [Sequences.RegisteredFamilies] to inspect the registry in tests.
 package deploycustomtopology

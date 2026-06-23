@@ -63,7 +63,7 @@ var fakeEVMTopologySeq = operations.NewSequence(
 )
 
 func init() {
-	Register(Registration{Family: chain_selectors.FamilyEVM, Sequence: fakeEVMTopologySeq})
+	Sequences.Register(Registration{Family: chain_selectors.FamilyEVM, Sequence: fakeEVMTopologySeq})
 }
 
 func testEnv(t *testing.T) cldf.Environment {
