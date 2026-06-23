@@ -13,18 +13,12 @@ import (
 // is already registered. Importing this package (or a blank import) is
 // sufficient to enable EVM chain support in [deploy.Changeset].
 func init() {
-	registered := deploy.RegisteredFamilies()
-	for _, f := range registered {
-		if f == chainselectors.FamilyEVM {
-			return
-		}
-	}
-	deploy.Register(Registration())
+	deploy.Registry.Register(Registration())
 }
 
 // Registration returns the EVM chain-family deploy registration for MCMS with
 // timelock. Importing this package registers EVM automatically via init; use
-// Registration() only in tests that call [deploy.Register] manually without
+// Registration() only in tests that call [deploy.Registry.Register] manually without
 // importing this package (for example to control registration order).
 func Registration() deploy.Registration {
 	return deploy.Registration{

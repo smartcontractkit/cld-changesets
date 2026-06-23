@@ -10,7 +10,7 @@ import (
 )
 
 func init() {
-	setconfig.Register(Registration())
+	setconfig.Registry.Register(Registration())
 }
 
 func Registration() setconfig.Registration {

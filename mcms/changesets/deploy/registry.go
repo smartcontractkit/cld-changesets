@@ -2,77 +2,34 @@ package deploy
 
 import (
 	"fmt"
-	"slices"
-	"strings"
-	"sync"
 
 	chainselectors "github.com/smartcontractkit/chain-selectors"
 	cldfproposalutils "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
+
+	"github.com/smartcontractkit/cld-changesets/internal/familyregistry"
 )
 
-var (
-	registryMu sync.RWMutex
-	registry   = make(map[string]Registration)
-)
+// Registration describes one chain family's MCMS deploy implementation.
+type Registration = familyregistry.Registration[ChainInput, *Sequence]
 
-// Register adds a family deploy implementation to the registry.
-// It panics if the family string is empty, Sequence is nil, or the family is
-// already registered — all of which indicate a programming error at startup.
-func Register(reg Registration) {
-	registryMu.Lock()
-	defer registryMu.Unlock()
+// Registry holds registered per-family MCMS deploy sequences.
+var Registry = familyregistry.New[ChainInput, *Sequence]("mcms deploy")
 
-	if reg.Family == "" {
-		panic("mcms deploy: family is required")
-	}
-	if reg.Sequence == nil {
-		panic(fmt.Sprintf("mcms deploy: sequence is required for family %q", reg.Family))
-	}
-	if _, exists := registry[reg.Family]; exists {
-		panic(fmt.Sprintf("mcms deploy: family %q already registered", reg.Family))
-	}
-
-	registry[reg.Family] = reg
-}
-
-func registerAll(regs ...Registration) {
+// RegisterFamilies registers one or more chain-family deploy implementations.
+// Each family may only be registered once; duplicate registration panics.
+//
+// External teams call this once at startup from their own module:
+//
+//	deploy.RegisterFamilies(aptosimpl.Registration())
+//
+// Built-in families (EVM) register themselves automatically via their package
+// init function when imported:
+//
+//	import _ "github.com/smartcontractkit/cld-changesets/mcms/evm/deploy"
+func RegisterFamilies(regs ...Registration) {
 	for _, reg := range regs {
-		Register(reg)
+		Registry.Register(reg)
 	}
-}
-
-// get returns the Registration for a chain family.
-// Returns an error listing registered families when the family is not found.
-func get(family string) (Registration, error) {
-	registryMu.RLock()
-	defer registryMu.RUnlock()
-
-	reg, ok := registry[family]
-	if !ok {
-		registered := registeredFamiliesLocked()
-		if len(registered) == 0 {
-			return Registration{}, fmt.Errorf(
-				"mcms deploy: no sequence registered for family %q (none registered — import a family package or call RegisterFamilies)",
-				family,
-			)
-		}
-
-		return Registration{}, fmt.Errorf(
-			"mcms deploy: no sequence registered for family %q (registered: %s)",
-			family,
-			strings.Join(registered, ", "),
-		)
-	}
-
-	return reg, nil
-}
-
-// RegisteredFamilies returns the sorted list of registered chain families.
-func RegisteredFamilies() []string {
-	registryMu.RLock()
-	defer registryMu.RUnlock()
-
-	return registeredFamiliesLocked()
 }
 
 // groupByFamily groups deployment inputs by their chain-selectors family string.
@@ -90,14 +47,4 @@ func groupByFamily(cfgByChain map[uint64]cldfproposalutils.MCMSWithTimelockConfi
 	}
 
 	return byFamily, nil
-}
-
-func registeredFamiliesLocked() []string {
-	families := make([]string, 0, len(registry))
-	for family := range registry {
-		families = append(families, family)
-	}
-	slices.Sort(families)
-
-	return families
 }

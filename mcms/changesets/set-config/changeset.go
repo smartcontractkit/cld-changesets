@@ -52,7 +52,7 @@ func (Changeset) Apply(e cldf.Environment, input Input) (cldf.ChangesetOutput, e
 
 	for _, chainSelector := range maputil.SortedMapKeys(byChain) {
 		targets := byChain[chainSelector]
-		seq, seqErr := SequenceForChainSelector(chainSelector)
+		seq, seqErr := Registry.SequenceForChainSelector(chainSelector)
 		if seqErr != nil {
 			return buildSetConfigOutput(e, input.MCMS, agg, fmt.Errorf("chain selector %d: %w", chainSelector, seqErr))
 		}
@@ -142,7 +142,7 @@ func validateConfig(e cldf.Environment, cfg Config, mcms *cldf.MCMSTimelockPropo
 	slices.Sort(families)
 
 	for _, family := range families {
-		if err := VerifyForFamily(family, e, byFamily[family]); err != nil {
+		if err := Registry.VerifyForFamily(family, e, byFamily[family]); err != nil {
 			return err
 		}
 	}
