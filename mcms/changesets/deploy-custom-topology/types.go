@@ -12,6 +12,8 @@ import (
 	cldfproposalutils "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
+
+	"github.com/smartcontractkit/cld-changesets/mcms/changesets/familyregistry"
 )
 
 // Config is the changeset payload: the custom MCMS topology to deploy per chain.
@@ -137,16 +139,7 @@ type ChainOutput struct {
 type Sequence = operations.Sequence[ChainInput, ChainOutput, Deps]
 
 // Registration describes one chain family's deploy-custom-topology implementation.
-type Registration struct {
-	Family string
-	// Sequence executes the per-chain deploy and returns deployed addresses via
-	// ChainOutput.Metadata and accept-ownership batch operations via
-	// ChainOutput.ProposalGroups.
-	Sequence *Sequence
-	// Verify performs family-specific validation across all chains in the input.
-	// It is called during VerifyPreconditions. Optional — nil means no extra checks.
-	Verify func(env cldf.Environment, chains []ChainInput) error
-}
+type Registration = familyregistry.Registration[Sequence, ChainInput]
 
 // EnvFromDeps reconstructs the environment fields sequences need for ref and
 // MCMS resolution.

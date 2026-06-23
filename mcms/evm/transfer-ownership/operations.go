@@ -8,27 +8,23 @@ import (
 	"fmt"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	gethtypes "github.com/ethereum/go-ethereum/core/types"
 
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
+
+	evmstate "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/evm"
 )
 
 // Ownable is the minimal interface for an OpenZeppelin Ownable2Step contract used
 // by the transfer/accept-ownership operations.
-type Ownable interface {
-	Owner(opts *bind.CallOpts) (common.Address, error)
-	TransferOwnership(opts *bind.TransactOpts, newOwner common.Address) (*gethtypes.Transaction, error)
-	AcceptOwnership(opts *bind.TransactOpts) (*gethtypes.Transaction, error)
-	Address() common.Address
-}
+type Ownable = evmstate.Ownable
 
 type OpOwnershipDeps struct {
 	Chain    cldf_evm.Chain
-	OwnableC Ownable // Ownable contract interface
+	OwnableC Ownable
 }
 
 type OpTransferOwnershipInput struct {
