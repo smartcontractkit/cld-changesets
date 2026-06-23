@@ -21,7 +21,6 @@ import (
 	cldftesthelpers "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils/testhelpers"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/environment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/runtime"
-	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations/optest"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 	mcmsevm "github.com/smartcontractkit/mcms/sdk/evm"
@@ -37,15 +36,15 @@ import (
 	evmreaders "github.com/smartcontractkit/cld-changesets/mcms/evm/readers"
 )
 
-func TestSeqEVMSetConfig(t *testing.T) {
+func TestRunEVMSetConfig(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name   string
-		noSend bool
+		name           string
+		transferToMCMS bool
 	}{
-		{name: "direct send", noSend: false},
-		{name: "MCMS proposal", noSend: true},
+		{name: "direct send", transferToMCMS: false},
+		{name: "MCMS proposal", transferToMCMS: true},
 	}
 
 	for _, tt := range tests {
@@ -57,7 +56,7 @@ func TestSeqEVMSetConfig(t *testing.T) {
 			refs := evmSetConfigRefs(t, rt.Environment(), selector)
 			chain := rt.Environment().BlockChains.EVMChains()[selector]
 
-			if tt.noSend {
+			if tt.transferToMCMS {
 				transferEVMMCMSToTimelock(t, rt, selector, refs)
 			}
 
@@ -73,53 +72,58 @@ func TestSeqEVMSetConfig(t *testing.T) {
 			cancellerCfg.Signers = append(cancellerCfg.Signers, refs.Bypasser)
 			cancellerCfg.Quorum = 2
 
-			targets := []MCMSetConfigTarget{
+			targets := []setconfig.ContractSetConfig{
 				{
-					Address:      refs.Proposer,
-					Config:       proposerCfg,
-					ContractType: mcmscontracts.ProposerManyChainMultisig,
+					Ref:    refkey.New(selector, datastore.ContractType(mcmscontracts.ProposerManyChainMultisig), &semvers.V1_0_0, ""),
+					Config: proposerCfg,
 				},
 				{
-					Address:      refs.Bypasser,
-					Config:       bypasserCfg,
-					ContractType: mcmscontracts.BypasserManyChainMultisig,
+					Ref:    refkey.New(selector, datastore.ContractType(mcmscontracts.BypasserManyChainMultisig), &semvers.V1_0_0, ""),
+					Config: bypasserCfg,
 				},
 			}
-			if tt.noSend {
-				targets = []MCMSetConfigTarget{
+			var mcmsInput *cldf.MCMSTimelockProposalInput
+			if tt.transferToMCMS {
+				targets = []setconfig.ContractSetConfig{
 					{
-						Address:      refs.Canceller,
-						Config:       cancellerCfg,
-						ContractType: mcmscontracts.CancellerManyChainMultisig,
+						Ref:    refkey.New(selector, datastore.ContractType(mcmscontracts.CancellerManyChainMultisig), &semvers.V1_0_0, ""),
+						Config: cancellerCfg,
 					},
+				}
+				mcmsInput = &cldf.MCMSTimelockProposalInput{
+					TimelockAction: mcmstypes.TimelockActionBypass,
+					ValidUntil:     uint32(time.Now().Add(2 * time.Hour).UTC().Unix()), //nolint:gosec // test timestamp
+					TimelockDelay:  mcmstypes.NewDuration(0),
 				}
 			}
 
-			report, err := operations.ExecuteSequence(
+			out, err := runEVMSetConfig(
 				rt.Environment().OperationsBundle,
-				SeqEVMSetConfig,
-				chain,
-				SeqEVMSetConfigInput{
+				setconfig.Deps{
+					BlockChains: rt.Environment().BlockChains,
+					DataStore:   rt.Environment().DataStore,
+				},
+				setconfig.ChainInput{
 					ChainSelector: selector,
-					NoSend:        tt.noSend,
 					Targets:       targets,
+					MCMS:          mcmsInput,
 				},
 			)
 			require.NoError(t, err)
 
-			if tt.noSend {
-				require.Len(t, report.Output.BatchOps, 1)
-				require.Len(t, report.Output.BatchOps[0].Transactions, 1)
+			if tt.transferToMCMS {
+				require.Len(t, out.BatchOps, 1)
+				require.Len(t, out.BatchOps[0].Transactions, 1)
 				require.NoError(t, rt.Exec(
-					newTimelockProposalTask(report.Output.BatchOps, "set config sequence test"),
+					newTimelockProposalTask(out.BatchOps, "set config sequence test"),
 					runtime.SignAndExecuteProposalsTask([]*ecdsa.PrivateKey{cldftesthelpers.TestXXXMCMSSigner}),
 				))
 			} else {
-				require.Empty(t, report.Output.BatchOps)
+				require.Empty(t, out.BatchOps)
 			}
 
 			inspector := mcmsevm.NewInspector(chain.Client)
-			if tt.noSend {
+			if tt.transferToMCMS {
 				assertEVMConfigEquals(t, inspector, refs.Canceller, cancellerCfg)
 			} else {
 				assertEVMConfigEquals(t, inspector, refs.Proposer, proposerCfg)
@@ -241,22 +245,6 @@ func assertEVMConfigEquals(t *testing.T, inspector *mcmsevm.Inspector, address c
 	require.NoError(t, err)
 	require.ElementsMatch(t, want.Signers, got.Signers)
 	require.Equal(t, want.Quorum, got.Quorum)
-}
-
-func TestSeqEVMSetConfig_chainSelectorMismatch(t *testing.T) {
-	t.Parallel()
-
-	selector := chainselectors.TEST_90000001.Selector
-	_, err := operations.ExecuteSequence(
-		optest.NewBundle(t),
-		SeqEVMSetConfig,
-		cldf_evm.Chain{Selector: selector},
-		SeqEVMSetConfigInput{
-			ChainSelector: chainselectors.TEST_90000002.Selector,
-			NoSend:        true,
-		},
-	)
-	require.ErrorContains(t, err, "mismatch between inputted chain selector")
 }
 
 func TestSetConfigTargets(t *testing.T) {

@@ -10,6 +10,8 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/changeset/sequenceutils"
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+
+	"github.com/smartcontractkit/cld-changesets/internal/maputil"
 )
 
 var _ cldf.ChangeSetV2[Input] = Changeset{}
@@ -48,7 +50,7 @@ func (Changeset) Apply(e cldf.Environment, input Input) (cldf.ChangesetOutput, e
 
 	var agg sequenceutils.OnChainOutput
 
-	for _, chainSelector := range sortedChainSelectors(byChain) {
+	for _, chainSelector := range maputil.SortedMapKeys(byChain) {
 		targets := byChain[chainSelector]
 		seq, seqErr := SequenceForChainSelector(chainSelector)
 		if seqErr != nil {
@@ -120,7 +122,7 @@ func validateConfig(e cldf.Environment, cfg Config, mcms *cldf.MCMSTimelockPropo
 	}
 
 	byFamily := make(map[string][]ChainInput)
-	for _, chainSelector := range sortedChainSelectors(byChain) {
+	for _, chainSelector := range maputil.SortedMapKeys(byChain) {
 		targets := byChain[chainSelector]
 		family, err := chain_selectors.GetSelectorFamily(chainSelector)
 		if err != nil {
@@ -158,16 +160,6 @@ func validateConfig(e cldf.Environment, cfg Config, mcms *cldf.MCMSTimelockPropo
 	}
 
 	return nil
-}
-
-func sortedChainSelectors(byChain map[uint64][]ContractSetConfig) []uint64 {
-	selectors := make([]uint64, 0, len(byChain))
-	for chainSelector := range byChain {
-		selectors = append(selectors, chainSelector)
-	}
-	slices.Sort(selectors)
-
-	return selectors
 }
 
 func groupTargetsByChain(targets []ContractSetConfig) (map[uint64][]ContractSetConfig, error) {
