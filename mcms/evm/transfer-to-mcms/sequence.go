@@ -48,7 +48,7 @@ func runEVMTransferToMCMS(
 
 	var transactions []mcmstypes.Transaction
 	for _, contract := range in.Contracts {
-		txs, err := TransferContractToMCMS(b, chain, timelock, contract, in.OnlyAcceptOwnership)
+		txs, err := transferContractToMCMS(b, chain, timelock, contract, in)
 		if err != nil {
 			return sequenceutils.OnChainOutput{}, fmt.Errorf("contract %s: %w", contract.Hex(), err)
 		}
@@ -67,12 +67,12 @@ func runEVMTransferToMCMS(
 	}, nil
 }
 
-func TransferContractToMCMS(
+func transferContractToMCMS(
 	b operations.Bundle,
 	chain cldf_evm.Chain,
 	timelock common.Address,
 	contract common.Address,
-	onlyAcceptOwnership bool,
+	in transfertomcms.ChainInput,
 ) ([]mcmstypes.Transaction, error) {
 	binding, err := bindOwnableContract(contract, chain.Client)
 	if err != nil {
@@ -89,7 +89,7 @@ func TransferContractToMCMS(
 		return nil, nil
 	}
 
-	if !onlyAcceptOwnership {
+	if !in.OnlyAcceptOwnership {
 		_, err = operations.ExecuteOperation(
 			b,
 			ownableops.NewWriteTransferOwnership(binding),
@@ -123,27 +123,6 @@ func TransferContractToMCMS(
 	}
 
 	return []mcmstypes.Transaction{acceptReport.Output.Tx}, nil
-}
-
-// TransferContractsToTimelock transfers ownership of each contract to the timelock
-// via the deployer key and returns acceptOwnership transactions for MCMS batching.
-func TransferContractsToTimelock(
-	b operations.Bundle,
-	chain cldf_evm.Chain,
-	timelock common.Address,
-	contracts []common.Address,
-	onlyAcceptOwnership bool,
-) ([]mcmstypes.Transaction, error) {
-	var transactions []mcmstypes.Transaction
-	for _, contract := range contracts {
-		txs, err := TransferContractToMCMS(b, chain, timelock, contract, onlyAcceptOwnership)
-		if err != nil {
-			return nil, fmt.Errorf("contract %s: %w", contract.Hex(), err)
-		}
-		transactions = append(transactions, txs...)
-	}
-
-	return transactions, nil
 }
 
 func bindOwnableContract(addr common.Address, client bind.ContractBackend) (gobindings.BurnMintERC677Interface, error) {
