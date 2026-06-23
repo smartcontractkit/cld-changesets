@@ -29,16 +29,7 @@ import (
 	evmstate "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/evm"
 )
 
-// TODO: This file (and the entire legacy/.../oputil package) is duplicated by
-// mcms/evm/operations/builders.go. It should be removed in a follow-up PR once
-// all legacy callers have been migrated to the non-legacy package so that we
-// stop maintaining two copies of the same builders/types.
-
 // EVMCallInput is the input structure for an EVM call operation.
-// Why not pull the chain selector from the chain dependency? Because addresses might be the same across chains and we need to differentiate them.
-// This ensures no false report matches between operation runs that have the same call input and address but a different target chain.
-//
-// TODO: remove in favour of the equivalent type in mcms/evm/operations.
 type EVMCallInput[IN any] struct {
 	// Address is the address of the contract to call.
 	Address common.Address `json:"address"`
@@ -357,7 +348,7 @@ func NewEVMDeployOperation[IN any](
 	)
 }
 
-// cloneTransactOptsWithGas ensures that we don't impact the transact opts used by other operations.
+// CloneTransactOptsWithGas ensures that we don't impact the transact opts used by other operations.
 func CloneTransactOptsWithGas(opts *bind.TransactOpts, gasLimit uint64, gasPrice uint64) *bind.TransactOpts {
 	if opts == nil {
 		return nil

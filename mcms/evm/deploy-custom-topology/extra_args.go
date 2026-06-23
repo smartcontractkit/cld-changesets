@@ -17,7 +17,7 @@ type EVMExtraArgs struct {
 
 // deployCallProxy reports whether a call proxy should be deployed for the given
 // timelock ref. The default (no entry / nil map) is true.
-func (e EVMExtraArgs) deployCallProxy(timelockRef string) bool {
+func (e EVMExtraArgs) shouldDeployCallProxy(timelockRef string) bool {
 	if e.DeployCallProxyByTimelockRef == nil {
 		return true
 	}

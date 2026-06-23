@@ -13,7 +13,7 @@ func TestParseEVMExtraArgs(t *testing.T) {
 		t.Parallel()
 		ea, err := parseEVMExtraArgs(nil)
 		require.NoError(t, err)
-		require.True(t, ea.deployCallProxy("timelock")) // default on
+		require.True(t, ea.shouldDeployCallProxy("timelock")) // default on
 	})
 
 	t.Run("typed value", func(t *testing.T) {
@@ -21,8 +21,8 @@ func TestParseEVMExtraArgs(t *testing.T) {
 		in := EVMExtraArgs{DeployCallProxyByTimelockRef: map[string]bool{"a": false}}
 		ea, err := parseEVMExtraArgs(in)
 		require.NoError(t, err)
-		require.False(t, ea.deployCallProxy("a"))
-		require.True(t, ea.deployCallProxy("b")) // unset -> default on
+		require.False(t, ea.shouldDeployCallProxy("a"))
+		require.True(t, ea.shouldDeployCallProxy("b")) // unset -> default on
 	})
 
 	t.Run("typed pointer", func(t *testing.T) {
@@ -30,7 +30,7 @@ func TestParseEVMExtraArgs(t *testing.T) {
 		in := &EVMExtraArgs{DeployCallProxyByTimelockRef: map[string]bool{"a": false}}
 		ea, err := parseEVMExtraArgs(in)
 		require.NoError(t, err)
-		require.False(t, ea.deployCallProxy("a"))
+		require.False(t, ea.shouldDeployCallProxy("a"))
 	})
 
 	t.Run("nil pointer yields defaults", func(t *testing.T) {
@@ -38,7 +38,7 @@ func TestParseEVMExtraArgs(t *testing.T) {
 		var in *EVMExtraArgs
 		ea, err := parseEVMExtraArgs(in)
 		require.NoError(t, err)
-		require.True(t, ea.deployCallProxy("a"))
+		require.True(t, ea.shouldDeployCallProxy("a"))
 	})
 
 	t.Run("json round-trip from map", func(t *testing.T) {
@@ -46,8 +46,8 @@ func TestParseEVMExtraArgs(t *testing.T) {
 		in := map[string]any{"deployCallProxyByTimelockRef": map[string]any{"a": false, "b": true}}
 		ea, err := parseEVMExtraArgs(in)
 		require.NoError(t, err)
-		require.False(t, ea.deployCallProxy("a"))
-		require.True(t, ea.deployCallProxy("b"))
+		require.False(t, ea.shouldDeployCallProxy("a"))
+		require.True(t, ea.shouldDeployCallProxy("b"))
 	})
 
 	t.Run("unmarshalable yields error", func(t *testing.T) {

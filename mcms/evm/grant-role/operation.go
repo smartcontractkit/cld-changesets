@@ -22,6 +22,7 @@ type OpGrantRoleInput struct {
 }
 
 // OpGrantRole grants the given role to the given account on the EVM Timelock contract.
+// TODO: refactor to use mcms lib
 var OpGrantRole = evmops.NewEVMCallOperation(
 	"evm-timelock-grant-role",
 	semver.MustParse("1.0.0"),

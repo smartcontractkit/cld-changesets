@@ -1,3 +1,7 @@
+// Package evmtransferownership houses the EVM operations for transferring and
+// accepting ownership of an ownable contract via the Timelock. It lives
+// alongside where its dedicated changeset would (once it is added) so all
+// related code is colocated.
 package evmtransferownership
 
 import (

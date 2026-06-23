@@ -21,6 +21,89 @@ import (
 
 var fakeEVMFamilySelector = chain_selectors.TEST_90000001.Selector
 
+// fakeEVMTopologySeq emulates an EVM family sequence for unit tests: it records a
+// deployed address and, when a timelock requests ownership transfers, emits a
+// proposal group keyed by that timelock's qualifier.
+var fakeEVMTopologySeq = operations.NewSequence(
+	"fake-evm-deploy-topology",
+	semver.MustParse("1.0.0"),
+	"fake EVM deploy topology",
+	func(_ operations.Bundle, _ Deps, in ChainInput) (ChainOutput, error) {
+		v := semver.MustParse("1.0.0")
+		out := ChainOutput{
+			Metadata: cldfdatastore.MetadataBundle{
+				Addresses: []cldfdatastore.AddressRef{{
+					ChainSelector: in.ChainSelector,
+					Address:       "0x0000000000000000000000000000000000000001",
+					Type:          cldfdatastore.ContractType("FakeMCM"),
+					Version:       v,
+				}},
+			},
+		}
+
+		for _, tl := range in.Config.Timelocks {
+			if len(tl.TransferOwnership) == 0 {
+				continue
+			}
+			out.ProposalGroups = append(out.ProposalGroups, ProposalGroup{
+				Qualifier: tl.Qualifier,
+				BatchOps: []mcmstypes.BatchOperation{{
+					ChainSelector: mcmstypes.ChainSelector(in.ChainSelector),
+					Transactions: []mcmstypes.Transaction{{
+						To:               "0x0000000000000000000000000000000000000002",
+						Data:             []byte{0x01},
+						AdditionalFields: json.RawMessage(`{}`),
+					}},
+				}},
+			})
+		}
+
+		return out, nil
+	},
+)
+
+func init() {
+	Register(Registration{Family: chain_selectors.FamilyEVM, Sequence: fakeEVMTopologySeq})
+}
+
+func testEnv(t *testing.T) cldf.Environment {
+	t.Helper()
+
+	return cldf.Environment{
+		Logger:           logger.Test(t),
+		OperationsBundle: operations.NewBundle(t.Context, logger.Test(t), operations.NewMemoryReporter()),
+		BlockChains:      chain.NewBlockChains(nil),
+	}
+}
+
+func addr(t *testing.T, hex string) *common.Address {
+	t.Helper()
+	a := common.HexToAddress(hex)
+
+	return &a
+}
+
+func validChainConfig() ChainTopologyConfig {
+	return ChainTopologyConfig{
+		MCMs: []MCMSpec{{Ref: "proposer", Qualifier: "CCIP", ContractType: "ProposerManyChainMultisig"}},
+		Timelocks: []TimelockSpec{{
+			Ref:       "timelock",
+			MinDelay:  big.NewInt(0),
+			Qualifier: "CCIP",
+			Roles:     RoleAssignments{Proposers: []RoleHolder{{MCMRef: "proposer"}}},
+		}},
+	}
+}
+
+func newMCMSInput() *cldf.MCMSTimelockProposalInput {
+	return &cldf.MCMSTimelockProposalInput{
+		TimelockAction: mcmstypes.TimelockActionSchedule,
+		ValidUntil:     uint32(time.Now().Add(2 * time.Hour).UTC().Unix()), //nolint:gosec // test timestamp
+		TimelockDelay:  mcmstypes.NewDuration(time.Second),
+		Description:    "test",
+	}
+}
+
 func TestChangeset_VerifyPreconditions(t *testing.T) {
 	t.Parallel()
 
@@ -216,87 +299,4 @@ func TestSortedQualifiersAndBatchOps(t *testing.T) {
 	require.Len(t, batchOpsForQualifier(groups, "CCIP"), 2)
 	require.Len(t, batchOpsForQualifier(groups, "RMN"), 1)
 	require.Empty(t, batchOpsForQualifier(groups, "NONE"))
-}
-
-// fakeEVMTopologySeq emulates an EVM family sequence for unit tests: it records a
-// deployed address and, when a timelock requests ownership transfers, emits a
-// proposal group keyed by that timelock's qualifier.
-var fakeEVMTopologySeq = operations.NewSequence(
-	"fake-evm-deploy-topology",
-	semver.MustParse("1.0.0"),
-	"fake EVM deploy topology",
-	func(_ operations.Bundle, _ Deps, in ChainInput) (ChainOutput, error) {
-		v := semver.MustParse("1.0.0")
-		out := ChainOutput{
-			Metadata: cldfdatastore.MetadataBundle{
-				Addresses: []cldfdatastore.AddressRef{{
-					ChainSelector: in.ChainSelector,
-					Address:       "0x0000000000000000000000000000000000000001",
-					Type:          cldfdatastore.ContractType("FakeMCM"),
-					Version:       v,
-				}},
-			},
-		}
-
-		for _, tl := range in.Config.Timelocks {
-			if len(tl.TransferOwnership) == 0 {
-				continue
-			}
-			out.ProposalGroups = append(out.ProposalGroups, ProposalGroup{
-				Qualifier: tl.Qualifier,
-				BatchOps: []mcmstypes.BatchOperation{{
-					ChainSelector: mcmstypes.ChainSelector(in.ChainSelector),
-					Transactions: []mcmstypes.Transaction{{
-						To:               "0x0000000000000000000000000000000000000002",
-						Data:             []byte{0x01},
-						AdditionalFields: json.RawMessage(`{}`),
-					}},
-				}},
-			})
-		}
-
-		return out, nil
-	},
-)
-
-func init() {
-	Register(Registration{Family: chain_selectors.FamilyEVM, Sequence: fakeEVMTopologySeq})
-}
-
-func testEnv(t *testing.T) cldf.Environment {
-	t.Helper()
-
-	return cldf.Environment{
-		Logger:           logger.Test(t),
-		OperationsBundle: operations.NewBundle(t.Context, logger.Test(t), operations.NewMemoryReporter()),
-		BlockChains:      chain.NewBlockChains(nil),
-	}
-}
-
-func addr(t *testing.T, hex string) *common.Address {
-	t.Helper()
-	a := common.HexToAddress(hex)
-
-	return &a
-}
-
-func validChainConfig() ChainTopologyConfig {
-	return ChainTopologyConfig{
-		MCMs: []MCMSpec{{Ref: "proposer", Qualifier: "CCIP", ContractType: "ProposerManyChainMultisig"}},
-		Timelocks: []TimelockSpec{{
-			Ref:       "timelock",
-			MinDelay:  big.NewInt(0),
-			Qualifier: "CCIP",
-			Roles:     RoleAssignments{Proposers: []RoleHolder{{MCMRef: "proposer"}}},
-		}},
-	}
-}
-
-func newMCMSInput() *cldf.MCMSTimelockProposalInput {
-	return &cldf.MCMSTimelockProposalInput{
-		TimelockAction: mcmstypes.TimelockActionSchedule,
-		ValidUntil:     uint32(time.Now().Add(2 * time.Hour).UTC().Unix()), //nolint:gosec // test timestamp
-		TimelockDelay:  mcmstypes.NewDuration(time.Second),
-		Description:    "test",
-	}
 }

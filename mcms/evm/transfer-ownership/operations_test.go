@@ -8,13 +8,13 @@ import (
 
 	bindings "github.com/smartcontractkit/ccip-owner-contracts/pkg/gethwrappers"
 	chain_selectors "github.com/smartcontractkit/chain-selectors"
+	opscontract "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/operations2/contract"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/environment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/runtime"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
-	"github.com/smartcontractkit/cld-changesets/mcms/evm/deploy-custom-topology"
-	evmops "github.com/smartcontractkit/cld-changesets/mcms/evm/operations"
+	mcmops "github.com/smartcontractkit/cld-changesets/mcms/evm/deploy/v1_0_0/operations/many_chain_multi_sig"
 	evmtransferownership "github.com/smartcontractkit/cld-changesets/mcms/evm/transfer-ownership"
 )
 
@@ -35,10 +35,13 @@ func TestOpTransferAndAcceptOwnership(t *testing.T) {
 	chain := env.BlockChains.EVMChains()[sel]
 	bundle := env.OperationsBundle
 
-	mcmReport, err := operations.ExecuteOperation(bundle, evmdeploytopology.OpDeployProposerMCM, chain,
-		evmops.EVMDeployInput[any]{ChainSelector: sel})
+	mcmReport, err := operations.ExecuteOperation(bundle, mcmops.Deploy, chain,
+		opscontract.DeployInput[mcmops.ConstructorArgs]{
+			TypeAndVersion: mcmops.ProposerManyChainMultiSigTypeAndVersion,
+			Args:           mcmops.ConstructorArgs{},
+		})
 	require.NoError(t, err)
-	mcmAddr := mcmReport.Output.Address
+	mcmAddr := common.HexToAddress(mcmReport.Output.Address)
 
 	mcm, err := bindings.NewManyChainMultiSig(mcmAddr, chain.Client)
 	require.NoError(t, err)
