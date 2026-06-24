@@ -14,13 +14,10 @@ import (
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 )
 
-// Config is the changeset payload: the custom MCMS topology to deploy per chain.
-type Config = MCMSTopologyConfig
-
-// Input wraps Config with optional MCMS timelock-proposal settings. When MCMS is
+// Input wraps the topology config with optional MCMS timelock-proposal settings. When MCMS is
 // set, ownership-transfer sequences run in no-send mode and the changeset builds
 // accept-ownership timelock proposals from the returned batch operations.
-type Input = sequenceutils.WithMCMS[Config]
+type Input = sequenceutils.WithMCMS[MCMSTopologyConfig]
 
 // MCMSTopologyConfig is the top-level, chain-agnostic changeset input.
 type MCMSTopologyConfig struct {
