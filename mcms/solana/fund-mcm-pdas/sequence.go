@@ -51,7 +51,7 @@ var SeqFundSolanaMCMPDAs = operations.NewSequence(
 
 // SeqFundMCMPDAs resolves MCMS signer PDAs from the datastore and funds them on a Solana chain.
 var SeqFundMCMPDAs = operations.NewSequence(
-	"seq-solana-fund-mcm-pdas",
+	"seq-solana-fund-mcm-pdas-from-refs",
 	&semvers.V1_0_0,
 	"Funds MCMS signer PDAs on a Solana chain from datastore refs",
 	func(b operations.Bundle, deps Deps, in ChainInput) (sequenceutils.OnChainOutput, error) {
