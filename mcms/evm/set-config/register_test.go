@@ -34,7 +34,7 @@ func TestInitRegistersEVM(t *testing.T) {
 			name: "sequence for family",
 			run: func(t *testing.T) {
 				t.Helper()
-				seq, err := setconfig.SequenceForFamily(chainselectors.FamilyEVM)
+				seq, err := setconfig.Registry.SequenceForFamily(chainselectors.FamilyEVM)
 				require.NoError(t, err)
 				require.Equal(t, seqSetConfig, seq)
 			},
@@ -43,7 +43,7 @@ func TestInitRegistersEVM(t *testing.T) {
 			name: "sequence for chain selector",
 			run: func(t *testing.T) {
 				t.Helper()
-				got, err := setconfig.SequenceForChainSelector(chainselectors.TEST_90000001.Selector)
+				got, err := setconfig.Registry.SequenceForChainSelector(chainselectors.TEST_90000001.Selector)
 				require.NoError(t, err)
 				require.Equal(t, seqSetConfig, got)
 			},

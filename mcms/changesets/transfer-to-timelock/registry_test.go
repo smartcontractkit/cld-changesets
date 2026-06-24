@@ -1,4 +1,4 @@
-package setconfig
+package transfertotimelock
 
 import (
 	"errors"
@@ -11,6 +11,8 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/changeset/sequenceutils"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
+
+	"github.com/smartcontractkit/cld-changesets/internal/familyregistry"
 )
 
 func testSequence(id string) *Sequence {
@@ -24,8 +26,14 @@ func testSequence(id string) *Sequence {
 	)
 }
 
+func newTestRegistry() *familyregistry.Registry[Sequence, ChainInput] {
+	return familyregistry.New[Sequence, ChainInput]("test transfer-to-timelock")
+}
+
 func TestSequenceForChainSelector(t *testing.T) {
 	t.Parallel()
+
+	reg := newTestRegistry()
 
 	tests := []struct {
 		name          string
@@ -38,7 +46,7 @@ func TestSequenceForChainSelector(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			_, err := Registry.SequenceForChainSelector(tt.chainSelector)
+			_, err := reg.SequenceForChainSelector(tt.chainSelector)
 			require.Error(t, err)
 		})
 	}
@@ -47,9 +55,10 @@ func TestSequenceForChainSelector(t *testing.T) {
 func TestRegister_andLookup(t *testing.T) {
 	t.Parallel()
 
-	const family = "test-set-config-family-a"
+	reg := newTestRegistry()
+	const family = "test-transfer-to-timelock-family-a"
 
-	Registry.Register(Registration{
+	reg.Register(Registration{
 		Family:   family,
 		Sequence: testSequence("test-seq-a"),
 		Verify: func(_ cldf.Environment, chains []ChainInput) error {
@@ -61,9 +70,9 @@ func TestRegister_andLookup(t *testing.T) {
 		},
 	})
 
-	require.Contains(t, Registry.RegisteredFamilies(), family)
+	require.Contains(t, reg.RegisteredFamilies(), family)
 
-	seq, err := Registry.SequenceForFamily(family)
+	seq, err := reg.SequenceForFamily(family)
 	require.NoError(t, err)
 	require.NotNil(t, seq)
 
@@ -87,7 +96,7 @@ func TestRegister_andLookup(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			err := Registry.VerifyForFamily(family, cldf.Environment{}, tt.chains)
+			err := reg.VerifyForFamily(family, cldf.Environment{}, tt.chains)
 			if tt.wantErr {
 				require.Error(t, err)
 				return
@@ -101,6 +110,8 @@ func TestRegister_andLookup(t *testing.T) {
 func TestRegister_validationPanics(t *testing.T) {
 	t.Parallel()
 
+	reg := newTestRegistry()
+
 	tests := []struct {
 		name string
 		reg  Registration
@@ -111,14 +122,14 @@ func TestRegister_validationPanics(t *testing.T) {
 		},
 		{
 			name: "nil sequence",
-			reg:  Registration{Family: "test-set-config-family-b", Sequence: nil},
+			reg:  Registration{Family: "test-transfer-to-timelock-family-b", Sequence: nil},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			require.Panics(t, func() { Registry.Register(tt.reg) })
+			require.Panics(t, func() { reg.Register(tt.reg) })
 		})
 	}
 }
@@ -126,29 +137,32 @@ func TestRegister_validationPanics(t *testing.T) {
 func TestRegister_duplicatePanics(t *testing.T) {
 	t.Parallel()
 
-	const family = "test-set-config-family-c"
-	Registry.Register(Registration{Family: family, Sequence: testSequence("test-seq-c")})
+	reg := newTestRegistry()
+	const family = "test-transfer-to-timelock-family-c"
+	reg.Register(Registration{Family: family, Sequence: testSequence("test-seq-c")})
 
 	require.Panics(t, func() {
-		Registry.Register(Registration{Family: family, Sequence: testSequence("test-seq-c-dup")})
+		reg.Register(Registration{Family: family, Sequence: testSequence("test-seq-c-dup")})
 	})
 }
 
 func TestSequenceForFamily_errors(t *testing.T) {
 	t.Parallel()
 
+	reg := newTestRegistry()
+
 	tests := []struct {
 		name   string
 		family string
 	}{
-		{name: "missing family", family: "test-set-config-family-missing"},
+		{name: "missing family", family: "test-transfer-to-timelock-family-missing"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			_, err := Registry.SequenceForFamily(tt.family)
+			_, err := reg.SequenceForFamily(tt.family)
 			require.ErrorContains(t, err, fmt.Sprintf(`no sequence registered for family %q`, tt.family))
 		})
 	}
@@ -157,11 +171,13 @@ func TestSequenceForFamily_errors(t *testing.T) {
 func TestVerifyForFamily(t *testing.T) {
 	t.Parallel()
 
-	const nilHookFamily = "test-set-config-family-d"
-	Registry.Register(Registration{Family: nilHookFamily, Sequence: testSequence("test-seq-d")})
+	reg := newTestRegistry()
 
-	const wrapFamily = "test-set-config-family-e"
-	Registry.Register(Registration{
+	const nilHookFamily = "test-transfer-to-timelock-family-d"
+	reg.Register(Registration{Family: nilHookFamily, Sequence: testSequence("test-seq-d")})
+
+	const wrapFamily = "test-transfer-to-timelock-family-e"
+	reg.Register(Registration{
 		Family:   wrapFamily,
 		Sequence: testSequence("test-seq-e"),
 		Verify: func(_ cldf.Environment, _ []ChainInput) error {
@@ -177,7 +193,7 @@ func TestVerifyForFamily(t *testing.T) {
 	}{
 		{
 			name:    "missing family",
-			family:  "test-set-config-family-missing-verify",
+			family:  "test-transfer-to-timelock-family-missing-verify",
 			wantErr: "no sequence registered for family",
 		},
 		{
@@ -196,7 +212,7 @@ func TestVerifyForFamily(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			err := Registry.VerifyForFamily(tt.family, cldf.Environment{}, tt.chains)
+			err := reg.VerifyForFamily(tt.family, cldf.Environment{}, tt.chains)
 			if tt.wantErr == "" {
 				require.NoError(t, err)
 				return

@@ -59,7 +59,7 @@ func (Changeset) VerifyPreconditions(e cldf.Environment, input Input) error {
 	slices.Sort(families)
 
 	for _, family := range families {
-		if err := verifyForFamily(family, e, byFamily[family]); err != nil {
+		if err := Registry.VerifyForFamily(family, e, byFamily[family]); err != nil {
 			return err
 		}
 	}
@@ -85,7 +85,7 @@ func (Changeset) Apply(e cldf.Environment, input Input) (cldf.ChangesetOutput, e
 	var agg sequenceutils.OnChainOutput
 
 	for _, chainSelector := range selectors {
-		seq, seqErr := SequenceForChainSelector(chainSelector)
+		seq, seqErr := Registry.SequenceForChainSelector(chainSelector)
 		if seqErr != nil {
 			return buildOutput(e, input.MCMS, agg, fmt.Errorf("chain selector %d: %w", chainSelector, seqErr))
 		}
