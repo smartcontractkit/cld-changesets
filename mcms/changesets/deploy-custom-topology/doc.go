@@ -26,11 +26,10 @@
 // [Input.MCMS] is set and a timelock takes ownership of contracts — builds one MCMS
 // timelock proposal per timelock qualifier from the returned batch operations.
 //
-// Each family sequence returns a [ChainOutput] carrying deployed-address Metadata
-// and accept-ownership [ProposalGroup]s keyed by the owning timelock's qualifier.
-// The changeset emits one proposal per distinct qualifier, so a chain with several
-// independent timelocks each yields its own proposal resolving its own
-// (timelock, proposer MCM) pair.
+// Each family sequence returns [sequenceutils.OnChainOutput]. Populate Metadata with
+// deployed addresses and BatchOps with accept-ownership batch operations (only when
+// running with MCMS input). The changeset groups batch operations by timelock qualifier
+// when building proposals.
 //
 // # Built-in EVM and Solana support
 //
@@ -49,8 +48,7 @@
 //   - extra_args.go — optional, parses family-specific [ChainTopologyConfig.ExtraArgs]
 //
 // The sequence must match [Sequence]: it receives [ChainInput] and [Deps] and returns
-// [ChainOutput]. Populate Metadata with deployed addresses and ProposalGroups with
-// accept-ownership batch operations (only when running with MCMS input).
+// [sequenceutils.OnChainOutput].
 //
 // Each family may only be registered once; duplicate registration panics. Use
 // [Sequences.RegisteredFamilies] to inspect the registry in tests.

@@ -8,6 +8,7 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/stretchr/testify/require"
 
+	"github.com/smartcontractkit/chainlink-deployments-framework/changeset/sequenceutils"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 )
@@ -17,8 +18,8 @@ func testSequence(id string) *Sequence {
 		id,
 		semver.MustParse("1.0.0"),
 		"test sequence",
-		func(_ operations.Bundle, _ Deps, _ ChainInput) (ChainOutput, error) {
-			return ChainOutput{}, nil
+		func(_ operations.Bundle, _ Deps, _ ChainInput) (sequenceutils.OnChainOutput, error) {
+			return sequenceutils.OnChainOutput{}, nil
 		},
 	)
 }

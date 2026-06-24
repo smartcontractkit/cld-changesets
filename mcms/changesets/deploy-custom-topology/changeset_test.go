@@ -12,6 +12,7 @@ import (
 
 	chain_selectors "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
+	"github.com/smartcontractkit/chainlink-deployments-framework/changeset/sequenceutils"
 	cldfdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
@@ -28,9 +29,9 @@ var fakeEVMTopologySeq = operations.NewSequence(
 	"fake-evm-deploy-topology",
 	semver.MustParse("1.0.0"),
 	"fake EVM deploy topology",
-	func(_ operations.Bundle, _ Deps, in ChainInput) (ChainOutput, error) {
+	func(_ operations.Bundle, _ Deps, in ChainInput) (sequenceutils.OnChainOutput, error) {
 		v := semver.MustParse("1.0.0")
-		out := ChainOutput{
+		out := sequenceutils.OnChainOutput{
 			Metadata: cldfdatastore.MetadataBundle{
 				Addresses: []cldfdatastore.AddressRef{{
 					ChainSelector: in.ChainSelector,
@@ -45,15 +46,12 @@ var fakeEVMTopologySeq = operations.NewSequence(
 			if len(tl.TransferOwnership) == 0 {
 				continue
 			}
-			out.ProposalGroups = append(out.ProposalGroups, ProposalGroup{
-				Qualifier: tl.Qualifier,
-				BatchOps: []mcmstypes.BatchOperation{{
-					ChainSelector: mcmstypes.ChainSelector(in.ChainSelector),
-					Transactions: []mcmstypes.Transaction{{
-						To:               "0x0000000000000000000000000000000000000002",
-						Data:             []byte{0x01},
-						AdditionalFields: json.RawMessage(`{}`),
-					}},
+			out.BatchOps = append(out.BatchOps, mcmstypes.BatchOperation{
+				ChainSelector: mcmstypes.ChainSelector(in.ChainSelector),
+				Transactions: []mcmstypes.Transaction{{
+					To:               "0x0000000000000000000000000000000000000002",
+					Data:             []byte{0x01},
+					AdditionalFields: json.RawMessage(`{}`),
 				}},
 			})
 		}
@@ -245,7 +243,6 @@ func TestChangeset_Apply_deploysAndWritesAddresses(t *testing.T) {
 		Cfg: Config{ChainConfigs: map[uint64]ChainTopologyConfig{fakeEVMFamilySelector: validChainConfig()}},
 	})
 	require.NoError(t, err)
-	require.NotEmpty(t, out.Reports)
 	require.Empty(t, out.MCMSTimelockProposals)
 
 	addrs, err := out.DataStore.Addresses().Fetch()
@@ -276,40 +273,64 @@ func TestChangeset_Apply_unregisteredFamilyErrors(t *testing.T) {
 	require.ErrorContains(t, err, "chain selector 1")
 }
 
-func TestMergeChainOutputs(t *testing.T) {
+func TestBatchOpsForQualifier(t *testing.T) {
 	t.Parallel()
 
-	env := &cldfdatastore.EnvMetadata{}
-	a := ChainOutput{
-		Metadata:       cldfdatastore.MetadataBundle{Addresses: []cldfdatastore.AddressRef{{ChainSelector: 1}}},
-		ProposalGroups: []ProposalGroup{{Qualifier: "CCIP"}},
+	op := func(sel uint64, to string) mcmstypes.BatchOperation {
+		return mcmstypes.BatchOperation{
+			ChainSelector: mcmstypes.ChainSelector(sel),
+			Transactions:  []mcmstypes.Transaction{{To: to}},
+		}
 	}
-	b := ChainOutput{
-		Metadata:       cldfdatastore.MetadataBundle{Addresses: []cldfdatastore.AddressRef{{ChainSelector: 2}}, Env: env},
-		ProposalGroups: []ProposalGroup{{Qualifier: "RMN"}},
+	cfg := Config{ChainConfigs: map[uint64]ChainTopologyConfig{
+		1: {
+			MCMs: []MCMSpec{{
+				Ref:          "bypasser",
+				Qualifier:    "CCIP",
+				ContractType: "BypasserManyChainMultisig",
+			}},
+			Timelocks: []TimelockSpec{{
+				Ref:               "timelock",
+				Qualifier:         "CCIP",
+				TransferOwnership: []RoleHolder{{MCMRef: "bypasser"}},
+			}},
+		},
+		2: {
+			MCMs: []MCMSpec{{
+				Ref:          "bypasser",
+				Qualifier:    "RMN",
+				ContractType: "BypasserManyChainMultisig",
+			}},
+			Timelocks: []TimelockSpec{{
+				Ref:               "timelock",
+				Qualifier:         "RMN",
+				TransferOwnership: []RoleHolder{{MCMRef: "bypasser"}},
+			}},
+		},
+	}}
+	meta := cldfdatastore.MetadataBundle{
+		Addresses: []cldfdatastore.AddressRef{
+			{ChainSelector: 1, Qualifier: "CCIP", Type: "BypasserManyChainMultisig", Address: "0xccip"},
+			{ChainSelector: 2, Qualifier: "RMN", Type: "BypasserManyChainMultisig", Address: "0xrmn"},
+		},
 	}
+	batchOps := []mcmstypes.BatchOperation{op(1, "0xccip"), op(2, "0xrmn")}
 
-	got := mergeChainOutputs(a, b)
-	require.Len(t, got.Metadata.Addresses, 2)
-	require.Len(t, got.ProposalGroups, 2)
-	require.Equal(t, env, got.Metadata.Env)
+	require.Len(t, batchOpsForQualifier(batchOps, meta, cfg, "CCIP"), 1)
+	require.Len(t, batchOpsForQualifier(batchOps, meta, cfg, "RMN"), 1)
+	require.Empty(t, batchOpsForQualifier(batchOps, meta, cfg, "NONE"))
 }
 
-func TestSortedQualifiersAndBatchOps(t *testing.T) {
+func TestSortedQualifiersWithTransfers(t *testing.T) {
 	t.Parallel()
 
-	op := func(sel uint64) mcmstypes.BatchOperation {
-		return mcmstypes.BatchOperation{ChainSelector: mcmstypes.ChainSelector(sel), Transactions: []mcmstypes.Transaction{{To: "0x1"}}}
-	}
-	groups := []ProposalGroup{
-		{Qualifier: "RMN", BatchOps: []mcmstypes.BatchOperation{op(1)}},
-		{Qualifier: "CCIP", BatchOps: []mcmstypes.BatchOperation{op(2)}},
-		{Qualifier: "CCIP", BatchOps: []mcmstypes.BatchOperation{op(3)}}, // merged across chains
-		{Qualifier: "EMPTY"}, // skipped: no batch ops
-	}
+	cfg := Config{ChainConfigs: map[uint64]ChainTopologyConfig{
+		1: {Timelocks: []TimelockSpec{
+			{Qualifier: "RMN", TransferOwnership: []RoleHolder{{Address: addr(t, "0x1")}}},
+			{Qualifier: "CCIP", TransferOwnership: []RoleHolder{{Address: addr(t, "0x2")}}},
+			{Qualifier: "EMPTY"},
+		}},
+	}}
 
-	require.Equal(t, []string{"CCIP", "RMN"}, sortedQualifiers(groups))
-	require.Len(t, batchOpsForQualifier(groups, "CCIP"), 2)
-	require.Len(t, batchOpsForQualifier(groups, "RMN"), 1)
-	require.Empty(t, batchOpsForQualifier(groups, "NONE"))
+	require.Equal(t, []string{"CCIP", "RMN"}, sortedQualifiersWithTransfers(cfg))
 }

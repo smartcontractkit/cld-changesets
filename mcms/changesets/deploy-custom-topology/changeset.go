@@ -4,12 +4,13 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 
 	chain_selectors "github.com/smartcontractkit/chain-selectors"
 
+	"github.com/smartcontractkit/chainlink-deployments-framework/changeset/sequenceutils"
 	cldfdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
-	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 
 	"github.com/smartcontractkit/cld-changesets/internal/maputil"
@@ -39,40 +40,38 @@ func (Changeset) Apply(e cldf.Environment, input Input) (cldf.ChangesetOutput, e
 		DataStore:   e.DataStore,
 	}
 
-	var agg ChainOutput
-	var reports []operations.Report[any, any]
+	var agg sequenceutils.OnChainOutput
 
 	for _, chainSelector := range maputil.SortedMapKeys(input.Cfg.ChainConfigs) {
 		seq, seqErr := Sequences.SequenceForChainSelector(chainSelector)
 		if seqErr != nil {
-			return buildOutput(e, input.MCMS, agg, reports, fmt.Errorf("chain selector %d: %w", chainSelector, seqErr))
+			return buildOutput(e, input.Cfg, input.MCMS, agg, fmt.Errorf("chain selector %d: %w", chainSelector, seqErr))
 		}
 
-		report, runErr := operations.ExecuteSequence(
+		var mergeErr error
+		agg, mergeErr = sequenceutils.ExecuteOnChainSequenceAndMerge(
 			e.OperationsBundle,
-			seq,
 			deps,
+			seq,
 			ChainInput{
 				ChainSelector: chainSelector,
 				Config:        input.Cfg.ChainConfigs[chainSelector],
 				ExtraArgs:     input.Cfg.ChainConfigs[chainSelector].ExtraArgs,
 				MCMS:          input.MCMS,
 			},
+			agg,
 		)
-		reports = append(reports, report.ExecutionReports...)
-		if runErr != nil {
-			return buildOutput(e, input.MCMS, agg, reports, fmt.Errorf("chain selector %d: %w", chainSelector, runErr))
+		if mergeErr != nil {
+			return buildOutput(e, input.Cfg, input.MCMS, agg, fmt.Errorf("chain selector %d: %w", chainSelector, mergeErr))
 		}
-
-		agg = mergeChainOutputs(agg, report.Output)
 	}
 
-	if len(agg.ProposalGroups) > 0 && input.MCMS == nil {
-		return buildOutput(e, input.MCMS, agg, reports,
+	if len(agg.BatchOps) > 0 && input.MCMS == nil {
+		return buildOutput(e, input.Cfg, input.MCMS, agg,
 			errors.New("sequences returned accept-ownership batch operations but no MCMS input was provided"))
 	}
 
-	return buildOutput(e, input.MCMS, agg, reports, nil)
+	return buildOutput(e, input.Cfg, input.MCMS, agg, nil)
 }
 
 // buildOutput writes deployed-address metadata to a fresh datastore and, when an
@@ -80,19 +79,19 @@ func (Changeset) Apply(e cldf.Environment, input Input) (cldf.ChangesetOutput, e
 // the aggregated accept-ownership batch operations.
 func buildOutput(
 	e cldf.Environment,
+	cfg Config,
 	mcmsInput *cldf.MCMSTimelockProposalInput,
-	agg ChainOutput,
-	reports []operations.Report[any, any],
+	agg sequenceutils.OnChainOutput,
 	runErr error,
 ) (cldf.ChangesetOutput, error) {
 	outDS := cldfdatastore.NewMemoryDataStore()
 	if metaErr := outDS.WriteMetadata(agg.Metadata); metaErr != nil {
-		return cldf.ChangesetOutput{DataStore: outDS, Reports: reports},
+		return cldf.ChangesetOutput{DataStore: outDS},
 			fmt.Errorf("failed to write metadata to datastore: %w", metaErr)
 	}
 
 	if runErr != nil {
-		return cldf.ChangesetOutput{DataStore: outDS, Reports: reports}, runErr
+		return cldf.ChangesetOutput{DataStore: outDS}, runErr
 	}
 
 	// Resolve proposals against an environment view that includes the freshly
@@ -103,23 +102,27 @@ func buildOutput(
 		resolveDS := cldfdatastore.NewMemoryDataStore()
 		if e.DataStore != nil {
 			if mergeErr := resolveDS.Merge(e.DataStore); mergeErr != nil {
-				return cldf.ChangesetOutput{DataStore: outDS, Reports: reports},
+				return cldf.ChangesetOutput{DataStore: outDS},
 					fmt.Errorf("failed to merge environment datastore: %w", mergeErr)
 			}
 		}
 		if metaErr := resolveDS.WriteMetadata(agg.Metadata); metaErr != nil {
-			return cldf.ChangesetOutput{DataStore: outDS, Reports: reports},
+			return cldf.ChangesetOutput{DataStore: outDS},
 				fmt.Errorf("failed to stage deployed addresses for proposal resolution: %w", metaErr)
 		}
 		resolveEnv.DataStore = resolveDS.Seal()
 	}
 
-	builder := cldf.NewOutputBuilder(resolveEnv, outDS).WithOperationsReports(reports)
+	builder := cldf.NewOutputBuilder(resolveEnv, outDS)
 	if mcmsInput != nil {
-		for _, qualifier := range sortedQualifiers(agg.ProposalGroups) {
+		for _, qualifier := range sortedQualifiersWithTransfers(cfg) {
+			ops := batchOpsForQualifier(agg.BatchOps, agg.Metadata, cfg, qualifier)
+			if len(ops) == 0 {
+				continue
+			}
 			input := *mcmsInput
 			input.Qualifier = qualifier
-			builder = builder.WithTimelockProposal(input, batchOpsForQualifier(agg.ProposalGroups, qualifier))
+			builder = builder.WithTimelockProposal(input, ops)
 		}
 	}
 
@@ -251,47 +254,117 @@ func validateRoleHolders(chainSelector uint64, timelockRef, field string, holder
 	return nil
 }
 
-// mergeChainOutputs concatenates metadata and proposal groups from one chain's
-// sequence output into the running aggregate.
-func mergeChainOutputs(agg, out ChainOutput) ChainOutput {
-	agg.Metadata.Addresses = append(agg.Metadata.Addresses, out.Metadata.Addresses...)
-	agg.Metadata.Contracts = append(agg.Metadata.Contracts, out.Metadata.Contracts...)
-	agg.Metadata.Chains = append(agg.Metadata.Chains, out.Metadata.Chains...)
-	if out.Metadata.Env != nil {
-		agg.Metadata.Env = out.Metadata.Env
+// sortedQualifiersWithTransfers returns the distinct, sorted timelock qualifiers
+// that have ownership transfers configured across all chains.
+func sortedQualifiersWithTransfers(cfg Config) []string {
+	seen := make(map[string]struct{})
+	for _, chainCfg := range cfg.ChainConfigs {
+		for _, tl := range chainCfg.Timelocks {
+			if len(tl.TransferOwnership) == 0 {
+				continue
+			}
+			seen[tl.Qualifier] = struct{}{}
+		}
 	}
-	agg.ProposalGroups = append(agg.ProposalGroups, out.ProposalGroups...)
 
-	return agg
-}
-
-// sortedQualifiers returns the distinct, sorted qualifiers across all proposal
-// groups (groups sharing a qualifier are merged into one proposal spanning chains).
-func sortedQualifiers(groups []ProposalGroup) []string {
-	seen := make(map[string]struct{}, len(groups))
-	qualifiers := make([]string, 0, len(groups))
-	for _, g := range groups {
-		if len(g.BatchOps) == 0 {
-			continue
-		}
-		if _, ok := seen[g.Qualifier]; ok {
-			continue
-		}
-		seen[g.Qualifier] = struct{}{}
-		qualifiers = append(qualifiers, g.Qualifier)
+	qualifiers := make([]string, 0, len(seen))
+	for q := range seen {
+		qualifiers = append(qualifiers, q)
 	}
 	slices.Sort(qualifiers)
 
 	return qualifiers
 }
 
-func batchOpsForQualifier(groups []ProposalGroup, qualifier string) []mcmstypes.BatchOperation {
+// batchOpsForQualifier selects accept-ownership batch operations for a timelock
+// qualifier by matching transaction targets against the configured transfer list.
+func batchOpsForQualifier(
+	batchOps []mcmstypes.BatchOperation,
+	meta cldfdatastore.MetadataBundle,
+	cfg Config,
+	qualifier string,
+) []mcmstypes.BatchOperation {
 	var ops []mcmstypes.BatchOperation
-	for _, g := range groups {
-		if g.Qualifier == qualifier {
-			ops = append(ops, g.BatchOps...)
+	for _, op := range batchOps {
+		chainSelector := uint64(op.ChainSelector)
+		chainCfg, ok := cfg.ChainConfigs[chainSelector]
+		if !ok {
+			continue
+		}
+		targets := transferTargetAddressesForQualifier(chainSelector, chainCfg, meta, qualifier)
+		if len(targets) == 0 {
+			continue
+		}
+		if batchOpMatchesTargets(op, targets) {
+			ops = append(ops, op)
 		}
 	}
 
 	return ops
+}
+
+func transferTargetAddressesForQualifier(
+	chainSelector uint64,
+	chainCfg ChainTopologyConfig,
+	meta cldfdatastore.MetadataBundle,
+	qualifier string,
+) map[string]struct{} {
+	targets := make(map[string]struct{})
+	for _, tl := range chainCfg.Timelocks {
+		if tl.Qualifier != qualifier || len(tl.TransferOwnership) == 0 {
+			continue
+		}
+		for _, h := range tl.TransferOwnership {
+			if addr, ok := resolveRoleHolderAddress(chainSelector, h, chainCfg.MCMs, meta); ok {
+				targets[addr] = struct{}{}
+			}
+		}
+	}
+
+	return targets
+}
+
+func resolveRoleHolderAddress(
+	chainSelector uint64,
+	h RoleHolder,
+	mcms []MCMSpec,
+	meta cldfdatastore.MetadataBundle,
+) (string, bool) {
+	if h.Address != nil {
+		return strings.ToLower(h.Address.Hex()), true
+	}
+
+	var spec *MCMSpec
+	for i := range mcms {
+		if mcms[i].Ref == h.MCMRef {
+			spec = &mcms[i]
+			break
+		}
+	}
+	if spec == nil {
+		return "", false
+	}
+
+	for _, ref := range meta.Addresses {
+		if ref.ChainSelector != chainSelector {
+			continue
+		}
+		if ref.Qualifier != spec.Qualifier || ref.Type != cldfdatastore.ContractType(spec.ContractType) {
+			continue
+		}
+
+		return strings.ToLower(ref.Address), true
+	}
+
+	return "", false
+}
+
+func batchOpMatchesTargets(op mcmstypes.BatchOperation, targets map[string]struct{}) bool {
+	for _, tx := range op.Transactions {
+		if _, ok := targets[strings.ToLower(tx.To)]; ok {
+			return true
+		}
+	}
+
+	return false
 }

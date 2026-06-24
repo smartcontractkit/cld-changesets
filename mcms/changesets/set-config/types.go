@@ -9,7 +9,6 @@ import (
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 
 	"github.com/smartcontractkit/cld-changesets/datastore/refkey"
-	"github.com/smartcontractkit/cld-changesets/mcms/changesets/familyregistry"
 )
 
 // ContractSetConfig binds an MCMS config to a datastore contract reference.
@@ -33,9 +32,6 @@ type Deps struct {
 
 // Sequence is the required operations sequence type for all family implementations.
 type Sequence = operations.Sequence[ChainInput, sequenceutils.OnChainOutput, Deps]
-
-// Registration describes one chain family's MCMS set-config implementation.
-type Registration = familyregistry.Registration[Sequence, ChainInput]
 
 // EnvFromDeps reconstructs the environment fields sequences need for ref and MCMS resolution.
 func EnvFromDeps(deps Deps) cldf.Environment {

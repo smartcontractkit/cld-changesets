@@ -11,6 +11,7 @@ import (
 
 	chain_selectors "github.com/smartcontractkit/chain-selectors"
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
+	"github.com/smartcontractkit/chainlink-deployments-framework/changeset/sequenceutils"
 	cldfdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	mcmscontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/mcms"
@@ -207,7 +208,7 @@ func TestRunEVMDeployTopology_TwoTimelocksWithOwnershipTransfer(t *testing.T) {
 		},
 	})
 
-	require.Len(t, out.ProposalGroups, 2)
+	require.Len(t, out.BatchOps, 2)
 
 	ccipProposer := fetchAddrFromOutput(t, out, sel, mcmscontracts.ProposerManyChainMultisig, "CCIP")
 	ccipBypasser := fetchAddrFromOutput(t, out, sel, mcmscontracts.BypasserManyChainMultisig, "CCIP")
@@ -237,11 +238,15 @@ func TestRunEVMDeployTopology_TwoTimelocksWithOwnershipTransfer(t *testing.T) {
 
 	gotQualifiers := map[string]bool{}
 	gotAcceptTargets := map[string]bool{}
-	for _, g := range out.ProposalGroups {
-		gotQualifiers[g.Qualifier] = true
-		for _, batch := range g.BatchOps {
-			for _, tx := range batch.Transactions {
-				gotAcceptTargets[common.HexToAddress(tx.To).Hex()] = true
+	for _, batch := range out.BatchOps {
+		for _, tx := range batch.Transactions {
+			switch common.HexToAddress(tx.To).Hex() {
+			case ccipBypasser.Hex():
+				gotQualifiers["CCIP"] = true
+				gotAcceptTargets[ccipBypasser.Hex()] = true
+			case rmnBypasser.Hex():
+				gotQualifiers["RMN"] = true
+				gotAcceptTargets[rmnBypasser.Hex()] = true
 			}
 		}
 	}
@@ -295,7 +300,7 @@ func runDeployTopologySequence(
 	t *testing.T,
 	rt *runtime.Runtime,
 	chainInput deploycustomtopology.ChainInput,
-) deploycustomtopology.ChainOutput {
+) sequenceutils.OnChainOutput {
 	t.Helper()
 
 	env := rt.Environment()
@@ -315,7 +320,7 @@ func runDeployTopologySequence(
 
 func fetchAddrsFromOutput(
 	t *testing.T,
-	out deploycustomtopology.ChainOutput,
+	out sequenceutils.OnChainOutput,
 	sel uint64,
 	ct cldf.ContractType,
 	qualifier string,
@@ -334,7 +339,7 @@ func fetchAddrsFromOutput(
 
 func fetchAddrFromOutput(
 	t *testing.T,
-	out deploycustomtopology.ChainOutput,
+	out sequenceutils.OnChainOutput,
 	sel uint64,
 	ct cldf.ContractType,
 	qualifier string,
