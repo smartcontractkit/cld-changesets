@@ -8,13 +8,13 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	bindings "github.com/smartcontractkit/ccip-owner-contracts/pkg/gethwrappers"
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	opscontract "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/operations2/contract"
 	"github.com/smartcontractkit/chainlink-deployments-framework/changeset/sequenceutils"
 	cldfdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	mcmscontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/mcms"
-	cldfproposalutils "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 	gobindings "github.com/smartcontractkit/chainlink-evm/gethwrappers/shared/generated/initial/burn_mint_erc677"
 	mcmsevmsdk "github.com/smartcontractkit/mcms/sdk/evm"
@@ -26,9 +26,6 @@ import (
 	callproxyops "github.com/smartcontractkit/cld-changesets/mcms/evm/deploy/v1_0_0/operations/call_proxy"
 	mcmops "github.com/smartcontractkit/cld-changesets/mcms/evm/deploy/v1_0_0/operations/many_chain_multi_sig"
 	timelockops "github.com/smartcontractkit/cld-changesets/mcms/evm/deploy/v1_0_0/operations/rbac_timelock"
-	evmgrantrole "github.com/smartcontractkit/cld-changesets/mcms/evm/grant-role"
-	"github.com/smartcontractkit/cld-changesets/mcms/evm/internal/gasboost"
-	evmops "github.com/smartcontractkit/cld-changesets/mcms/evm/operations"
 	evmsetconfig "github.com/smartcontractkit/cld-changesets/mcms/evm/set-config"
 	ownableops "github.com/smartcontractkit/cld-changesets/mcms/evm/transfer-to-mcms/v1_0_0/operations/burn_mint_erc677"
 )
@@ -93,7 +90,7 @@ func runEVMDeployTopology(
 func deployMCMWithConfig(
 	b operations.Bundle,
 	chain cldf_evm.Chain,
-	gasBoost *cldfproposalutils.GasBoostConfig,
+	gasBoost *opscontract.GasBoostConfig,
 	spec deploycustomtopology.MCMSpec,
 ) (common.Address, error) {
 	typeAndVersion, err := mcmTypeVersion(spec.ContractType)
@@ -110,7 +107,7 @@ func deployMCMWithConfig(
 			Qualifier:      &spec.Qualifier,
 			Args:           mcmops.ConstructorArgs{},
 		},
-		gasboost.RetryDeploy[mcmops.ConstructorArgs](gasBoost),
+		opscontract.RetryDeployWithGasBoost[mcmops.ConstructorArgs](gasBoost),
 		operations.WithIdempotencyKey[opscontract.DeployInput[mcmops.ConstructorArgs], cldf_evm.Chain](fmt.Sprintf("%d:mcm:%s", chain.Selector, spec.Ref)),
 	)
 	if err != nil {
@@ -131,7 +128,7 @@ func deployMCMWithConfig(
 			},
 			NoSend: false,
 		},
-		gasboost.RetryWithGasBoost[evmsetconfig.OpEVMSetConfigInput](gasBoost),
+		opscontract.RetryWithGasBoost[evmsetconfig.OpEVMSetConfigInput](gasBoost),
 		outputAddressIdempotencyKey[evmsetconfig.OpEVMSetConfigInput, cldf_evm.Chain](chain, deployReport.Output.Address),
 	)
 	if err != nil {
@@ -147,7 +144,7 @@ func deployCallProxy(
 	chain cldf_evm.Chain,
 	chainSelector uint64,
 	targetAddr common.Address,
-	gasBoost *cldfproposalutils.GasBoostConfig,
+	gasBoost *opscontract.GasBoostConfig,
 	timelockSpec deploycustomtopology.TimelockSpec) (common.Address, error) {
 	cpReport, err := operations.ExecuteOperation(
 		b,
@@ -158,7 +155,7 @@ func deployCallProxy(
 			Qualifier:      &timelockSpec.Qualifier,
 			Args:           callproxyops.ConstructorArgs{Target: targetAddr},
 		},
-		gasboost.RetryDeploy[callproxyops.ConstructorArgs](gasBoost),
+		opscontract.RetryDeployWithGasBoost[callproxyops.ConstructorArgs](gasBoost),
 		operations.WithIdempotencyKey[opscontract.DeployInput[callproxyops.ConstructorArgs], cldf_evm.Chain](fmt.Sprintf("%d:callproxy:%s", chain.Selector, timelockSpec.Ref)),
 	)
 	if err != nil {
@@ -175,7 +172,7 @@ func deployTimelockAndSetRoles(
 	b operations.Bundle,
 	chain cldf_evm.Chain,
 	chainSelector uint64,
-	gasBoost *cldfproposalutils.GasBoostConfig,
+	gasBoost *opscontract.GasBoostConfig,
 	extra EVMExtraArgs,
 	tl deploycustomtopology.TimelockSpec,
 	refToAddr map[string]common.Address,
@@ -221,7 +218,7 @@ func deployTimelockAndSetRoles(
 				Bypassers:  bypassers,
 			},
 		},
-		gasboost.RetryDeploy[timelockops.ConstructorArgs](gasBoost),
+		opscontract.RetryDeployWithGasBoost[timelockops.ConstructorArgs](gasBoost),
 		operations.WithIdempotencyKey[opscontract.DeployInput[timelockops.ConstructorArgs], cldf_evm.Chain](fmt.Sprintf("%d:timelock:%s", chain.Selector, tl.Ref)),
 	)
 	if err != nil {
@@ -291,7 +288,7 @@ func grantRoles(
 	b operations.Bundle,
 	chain cldf_evm.Chain,
 	chainSelector uint64,
-	gasBoost *cldfproposalutils.GasBoostConfig,
+	gasBoost *opscontract.GasBoostConfig,
 	timelockAddr, callProxyAddr common.Address,
 	proposers, cancellers, bypassers, executors, admins []common.Address,
 ) error {
@@ -319,6 +316,12 @@ func grantRoles(
 	})
 
 	timelockInspector := mcmsevmsdk.NewTimelockInspector(chain.Client)
+
+	timelock, err := bindings.NewRBACTimelock(timelockAddr, chain.Client)
+	if err != nil {
+		return fmt.Errorf("bind timelock %s: %w", timelockAddr.Hex(), err)
+	}
+	grantRole := timelockops.NewWriteGrantRole(timelock)
 
 	for _, g := range grants {
 		var (
@@ -353,17 +356,18 @@ func grantRoles(
 			if slices.Contains(existing, addr.Hex()) {
 				continue
 			}
-			_, err := operations.ExecuteOperation(b, evmgrantrole.OpGrantRole,
+			_, err := operations.ExecuteOperation(b, grantRole,
 				chain,
-				evmops.EVMCallInput[evmgrantrole.OpGrantRoleInput]{
-					ChainSelector: chainSelector,
-					CallInput: evmgrantrole.OpGrantRoleInput{
+				opscontract.FunctionInput[timelockops.GrantRoleArgs]{
+					Args: timelockops.GrantRoleArgs{
+						Role:    [32]byte(g.Role),
 						Account: addr,
-						RoleID:  [32]byte(g.Role),
 					},
-					Address: timelockAddr,
 				},
-				evmops.RetryCallWithGasBoost[evmgrantrole.OpGrantRoleInput](gasBoost),
+				opscontract.RetryWriteWithGasBoost[timelockops.GrantRoleArgs](gasBoost),
+				operations.WithIdempotencyKey[opscontract.FunctionInput[timelockops.GrantRoleArgs], cldf_evm.Chain](
+					fmt.Sprintf("%d:grant-role:%s:%s:%s", chainSelector, timelockAddr.Hex(), g.Name, addr.Hex()),
+				),
 			)
 			if err != nil {
 				b.Logger.Errorw("Failed to grant role",

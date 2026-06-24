@@ -11,7 +11,7 @@ import (
 
 // init auto-registers the EVM family when this package is imported.
 func init() {
-	deploycustomtopology.Sequences.Register(Registration())
+	deploycustomtopology.Registry.Register(Registration())
 }
 
 // Registration returns the EVM chain-family deploy-custom-topology registration.

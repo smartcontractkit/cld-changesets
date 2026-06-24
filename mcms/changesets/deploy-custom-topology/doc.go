@@ -42,7 +42,7 @@
 // Implement a family under mcms/<family>/deploy-custom-topology and register it at
 // process startup. Follow this layout:
 //
-//   - register.go — exports Registration() and calls [Register] in init()
+//   - register.go — exports Registration() and calls [Registry.Register] in init()
 //   - sequence.go — operations.Sequence that deploys the topology for one chain
 //   - addresses.go — datastore ref resolution / AddressRef construction
 //   - extra_args.go — optional, parses family-specific [ChainTopologyConfig.ExtraArgs]
@@ -50,6 +50,10 @@
 // The sequence must match [Sequence]: it receives [ChainInput] and [Deps] and returns
 // [sequenceutils.OnChainOutput].
 //
+// Register at startup from init (recommended, mirrors EVM and Solana):
+//
+//	func init() { deploycustomtopology.Registry.Register(Registration()) }
+//
 // Each family may only be registered once; duplicate registration panics. Use
-// [Sequences.RegisteredFamilies] to inspect the registry in tests.
+// [Registry.RegisteredFamilies] to inspect the registry in tests.
 package deploycustomtopology
