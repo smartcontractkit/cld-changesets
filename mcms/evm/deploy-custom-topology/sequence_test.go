@@ -254,6 +254,50 @@ func TestRunEVMDeployTopology_TwoTimelocksWithOwnershipTransfer(t *testing.T) {
 	require.Equal(t, map[string]bool{ccipBypasser.Hex(): true, rmnBypasser.Hex(): true}, gotAcceptTargets)
 }
 
+// TestRunEVMDeployTopology_DuplicateTransferOwnership deduplicates contracts when
+// TransferOwnership lists the same target more than once.
+func TestRunEVMDeployTopology_DuplicateTransferOwnership(t *testing.T) {
+	t.Parallel()
+
+	sel := chain_selectors.TEST_90000001.Selector
+	rt := newEVMRuntime(t, sel)
+	cfg := mcmConfig(t)
+	qualifier := "CCIP"
+
+	out := runDeployTopologySequence(t, rt, deploycustomtopology.ChainInput{
+		ChainSelector: sel,
+		Config: deploycustomtopology.ChainTopologyConfig{
+			MCMs: []deploycustomtopology.MCMSpec{
+				mcmSpec("bypasser", mcmscontracts.BypasserManyChainMultisig, qualifier, cfg),
+			},
+			Timelocks: []deploycustomtopology.TimelockSpec{{
+				Ref:       "timelock",
+				MinDelay:  big.NewInt(0),
+				Qualifier: qualifier,
+				Roles: deploycustomtopology.RoleAssignments{
+					Bypassers: []deploycustomtopology.RoleHolder{{MCMRef: "bypasser"}},
+				},
+				TransferOwnership: []deploycustomtopology.RoleHolder{
+					{MCMRef: "bypasser"},
+					{MCMRef: "bypasser"},
+				},
+			}},
+		},
+		MCMS: &cldf.MCMSTimelockProposalInput{
+			TimelockAction: mcmstypes.TimelockActionSchedule,
+			ValidUntil:     uint32(time.Now().Add(2 * time.Hour).UTC().Unix()), //nolint:gosec // test timestamp
+			TimelockDelay:  mcmstypes.NewDuration(time.Second),
+			Description:    "accept ownership",
+		},
+	})
+
+	require.Len(t, out.BatchOps, 1)
+	require.Len(t, out.BatchOps[0].Transactions, 1)
+
+	bypasser := fetchAddrFromOutput(t, out, sel, mcmscontracts.BypasserManyChainMultisig, qualifier)
+	require.Equal(t, bypasser.Hex(), out.BatchOps[0].Transactions[0].To)
+}
+
 func TestResolveHolders(t *testing.T) {
 	t.Parallel()
 

@@ -402,7 +402,13 @@ func transferContractsToTimelock(
 	contracts []common.Address,
 ) ([]mcmstypes.Transaction, error) {
 	var transactions []mcmstypes.Transaction
+	seen := make(map[common.Address]struct{}, len(contracts))
 	for _, contract := range contracts {
+		if _, ok := seen[contract]; ok {
+			continue
+		}
+		seen[contract] = struct{}{}
+
 		txs, err := transferContractToTimelock(b, chain, timelock, contract)
 		if err != nil {
 			return nil, fmt.Errorf("contract %s: %w", contract.Hex(), err)
