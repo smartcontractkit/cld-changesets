@@ -1,4 +1,4 @@
-package solfundmcmpdas
+package fundmcmpdas
 
 import (
 	"errors"
@@ -9,6 +9,7 @@ import (
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 
 	"github.com/smartcontractkit/cld-changesets/internal/maputil"
+	solfundmcmpdas "github.com/smartcontractkit/cld-changesets/mcms/solana/fund-mcm-pdas"
 )
 
 var _ cldf.ChangeSetV2[Config] = Changeset{}
@@ -37,7 +38,7 @@ func (Changeset) VerifyPreconditions(env cldf.Environment, config Config) error 
 }
 
 func (Changeset) Apply(e cldf.Environment, config Config) (cldf.ChangesetOutput, error) {
-	deps := seqDeps{
+	deps := solfundmcmpdas.Deps{
 		BlockChains: e.BlockChains,
 		DataStore:   e.DataStore,
 	}
@@ -51,8 +52,8 @@ func (Changeset) Apply(e cldf.Environment, config Config) (cldf.ChangesetOutput,
 		agg, mergeErr = sequenceutils.ExecuteOnChainSequenceAndMerge(
 			e.OperationsBundle,
 			deps,
-			SeqFundMCMPDAs,
-			seqInput{
+			solfundmcmpdas.SeqFundMCMPDAs,
+			solfundmcmpdas.ChainInput{
 				ChainSelector: chainSelector,
 				FundingConfig: chainCfg,
 			},

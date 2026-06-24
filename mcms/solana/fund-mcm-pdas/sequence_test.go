@@ -72,12 +72,12 @@ func TestSeqFundMCMPDAs_errors(t *testing.T) {
 	_, err := operations.ExecuteSequence(
 		optest.NewBundle(t),
 		SeqFundMCMPDAs,
-		seqDeps{BlockChains: cldfchain.NewBlockChains(nil)},
-		seqInput{ChainSelector: selector},
+		Deps{BlockChains: cldfchain.NewBlockChains(nil)},
+		ChainInput{ChainSelector: selector},
 	)
 	require.ErrorContains(t, err, "solana chain")
 
-	deps := seqDeps{
+	deps := Deps{
 		BlockChains: cldfchain.NewBlockChains(map[uint64]cldfchain.BlockChain{
 			selector: cldfsol.Chain{Selector: selector},
 		}),
@@ -87,7 +87,7 @@ func TestSeqFundMCMPDAs_errors(t *testing.T) {
 		optest.NewBundle(t),
 		SeqFundMCMPDAs,
 		deps,
-		seqInput{ChainSelector: selector},
+		ChainInput{ChainSelector: selector},
 	)
 	require.ErrorContains(t, err, "resolve timelock ref")
 }
@@ -104,7 +104,7 @@ func TestSeqFundMCMPDAs_success(t *testing.T) {
 	}
 
 	ds := newSequenceDataStore(t, selector)
-	deps := seqDeps{
+	deps := Deps{
 		BlockChains: cldfchain.NewBlockChains(map[uint64]cldfchain.BlockChain{selector: solChain}),
 		DataStore:   ds,
 	}
@@ -113,7 +113,7 @@ func TestSeqFundMCMPDAs_success(t *testing.T) {
 		optest.NewBundle(t),
 		SeqFundMCMPDAs,
 		deps,
-		seqInput{
+		ChainInput{
 			ChainSelector: selector,
 			FundingConfig: FundingConfig{
 				ProposeMCM:   1,

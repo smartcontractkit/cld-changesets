@@ -19,15 +19,15 @@ func TestFundingConfigRequiredFunding(t *testing.T) {
 	require.Equal(t, uint64(1000), cfg.RequiredFunding())
 }
 
-func TestEnvFromSeqDeps(t *testing.T) {
+func TestEnvFromDeps(t *testing.T) {
 	ds := cldfdatastore.NewMemoryDataStore().Seal()
 	blockChains := chain.NewBlockChains(nil)
-	deps := seqDeps{
+	deps := Deps{
 		BlockChains: blockChains,
 		DataStore:   ds,
 	}
 
-	env := envFromSeqDeps(deps)
+	env := EnvFromDeps(deps)
 	require.Equal(t, blockChains, env.BlockChains)
 	require.Equal(t, ds, env.DataStore)
 }

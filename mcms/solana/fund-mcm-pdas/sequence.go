@@ -3,32 +3,12 @@ package solfundmcmpdas
 import (
 	"fmt"
 
-	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	cldfsol "github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
 	"github.com/smartcontractkit/chainlink-deployments-framework/changeset/sequenceutils"
-	cldfdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
-	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 
 	"github.com/smartcontractkit/cld-changesets/internal/semvers"
 )
-
-type seqDeps struct {
-	BlockChains chain.BlockChains
-	DataStore   cldfdatastore.DataStore
-}
-
-type seqInput struct {
-	ChainSelector uint64
-	FundingConfig FundingConfig
-}
-
-func envFromSeqDeps(deps seqDeps) cldf.Environment {
-	return cldf.Environment{
-		BlockChains: deps.BlockChains,
-		DataStore:   deps.DataStore,
-	}
-}
 
 // SeqFundSolanaMCMPDAsInput is the input for the low-level Solana fund-mcm-pdas sequence.
 type SeqFundSolanaMCMPDAsInput struct {
@@ -74,13 +54,13 @@ var SeqFundMCMPDAs = operations.NewSequence(
 	"seq-solana-fund-mcm-pdas",
 	&semvers.V1_0_0,
 	"Funds MCMS signer PDAs on a Solana chain from datastore refs",
-	func(b operations.Bundle, deps seqDeps, in seqInput) (sequenceutils.OnChainOutput, error) {
+	func(b operations.Bundle, deps Deps, in ChainInput) (sequenceutils.OnChainOutput, error) {
 		chain, ok := deps.BlockChains.SolanaChains()[in.ChainSelector]
 		if !ok {
 			return sequenceutils.OnChainOutput{}, fmt.Errorf("solana chain %d not found in environment", in.ChainSelector)
 		}
 
-		env := envFromSeqDeps(deps)
+		env := EnvFromDeps(deps)
 		targets, err := ResolveFundingTargets(env, in.ChainSelector, in.FundingConfig)
 		if err != nil {
 			return sequenceutils.OnChainOutput{}, err

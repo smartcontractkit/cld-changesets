@@ -128,3 +128,12 @@ func helperTestEnv(ds datastore.DataStore, selector uint64) cldf.Environment {
 		}),
 	}
 }
+
+func testPDASeed(v byte) mcmssolana.PDASeed {
+	var seed mcmssolana.PDASeed
+	for i := range seed {
+		seed[i] = v
+	}
+
+	return seed
+}

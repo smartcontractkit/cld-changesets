@@ -1,9 +1,12 @@
-// Package solfundmcmpdas funds MCMS signer PDAs on Solana chains.
+// Package solfundmcmpdas provides Solana sequences and helpers for the
+// fund-mcm-pdas changeset.
 //
 // Import the MCMS reader so datastore refs can be resolved:
 //
 //	import (
-//		solfundmcmpdas "github.com/smartcontractkit/cld-changesets/mcms/solana/fund-mcm-pdas"
 //		_ "github.com/smartcontractkit/cld-changesets/mcms/solana/readers"
 //	)
+//
+// Use the changeset from mcms/changesets/fund-mcm-pdas for VerifyPreconditions
+// and Apply.
 package solfundmcmpdas

@@ -1,4 +1,4 @@
-package solfundmcmpdas
+package fundmcmpdas
 
 import (
 	"context"
@@ -30,14 +30,14 @@ func TestValidateMCMSRefs(t *testing.T) {
 	}{
 		{
 			name:    "missing timelock ref",
-			wantErr: "validate timelock ref",
+			wantErr: "resolve timelock ref",
 		},
 		{
 			name: "missing proposer ref",
 			refs: []validateRefSpec{
 				{mcmscontracts.RBACTimelock, mcmssolana.ContractAddress(solana.NewWallet().PublicKey(), testPDASeed(4))},
 			},
-			wantErr: "validate mcms ref",
+			wantErr: "resolve proposer ref",
 		},
 		{
 			name: "invalid timelock address",
@@ -47,7 +47,7 @@ func TestValidateMCMSRefs(t *testing.T) {
 				{mcmscontracts.CancellerManyChainMultisig, mcmssolana.ContractAddress(solana.NewWallet().PublicKey(), testPDASeed(2))},
 				{mcmscontracts.BypasserManyChainMultisig, mcmssolana.ContractAddress(solana.NewWallet().PublicKey(), testPDASeed(3))},
 			},
-			wantErr: "validate funding targets",
+			wantErr: "parse timelock signer PDA",
 		},
 		{
 			name: "success",

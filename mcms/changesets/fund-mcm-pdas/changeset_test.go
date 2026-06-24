@@ -1,4 +1,4 @@
-package solfundmcmpdas
+package fundmcmpdas
 
 import (
 	"fmt"
@@ -24,6 +24,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	soltestutils "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana/testutils"
+	solfundmcmpdas "github.com/smartcontractkit/cld-changesets/mcms/solana/fund-mcm-pdas"
 	_ "github.com/smartcontractkit/cld-changesets/mcms/solana/readers"
 )
 
@@ -146,7 +147,7 @@ func TestChangeset(t *testing.T) {
 					Timelock:     100,
 				}},
 			})
-			require.ErrorContains(t, err, "validate timelock ref")
+			require.ErrorContains(t, err, "resolve timelock ref")
 		})
 	})
 
@@ -227,7 +228,7 @@ type fundingRefSet struct {
 func testFundingRefs(t *testing.T, env cldf.Environment, selector uint64, qualifier string) fundingRefSet {
 	t.Helper()
 
-	targets, err := ResolveFundingTargets(env, selector, FundingConfig{Qualifier: qualifier})
+	targets, err := solfundmcmpdas.ResolveFundingTargets(env, selector, FundingConfig{Qualifier: qualifier})
 	require.NoError(t, err)
 	require.Len(t, targets, 4)
 
