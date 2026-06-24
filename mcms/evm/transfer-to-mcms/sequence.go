@@ -47,7 +47,12 @@ func runEVMTransferToMCMS(
 	}
 
 	var transactions []mcmstypes.Transaction
+	seen := make(map[common.Address]struct{}, len(in.Contracts))
 	for _, contract := range in.Contracts {
+		if _, ok := seen[contract]; ok {
+			continue
+		}
+		seen[contract] = struct{}{}
 		txs, err := transferContractToMCMS(b, chain, timelock, contract, in)
 		if err != nil {
 			return sequenceutils.OnChainOutput{}, fmt.Errorf("contract %s: %w", contract.Hex(), err)
