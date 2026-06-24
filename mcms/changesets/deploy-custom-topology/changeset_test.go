@@ -140,69 +140,69 @@ func TestChangeset_VerifyPreconditions(t *testing.T) {
 	}{
 		{
 			name:    "no chain configs",
-			input:   Input{Cfg: Config{}},
+			input:   Input{Cfg: MCMSTopologyConfig{}},
 			wantErr: "no chain configs",
 		},
 		{
 			name:    "empty chain",
-			input:   Input{Cfg: Config{ChainConfigs: map[uint64]ChainTopologyConfig{fakeEVMFamilySelector: {}}}},
+			input:   Input{Cfg: MCMSTopologyConfig{ChainConfigs: map[uint64]ChainTopologyConfig{fakeEVMFamilySelector: {}}}},
 			wantErr: "no MCMs or timelocks",
 		},
 		{
 			name:    "unknown chain selector family",
-			input:   Input{Cfg: Config{ChainConfigs: map[uint64]ChainTopologyConfig{1: validChainConfig()}}},
+			input:   Input{Cfg: MCMSTopologyConfig{ChainConfigs: map[uint64]ChainTopologyConfig{1: validChainConfig()}}},
 			wantErr: "chain selector 1",
 		},
 		{
 			name:    "duplicate MCM ref",
-			input:   Input{Cfg: Config{ChainConfigs: map[uint64]ChainTopologyConfig{fakeEVMFamilySelector: dupMCM}}},
+			input:   Input{Cfg: MCMSTopologyConfig{ChainConfigs: map[uint64]ChainTopologyConfig{fakeEVMFamilySelector: dupMCM}}},
 			wantErr: "duplicate MCM ref",
 		},
 		{
 			name:    "duplicate timelock ref",
-			input:   Input{Cfg: Config{ChainConfigs: map[uint64]ChainTopologyConfig{fakeEVMFamilySelector: dupTimelock}}},
+			input:   Input{Cfg: MCMSTopologyConfig{ChainConfigs: map[uint64]ChainTopologyConfig{fakeEVMFamilySelector: dupTimelock}}},
 			wantErr: "duplicate timelock ref",
 		},
 		{
 			name:    "timelock ref conflicts with MCM ref",
-			input:   Input{Cfg: Config{ChainConfigs: map[uint64]ChainTopologyConfig{fakeEVMFamilySelector: mcmTimelockRefCollision}}},
+			input:   Input{Cfg: MCMSTopologyConfig{ChainConfigs: map[uint64]ChainTopologyConfig{fakeEVMFamilySelector: mcmTimelockRefCollision}}},
 			wantErr: "conflicts with an MCM ref",
 		},
 		{
 			name:    "undeclared mcmRef",
-			input:   Input{Cfg: Config{ChainConfigs: map[uint64]ChainTopologyConfig{fakeEVMFamilySelector: undeclaredRef}}},
+			input:   Input{Cfg: MCMSTopologyConfig{ChainConfigs: map[uint64]ChainTopologyConfig{fakeEVMFamilySelector: undeclaredRef}}},
 			wantErr: "not declared",
 		},
 		{
 			name:    "role holder with both ref and address",
-			input:   Input{Cfg: Config{ChainConfigs: map[uint64]ChainTopologyConfig{fakeEVMFamilySelector: bothRefAndAddr}}},
+			input:   Input{Cfg: MCMSTopologyConfig{ChainConfigs: map[uint64]ChainTopologyConfig{fakeEVMFamilySelector: bothRefAndAddr}}},
 			wantErr: "exactly one of mcmRef or address",
 		},
 		{
 			name:    "role holder with neither ref nor address",
-			input:   Input{Cfg: Config{ChainConfigs: map[uint64]ChainTopologyConfig{fakeEVMFamilySelector: neitherRefNorAddr}}},
+			input:   Input{Cfg: MCMSTopologyConfig{ChainConfigs: map[uint64]ChainTopologyConfig{fakeEVMFamilySelector: neitherRefNorAddr}}},
 			wantErr: "exactly one of mcmRef or address",
 		},
 		{
 			name:    "timelock missing qualifier",
-			input:   Input{Cfg: Config{ChainConfigs: map[uint64]ChainTopologyConfig{fakeEVMFamilySelector: noQualifier}}},
+			input:   Input{Cfg: MCMSTopologyConfig{ChainConfigs: map[uint64]ChainTopologyConfig{fakeEVMFamilySelector: noQualifier}}},
 			wantErr: "qualifier is required",
 		},
 		{
 			name:    "transfer ownership without MCMS",
-			input:   Input{Cfg: Config{ChainConfigs: map[uint64]ChainTopologyConfig{fakeEVMFamilySelector: withTransfer}}},
+			input:   Input{Cfg: MCMSTopologyConfig{ChainConfigs: map[uint64]ChainTopologyConfig{fakeEVMFamilySelector: withTransfer}}},
 			wantErr: "requires an MCMS input",
 		},
 		{
 			name: "valid - no MCMS",
 			input: Input{
-				Cfg: Config{ChainConfigs: map[uint64]ChainTopologyConfig{fakeEVMFamilySelector: validChainConfig()}},
+				Cfg: MCMSTopologyConfig{ChainConfigs: map[uint64]ChainTopologyConfig{fakeEVMFamilySelector: validChainConfig()}},
 			},
 		},
 		{
 			name: "valid - with MCMS and transfer",
 			input: Input{
-				Cfg:  Config{ChainConfigs: map[uint64]ChainTopologyConfig{fakeEVMFamilySelector: withTransfer}},
+				Cfg:  MCMSTopologyConfig{ChainConfigs: map[uint64]ChainTopologyConfig{fakeEVMFamilySelector: withTransfer}},
 				MCMS: newMCMSInput(),
 			},
 		},
@@ -230,7 +230,7 @@ func TestChangeset_VerifyPreconditions_invalidMCMS(t *testing.T) {
 	bad.TimelockAction = "not-a-real-action"
 
 	err := Changeset{}.VerifyPreconditions(testEnv(t), Input{
-		Cfg:  Config{ChainConfigs: map[uint64]ChainTopologyConfig{fakeEVMFamilySelector: validChainConfig()}},
+		Cfg:  MCMSTopologyConfig{ChainConfigs: map[uint64]ChainTopologyConfig{fakeEVMFamilySelector: validChainConfig()}},
 		MCMS: bad,
 	})
 	require.ErrorContains(t, err, "invalid MCMS timelock proposal input")
@@ -240,7 +240,7 @@ func TestChangeset_Apply_deploysAndWritesAddresses(t *testing.T) {
 	t.Parallel()
 
 	out, err := Changeset{}.Apply(testEnv(t), Input{
-		Cfg: Config{ChainConfigs: map[uint64]ChainTopologyConfig{fakeEVMFamilySelector: validChainConfig()}},
+		Cfg: MCMSTopologyConfig{ChainConfigs: map[uint64]ChainTopologyConfig{fakeEVMFamilySelector: validChainConfig()}},
 	})
 	require.NoError(t, err)
 	require.Empty(t, out.MCMSTimelockProposals)
@@ -258,7 +258,7 @@ func TestChangeset_Apply_proposalGroupsWithoutMCMSErrors(t *testing.T) {
 	withTransfer.Timelocks[0].TransferOwnership = []RoleHolder{{Address: addr(t, "0xabc")}}
 
 	_, err := Changeset{}.Apply(testEnv(t), Input{
-		Cfg: Config{ChainConfigs: map[uint64]ChainTopologyConfig{fakeEVMFamilySelector: withTransfer}},
+		Cfg: MCMSTopologyConfig{ChainConfigs: map[uint64]ChainTopologyConfig{fakeEVMFamilySelector: withTransfer}},
 	})
 	require.ErrorContains(t, err, "no MCMS input was provided")
 }
@@ -268,7 +268,7 @@ func TestChangeset_Apply_unregisteredFamilyErrors(t *testing.T) {
 
 	// chain selector 1 has no resolvable family -> sequence lookup fails.
 	_, err := Changeset{}.Apply(testEnv(t), Input{
-		Cfg: Config{ChainConfigs: map[uint64]ChainTopologyConfig{1: validChainConfig()}},
+		Cfg: MCMSTopologyConfig{ChainConfigs: map[uint64]ChainTopologyConfig{1: validChainConfig()}},
 	})
 	require.ErrorContains(t, err, "chain selector 1")
 }
@@ -282,7 +282,7 @@ func TestBatchOpsForQualifier(t *testing.T) {
 			Transactions:  []mcmstypes.Transaction{{To: to}},
 		}
 	}
-	cfg := Config{ChainConfigs: map[uint64]ChainTopologyConfig{
+	cfg := MCMSTopologyConfig{ChainConfigs: map[uint64]ChainTopologyConfig{
 		1: {
 			MCMs: []MCMSpec{{
 				Ref:          "bypasser",
@@ -324,7 +324,7 @@ func TestBatchOpsForQualifier(t *testing.T) {
 func TestSortedQualifiersWithTransfers(t *testing.T) {
 	t.Parallel()
 
-	cfg := Config{ChainConfigs: map[uint64]ChainTopologyConfig{
+	cfg := MCMSTopologyConfig{ChainConfigs: map[uint64]ChainTopologyConfig{
 		1: {Timelocks: []TimelockSpec{
 			{Qualifier: "RMN", TransferOwnership: []RoleHolder{{Address: addr(t, "0x1")}}},
 			{Qualifier: "CCIP", TransferOwnership: []RoleHolder{{Address: addr(t, "0x2")}}},

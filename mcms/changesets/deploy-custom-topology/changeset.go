@@ -79,7 +79,7 @@ func (Changeset) Apply(e cldf.Environment, input Input) (cldf.ChangesetOutput, e
 // the aggregated accept-ownership batch operations.
 func buildOutput(
 	e cldf.Environment,
-	cfg Config,
+	cfg MCMSTopologyConfig,
 	mcmsInput *cldf.MCMSTimelockProposalInput,
 	agg sequenceutils.OnChainOutput,
 	runErr error,
@@ -128,7 +128,7 @@ func buildOutput(
 	return out, nil
 }
 
-func validateConfig(e cldf.Environment, cfg Config, mcms *cldf.MCMSTimelockProposalInput) error {
+func validateConfig(e cldf.Environment, cfg MCMSTopologyConfig, mcms *cldf.MCMSTimelockProposalInput) error {
 	if len(cfg.ChainConfigs) == 0 {
 		return errors.New("no chain configs provided")
 	}
@@ -245,7 +245,7 @@ func validateRoleHolders(chainSelector uint64, timelockRef, field string, holder
 
 // sortedQualifiersWithTransfers returns the distinct, sorted timelock qualifiers
 // that have ownership transfers configured across all chains.
-func sortedQualifiersWithTransfers(cfg Config) []string {
+func sortedQualifiersWithTransfers(cfg MCMSTopologyConfig) []string {
 	seen := make(map[string]struct{})
 	for _, chainCfg := range cfg.ChainConfigs {
 		for _, tl := range chainCfg.Timelocks {
@@ -270,7 +270,7 @@ func sortedQualifiersWithTransfers(cfg Config) []string {
 func batchOpsForQualifier(
 	batchOps []mcmstypes.BatchOperation,
 	meta cldfdatastore.MetadataBundle,
-	cfg Config,
+	cfg MCMSTopologyConfig,
 	qualifier string,
 ) []mcmstypes.BatchOperation {
 	var ops []mcmstypes.BatchOperation
