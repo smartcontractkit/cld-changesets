@@ -23,7 +23,7 @@ var SeqFundSolanaMCMPDAs = operations.NewSequence(
 	"Funds MCMS signer PDAs on a Solana chain",
 	func(b operations.Bundle, deps cldfsol.Chain, in SeqFundSolanaMCMPDAsInput) (sequenceutils.OnChainOutput, error) {
 		if in.ChainSelector != deps.Selector {
-			return sequenceutils.OnChainOutput{}, fmt.Errorf("mismatch between inputted chain selector and selector defined within dependencies: %d != %d", in.ChainSelector, deps.Selector)
+			return sequenceutils.OnChainOutput{}, fmt.Errorf("mismatch between input chain selector and selector defined within dependencies: %d != %d", in.ChainSelector, deps.Selector)
 		}
 
 		for i, target := range in.Targets {
