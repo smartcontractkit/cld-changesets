@@ -94,23 +94,12 @@ func buildOutput(
 		return cldf.ChangesetOutput{DataStore: outDS}, runErr
 	}
 
-	// Resolve proposals against an environment view that includes the freshly
-	// deployed timelock/MCM addresses (the original env datastore does not yet
-	// contain them). The output datastore keeps only the delta.
+	// OutputBuilder resolves timelock/MCM refs from Environment.DataStore, not
+	// the changeset output datastore. Point the resolve env at the deploy output
+	// (outDS), which already holds every address this changeset deployed.
 	resolveEnv := e
 	if mcmsInput != nil {
-		resolveDS := cldfdatastore.NewMemoryDataStore()
-		if e.DataStore != nil {
-			if mergeErr := resolveDS.Merge(e.DataStore); mergeErr != nil {
-				return cldf.ChangesetOutput{DataStore: outDS},
-					fmt.Errorf("failed to merge environment datastore: %w", mergeErr)
-			}
-		}
-		if metaErr := resolveDS.WriteMetadata(agg.Metadata); metaErr != nil {
-			return cldf.ChangesetOutput{DataStore: outDS},
-				fmt.Errorf("failed to stage deployed addresses for proposal resolution: %w", metaErr)
-		}
-		resolveEnv.DataStore = resolveDS.Seal()
+		resolveEnv.DataStore = outDS.Seal()
 	}
 
 	builder := cldf.NewOutputBuilder(resolveEnv, outDS)
