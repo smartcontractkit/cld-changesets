@@ -116,27 +116,8 @@ type Deps struct {
 	DataStore   cldfdatastore.DataStore
 }
 
-// ProposalGroup carries the accept-ownership batch operations destined for a
-// single timelock, keyed by that timelock's qualifier. The changeset builds one
-// MCMS timelock proposal per group so each resolves its own (timelock, MCM).
-type ProposalGroup struct {
-	Qualifier string                     `json:"qualifier"`
-	BatchOps  []mcmstypes.BatchOperation `json:"batchOps"`
-}
-
-// ChainOutput is the per-chain result returned by every family sequence. It is
-// richer than sequenceutils.OnChainOutput because a custom topology can deploy
-// several independent timelocks per chain, each needing its own proposal.
-type ChainOutput struct {
-	// Metadata holds deployed addresses/contracts to write to the datastore.
-	Metadata cldfdatastore.MetadataBundle `json:"metadata"`
-	// ProposalGroups holds accept-ownership batch operations grouped by the
-	// owning timelock's qualifier. Empty when there are no ownership transfers.
-	ProposalGroups []ProposalGroup `json:"proposalGroups,omitempty"`
-}
-
 // Sequence is the required operations sequence type for all family implementations.
-type Sequence = operations.Sequence[ChainInput, ChainOutput, Deps]
+type Sequence = operations.Sequence[ChainInput, sequenceutils.OnChainOutput, Deps]
 
 // Registration describes one chain family's deploy-custom-topology implementation.
 type Registration = familyregistry.Registration[Sequence, ChainInput]

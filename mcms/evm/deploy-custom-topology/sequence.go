@@ -10,6 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	opscontract "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/operations2/contract"
+	"github.com/smartcontractkit/chainlink-deployments-framework/changeset/sequenceutils"
 	cldfdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	mcmscontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/mcms"
@@ -45,8 +46,8 @@ func runEVMDeployTopology(
 	b operations.Bundle,
 	deps deploycustomtopology.Deps,
 	in deploycustomtopology.ChainInput,
-) (deploycustomtopology.ChainOutput, error) {
-	var out deploycustomtopology.ChainOutput
+) (sequenceutils.OnChainOutput, error) {
+	var out sequenceutils.OnChainOutput
 
 	chain, ok := deps.BlockChains.EVMChains()[in.ChainSelector]
 	if !ok {
@@ -178,7 +179,7 @@ func deployTimelockAndSetRoles(
 	extra EVMExtraArgs,
 	tl deploycustomtopology.TimelockSpec,
 	refToAddr map[string]common.Address,
-	out *deploycustomtopology.ChainOutput,
+	out *sequenceutils.OnChainOutput,
 ) error {
 	proposers, err := resolveHolders(tl.Roles.Proposers, refToAddr)
 	if err != nil {
@@ -265,12 +266,9 @@ func deployTimelockAndSetRoles(
 			return fmt.Errorf("transfer ownership to timelock %q on chain %d: %w", tl.Ref, chainSelector, err)
 		}
 		if len(ops) > 0 {
-			out.ProposalGroups = append(out.ProposalGroups, deploycustomtopology.ProposalGroup{
-				Qualifier: tl.Qualifier,
-				BatchOps: []mcmstypes.BatchOperation{{
-					ChainSelector: mcmstypes.ChainSelector(chainSelector),
-					Transactions:  ops,
-				}},
+			out.BatchOps = append(out.BatchOps, mcmstypes.BatchOperation{
+				ChainSelector: mcmstypes.ChainSelector(chainSelector),
+				Transactions:  ops,
 			})
 		}
 	}
