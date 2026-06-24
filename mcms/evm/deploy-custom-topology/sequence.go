@@ -27,7 +27,7 @@ import (
 	mcmops "github.com/smartcontractkit/cld-changesets/mcms/evm/deploy/v1_0_0/operations/many_chain_multi_sig"
 	timelockops "github.com/smartcontractkit/cld-changesets/mcms/evm/deploy/v1_0_0/operations/rbac_timelock"
 	evmsetconfig "github.com/smartcontractkit/cld-changesets/mcms/evm/set-config"
-	ownableops "github.com/smartcontractkit/cld-changesets/mcms/evm/transfer-to-mcms/v1_0_0/operations/burn_mint_erc677"
+	ownableops "github.com/smartcontractkit/cld-changesets/mcms/evm/transfer-to-timelock/v1_0_0/operations/burn_mint_erc677"
 )
 
 // seqDeployTopology is the single sequence for this changeset; it calls the
