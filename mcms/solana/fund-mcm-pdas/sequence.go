@@ -18,7 +18,7 @@ type SeqFundSolanaMCMPDAsInput struct {
 
 // SeqFundSolanaMCMPDAs funds each provided signer PDA on a Solana chain.
 var SeqFundSolanaMCMPDAs = operations.NewSequence(
-	"seq-solana-fund-mcms-pdas",
+	"seq-solana-fund-mcm-pdas",
 	&semvers.V1_0_0,
 	"Funds MCMS signer PDAs on a Solana chain",
 	func(b operations.Bundle, deps cldfsol.Chain, in SeqFundSolanaMCMPDAsInput) (sequenceutils.OnChainOutput, error) {
