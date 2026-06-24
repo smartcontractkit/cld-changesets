@@ -11,7 +11,7 @@ import (
 
 // init auto-registers the EVM family when this package is imported.
 func init() {
-	setconfig.Register(Registration())
+	setconfig.Registry.Register(Registration())
 }
 
 // Registration returns the EVM chain-family set-config registration.

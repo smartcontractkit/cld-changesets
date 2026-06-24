@@ -12,12 +12,12 @@ import (
 // init auto-registers the EVM family when this package is imported.
 // A blank import is sufficient to enable EVM chain support in [transfertotimelock.Changeset].
 func init() {
-	transfertotimelock.Register(Registration())
+	transfertotimelock.Registry.Register(Registration())
 }
 
 // Registration returns the EVM chain-family transfer-to-timelock registration.
 // Importing this package registers EVM automatically via init; use
-// Registration() only in tests that call [transfertotimelock.Register] manually
+// Registration() only in tests that call [transfertotimelock.Registry.Register] manually
 // without importing this package (for example to control registration order).
 func Registration() transfertotimelock.Registration {
 	return transfertotimelock.Registration{

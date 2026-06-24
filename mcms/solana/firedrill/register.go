@@ -10,7 +10,7 @@ import (
 )
 
 func init() {
-	firedrill.Register(Registration())
+	firedrill.Registry.Register(Registration())
 }
 
 // Registration returns the Solana chain-family fire-drill registration.
