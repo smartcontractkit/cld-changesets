@@ -11,6 +11,8 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/changeset/sequenceutils"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
+
+	"github.com/smartcontractkit/cld-changesets/internal/familyregistry"
 )
 
 func testSequence(id string) *Sequence {
@@ -24,19 +26,39 @@ func testSequence(id string) *Sequence {
 	)
 }
 
+func newTestRegistry() *familyregistry.Registry[Sequence, ChainInput] {
+	return familyregistry.New[Sequence, ChainInput]("test deploy-custom-topology")
+}
+
 func TestSequenceForChainSelector(t *testing.T) {
 	t.Parallel()
 
-	_, err := Sequences.SequenceForChainSelector(0)
-	require.Error(t, err)
+	reg := newTestRegistry()
+
+	tests := []struct {
+		name          string
+		chainSelector uint64
+	}{
+		{name: "invalid selector", chainSelector: 0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			_, err := reg.SequenceForChainSelector(tt.chainSelector)
+			require.Error(t, err)
+		})
+	}
 }
 
 func TestRegister_andLookup(t *testing.T) {
 	t.Parallel()
 
-	const family = "test-topology-family-a"
+	reg := newTestRegistry()
+	const family = "test-deploy-custom-topology-family-a"
 
-	Sequences.Register(Registration{
+	reg.Register(Registration{
 		Family:   family,
 		Sequence: testSequence("test-topology-seq-a"),
 		Verify: func(_ cldf.Environment, chains []ChainInput) error {
@@ -48,9 +70,9 @@ func TestRegister_andLookup(t *testing.T) {
 		},
 	})
 
-	require.Contains(t, Sequences.RegisteredFamilies(), family)
+	require.Contains(t, reg.RegisteredFamilies(), family)
 
-	seq, err := Sequences.SequenceForFamily(family)
+	seq, err := reg.SequenceForFamily(family)
 	require.NoError(t, err)
 	require.NotNil(t, seq)
 
@@ -67,7 +89,7 @@ func TestRegister_andLookup(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			err := Sequences.VerifyForFamily(family, cldf.Environment{}, tt.chains)
+			err := reg.VerifyForFamily(family, cldf.Environment{}, tt.chains)
 			if tt.wantErr {
 				require.Error(t, err)
 				return
@@ -81,18 +103,20 @@ func TestRegister_andLookup(t *testing.T) {
 func TestRegister_validationPanics(t *testing.T) {
 	t.Parallel()
 
+	reg := newTestRegistry()
+
 	tests := []struct {
 		name string
 		reg  Registration
 	}{
 		{name: "empty family", reg: Registration{Family: "", Sequence: testSequence("empty-family")}},
-		{name: "nil sequence", reg: Registration{Family: "test-topology-family-b", Sequence: nil}},
+		{name: "nil sequence", reg: Registration{Family: "test-deploy-custom-topology-family-b", Sequence: nil}},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			require.Panics(t, func() { Sequences.Register(tt.reg) })
+			require.Panics(t, func() { reg.Register(tt.reg) })
 		})
 	}
 }
@@ -100,30 +124,47 @@ func TestRegister_validationPanics(t *testing.T) {
 func TestRegister_duplicatePanics(t *testing.T) {
 	t.Parallel()
 
-	const family = "test-topology-family-c"
-	Sequences.Register(Registration{Family: family, Sequence: testSequence("test-topology-seq-c")})
+	reg := newTestRegistry()
+	const family = "test-deploy-custom-topology-family-c"
+	reg.Register(Registration{Family: family, Sequence: testSequence("test-topology-seq-c")})
 
 	require.Panics(t, func() {
-		Sequences.Register(Registration{Family: family, Sequence: testSequence("test-topology-seq-c-dup")})
+		reg.Register(Registration{Family: family, Sequence: testSequence("test-topology-seq-c-dup")})
 	})
 }
 
 func TestSequenceForFamily_errors(t *testing.T) {
 	t.Parallel()
 
-	const family = "test-topology-family-missing"
-	_, err := Sequences.SequenceForFamily(family)
-	require.ErrorContains(t, err, fmt.Sprintf(`no sequence registered for family %q`, family))
+	reg := newTestRegistry()
+
+	tests := []struct {
+		name   string
+		family string
+	}{
+		{name: "missing family", family: "test-deploy-custom-topology-family-missing"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			_, err := reg.SequenceForFamily(tt.family)
+			require.ErrorContains(t, err, fmt.Sprintf(`no sequence registered for family %q`, tt.family))
+		})
+	}
 }
 
 func TestVerifyForFamily(t *testing.T) {
 	t.Parallel()
 
-	const nilHookFamily = "test-topology-family-d"
-	Sequences.Register(Registration{Family: nilHookFamily, Sequence: testSequence("test-topology-seq-d")})
+	reg := newTestRegistry()
 
-	const wrapFamily = "test-topology-family-e"
-	Sequences.Register(Registration{
+	const nilHookFamily = "test-deploy-custom-topology-family-d"
+	reg.Register(Registration{Family: nilHookFamily, Sequence: testSequence("test-topology-seq-d")})
+
+	const wrapFamily = "test-deploy-custom-topology-family-e"
+	reg.Register(Registration{
 		Family:   wrapFamily,
 		Sequence: testSequence("test-topology-seq-e"),
 		Verify: func(_ cldf.Environment, _ []ChainInput) error {
@@ -137,7 +178,7 @@ func TestVerifyForFamily(t *testing.T) {
 		chains  []ChainInput
 		wantErr string
 	}{
-		{name: "missing family", family: "test-topology-family-missing-verify", wantErr: "no sequence registered for family"},
+		{name: "missing family", family: "test-deploy-custom-topology-family-missing-verify", wantErr: "no sequence registered for family"},
 		{name: "nil verify hook", family: nilHookFamily},
 		{name: "wrapped verify error", family: wrapFamily, chains: []ChainInput{{ChainSelector: 1}}, wantErr: "boom"},
 	}
@@ -146,7 +187,7 @@ func TestVerifyForFamily(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			err := Sequences.VerifyForFamily(tt.family, cldf.Environment{}, tt.chains)
+			err := reg.VerifyForFamily(tt.family, cldf.Environment{}, tt.chains)
 			if tt.wantErr == "" {
 				require.NoError(t, err)
 				return

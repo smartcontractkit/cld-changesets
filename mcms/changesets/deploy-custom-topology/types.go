@@ -6,14 +6,12 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
+	opscontract "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/operations2/contract"
 	"github.com/smartcontractkit/chainlink-deployments-framework/changeset/sequenceutils"
 	cldfdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
-	cldfproposalutils "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
-
-	"github.com/smartcontractkit/cld-changesets/mcms/changesets/familyregistry"
 )
 
 // Config is the changeset payload: the custom MCMS topology to deploy per chain.
@@ -31,9 +29,9 @@ type MCMSTopologyConfig struct {
 
 // ChainTopologyConfig describes the MCMS topology to deploy on a single chain.
 type ChainTopologyConfig struct {
-	MCMs           []MCMSpec                         `json:"mcms"`
-	Timelocks      []TimelockSpec                    `json:"timelocks"`
-	GasBoostConfig *cldfproposalutils.GasBoostConfig `json:"gasBoostConfig,omitempty"`
+	MCMs           []MCMSpec                   `json:"mcms"`
+	Timelocks      []TimelockSpec              `json:"timelocks"`
+	GasBoostConfig *opscontract.GasBoostConfig `json:"gasBoostConfig,omitempty"`
 
 	// ExtraArgs carries chain-family-specific input that the default per-chain
 	// parameters above cannot express. It is forwarded verbatim to the family
@@ -118,9 +116,6 @@ type Deps struct {
 
 // Sequence is the required operations sequence type for all family implementations.
 type Sequence = operations.Sequence[ChainInput, sequenceutils.OnChainOutput, Deps]
-
-// Registration describes one chain family's deploy-custom-topology implementation.
-type Registration = familyregistry.Registration[Sequence, ChainInput]
 
 // EnvFromDeps reconstructs the environment fields sequences need for ref and
 // MCMS resolution.
