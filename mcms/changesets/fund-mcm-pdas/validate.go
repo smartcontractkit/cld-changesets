@@ -18,7 +18,10 @@ func validateMCMSRefs(e cldf.Environment, chainSelector uint64, cfg FundingConfi
 }
 
 func validateDeployerBalance(e cldf.Environment, chainSelector uint64, cfg FundingConfig) error {
-	chain := e.BlockChains.SolanaChains()[chainSelector]
+	chain, ok := e.BlockChains.SolanaChains()[chainSelector]
+	if !ok {
+		return fmt.Errorf("solana chain %d not found in environment", chainSelector)
+	}
 	if chain.Client == nil {
 		return fmt.Errorf("solana client missing for chain %d", chainSelector)
 	}
