@@ -34,7 +34,7 @@ func TestInitRegistersSolana(t *testing.T) {
 			name: "sequence for family",
 			run: func(t *testing.T) {
 				t.Helper()
-				seq, err := setconfig.SequenceForFamily(chainselectors.FamilySolana)
+				seq, err := setconfig.Registry.SequenceForFamily(chainselectors.FamilySolana)
 				require.NoError(t, err)
 				require.Equal(t, seqSetConfig, seq)
 			},
@@ -43,7 +43,7 @@ func TestInitRegistersSolana(t *testing.T) {
 			name: "sequence for chain selector",
 			run: func(t *testing.T) {
 				t.Helper()
-				got, err := setconfig.SequenceForChainSelector(
+				got, err := setconfig.Registry.SequenceForChainSelector(
 					chainselectors.TEST_22222222222222222222222222222222222222222222.Selector,
 				)
 				require.NoError(t, err)

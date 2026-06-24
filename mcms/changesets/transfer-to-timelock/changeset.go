@@ -47,7 +47,7 @@ func (Changeset) VerifyPreconditions(env cldf.Environment, input Input) error {
 	slices.Sort(families)
 
 	for _, family := range families {
-		if err := VerifyForFamily(family, env, byFamily[family]); err != nil {
+		if err := Registry.VerifyForFamily(family, env, byFamily[family]); err != nil {
 			return err
 		}
 	}
@@ -70,7 +70,7 @@ func (Changeset) Apply(env cldf.Environment, input Input) (cldf.ChangesetOutput,
 	for _, chainSelector := range maputil.SortedMapKeys(input.Cfg.ContractsByChain) {
 		contracts := input.Cfg.ContractsByChain[chainSelector]
 
-		seq, seqErr := SequenceForChainSelector(chainSelector)
+		seq, seqErr := Registry.SequenceForChainSelector(chainSelector)
 		if seqErr != nil {
 			return buildOutput(env, input.MCMS, agg, fmt.Errorf("chain selector %d: %w", chainSelector, seqErr))
 		}

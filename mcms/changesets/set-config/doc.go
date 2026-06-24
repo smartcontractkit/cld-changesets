@@ -51,7 +51,7 @@
 // Implement a family under mcms/<family>/set-config (for example
 // mcms/aptos/set-config) and register it at process startup. Follow this layout:
 //
-//   - register.go — exports Registration() and calls [Register] in init()
+//   - register.go — exports Registration() and calls [Registry.Register] in init()
 //   - sequence.go — operations.Sequence that sets config for one chain
 //   - operation.go  — per-contract set-config operation
 //   - validate.go   — optional MCMS ref validation during VerifyPreconditions
@@ -84,11 +84,11 @@
 //
 // Auto-register from init (recommended, mirrors EVM and Solana):
 //
-//	func init() { setconfig.Register(Registration()) }
+//	func init() { setconfig.Registry.Register(Registration()) }
 //
 // Or register explicitly from the caller's main/setup code:
 //
-//	setconfig.Register(aptossetconfig.Registration())
+//	setconfig.Registry.Register(aptossetconfig.Registration())
 //
 // Each family may only be registered once; duplicate registration panics.
 //
@@ -101,7 +101,7 @@
 //     and MCMS refs resolve when MCMS input is present)
 //
 // If a chain's family has no registered sequence, Apply returns an error
-// listing families that are registered. Use [RegisteredFamilies] to inspect the
+// listing families that are registered. Use [Registry.RegisteredFamilies] to inspect the
 // registry in tests.
 //
 // # Reference implementations

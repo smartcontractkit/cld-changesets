@@ -38,14 +38,8 @@ func (Changeset) VerifyPreconditions(env cldf.Environment, input Input) error {
 	}
 
 	for family, chains := range byFamily {
-		reg, err := get(family)
-		if err != nil {
+		if err := Registry.VerifyForFamily(family, env, chains); err != nil {
 			return err
-		}
-		if reg.Verify != nil {
-			if err := reg.Verify(env, chains); err != nil {
-				return fmt.Errorf("family %s: %w", family, err)
-			}
 		}
 	}
 
@@ -71,7 +65,7 @@ func (Changeset) Apply(env cldf.Environment, input Input) (cldf.ChangesetOutput,
 			return cldf.ChangesetOutput{}, fmt.Errorf("chain selector %d: %w", selector, err)
 		}
 
-		reg, err := get(family)
+		reg, err := Registry.Get(family)
 		if err != nil {
 			return cldf.ChangesetOutput{}, err
 		}
