@@ -373,8 +373,9 @@ func GasBoostConfigsForChainMap[T any](chainMap map[uint64]T, gasBoostConfigs ma
 	}
 
 	for chainSelector := range chainMap {
-		if _, ok := gasBoostConfigs[chainSelector]; ok {
-			cfgs[chainSelector] = new(gasBoostConfigs[chainSelector])
+		if cfg, ok := gasBoostConfigs[chainSelector]; ok {
+			cfgCopy := cfg
+			cfgs[chainSelector] = &cfgCopy
 		} else {
 			cfgs[chainSelector] = nil
 		}
