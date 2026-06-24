@@ -549,10 +549,6 @@ func mcmTypeVersion(contractType cldf.ContractType) (cldf.TypeAndVersion, error)
 	}
 }
 
-func chainIdempotencyKey[IN, DEP any](chain cldf_evm.Chain) operations.ExecuteOption[IN, DEP] {
-	return operations.WithIdempotencyKey[IN, DEP](strconv.FormatUint(chain.Selector, 10))
-}
-
 func outputAddressIdempotencyKey[IN, DEP any](chain cldf_evm.Chain, address string) operations.ExecuteOption[IN, DEP] {
 	return operations.WithIdempotencyKey[IN, DEP](strconv.FormatUint(chain.Selector, 10) + ":" + address)
 }
