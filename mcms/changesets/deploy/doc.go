@@ -35,7 +35,7 @@
 // Implement a family under mcms/<family>/deploy (for example mcms/solana/deploy)
 // and register it at process startup. Follow this layout:
 //
-//   - register.go — exports Registration() and calls deploy.Register in init()
+//   - register.go — exports Registration() and calls deploy.Registry.Register in init()
 //   - sequence.go — operations.Sequence that deploys contracts for one chain
 //   - addresses.go  — helpers to load existing addresses from the datastore
 //
@@ -63,7 +63,7 @@
 //
 // Either auto-register from init (recommended, mirrors EVM):
 //
-//	func init() { deploy.Register(Registration()) }
+//	func init() { deploy.Registry.Register(Registration()) }
 //
 // Or register explicitly from the caller's main/setup code:
 //
@@ -79,7 +79,7 @@
 //     that family in the input (use to assert chains exist in the environment)
 //
 // If a chain's family has no registered sequence, Apply returns an error
-// listing families that are registered. Use [RegisteredFamilies] to inspect the
+// listing families that are registered. Use [Registry.RegisteredFamilies] to inspect the
 // registry in tests.
 //
 // # Reference implementation
