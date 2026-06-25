@@ -17,6 +17,7 @@ import (
 // Input wraps the topology config with optional MCMS timelock-proposal settings. When MCMS is
 // set, ownership-transfer sequences run in no-send mode and the changeset builds
 // accept-ownership timelock proposals from the returned batch operations.
+// Input.MCMS.Qualifier is ignored; each proposal uses the timelock qualifier from the topology.
 type Input = sequenceutils.WithMCMS[MCMSTopologyConfig]
 
 // MCMSTopologyConfig is the top-level, chain-agnostic changeset input.

@@ -108,9 +108,7 @@ func buildOutput(
 			if len(ops) == 0 {
 				continue
 			}
-			input := *mcmsInput
-			input.Qualifier = qualifier
-			builder = builder.WithTimelockProposal(input, ops)
+			builder = builder.WithTimelockProposal(proposalInputForQualifier(mcmsInput, qualifier), ops)
 		}
 	}
 
@@ -125,6 +123,18 @@ func buildOutput(
 	}
 
 	return out, nil
+}
+
+// proposalInputForQualifier copies proposal settings from mcmsInput and sets Qualifier from the topology
+func proposalInputForQualifier(mcmsInput *cldf.MCMSTimelockProposalInput, qualifier string) cldf.MCMSTimelockProposalInput {
+	return cldf.MCMSTimelockProposalInput{
+		OverridePreviousRoot: mcmsInput.OverridePreviousRoot,
+		ValidUntil:           mcmsInput.ValidUntil,
+		TimelockDelay:        mcmsInput.TimelockDelay,
+		TimelockAction:       mcmsInput.TimelockAction,
+		Description:          mcmsInput.Description,
+		Qualifier:            qualifier,
+	}
 }
 
 func validateConfig(e cldf.Environment, cfg MCMSTopologyConfig, mcms *cldf.MCMSTimelockProposalInput) error {
