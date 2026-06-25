@@ -19,6 +19,68 @@
 //
 //	_ "github.com/smartcontractkit/cld-changesets/mcms/changesets/deploy-custom-topology/all"
 //
+// # Example: one proposer MCM and one timelock
+//
+// [MCMSTopologyConfig.ChainConfigs] maps chain selectors to the topology to deploy
+// on that chain. Each chain declares any number of [MCMSpec] entries (the MCMs to
+// deploy) and [TimelockSpec] entries (the timelocks to deploy). Ref fields are local
+// handles used within that chain; [RoleHolder.MCMRef] must match an [MCMSpec.Ref]
+// on the same chain.
+//
+// Minimal example — one proposer MCM wired as the sole proposer on one timelock:
+//
+//	rt.Exec(runtime.ChangesetTask(topology.Changeset{}, topology.Input{
+//		Cfg: topology.MCMSTopologyConfig{
+//			ChainConfigs: map[uint64]topology.ChainTopologyConfig{
+//				selector: {
+//					MCMs: []topology.MCMSpec{{
+//						Ref:          "proposer",
+//						Qualifier:    "CCIP",
+//						ContractType: "ProposerManyChainMultisig",
+//						Config:       proposerCfg, // mcmstypes.Config: signers + quorum
+//					}},
+//					Timelocks: []topology.TimelockSpec{{
+//						Ref:       "timelock",
+//						Qualifier: "CCIP",
+//						MinDelay:  big.NewInt(3600),
+//						Roles: topology.RoleAssignments{
+//							Proposers: []topology.RoleHolder{{MCMRef: "proposer"}},
+//						},
+//					}},
+//				},
+//			},
+//		},
+//	}))
+//
+//	// CLD:
+//	registry.Add("deploy_custom_topology", Configure(topology.Changeset{}).WithEnvInput())
+//
+// Multiple MCMs on the same timelock — add more [MCMSpec] entries and reference
+// them from [TimelockSpec.Roles]:
+//
+//	MCMs: []topology.MCMSpec{
+//		{Ref: "proposer", Qualifier: "CCIP", ContractType: "ProposerManyChainMultisig", Config: proposerCfg},
+//		{Ref: "bypasser", Qualifier: "CCIP", ContractType: "BypasserManyChainMultisig", Config: bypasserCfg},
+//	},
+//	Timelocks: []topology.TimelockSpec{{
+//		Ref: "timelock", Qualifier: "CCIP", MinDelay: big.NewInt(3600),
+//		Roles: topology.RoleAssignments{
+//			Proposers:  []topology.RoleHolder{{MCMRef: "proposer"}},
+//			Bypassers:  []topology.RoleHolder{{MCMRef: "bypasser"}},
+//			Cancellers: []topology.RoleHolder{{MCMRef: "proposer"}, {MCMRef: "bypasser"}},
+//		},
+//	}},
+//
+// Leave [Input.MCMS] nil for deploy-only runs. Set [TimelockSpec.TransferOwnership]
+// to move ownership onto a timelock: the changeset executes transferOwnership on-chain
+// and returns accept-ownership timelock proposals grouped by timelock qualifier.
+// Duplicate targets (same resolved address) are deduplicated silently.
+// Leave [Input.MCMS].Qualifier empty — it is taken from [TimelockSpec.Qualifier]
+// when building one proposal per qualifier.
+//
+// See mcms/evm/deploy-custom-topology/sequence_test.go for full EVM examples,
+// including the standard three-MCM topology and multi-qualifier setups.
+//
 // # Behaviour
 //
 // [Changeset] iterates the configured chains, runs each chain's registered deploy

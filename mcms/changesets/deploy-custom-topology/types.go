@@ -17,6 +17,7 @@ import (
 // Input wraps the topology config with optional MCMS timelock-proposal settings. When MCMS is
 // set, ownership-transfer sequences run in no-send mode and the changeset builds
 // accept-ownership timelock proposals from the returned batch operations.
+// Input.MCMS.Qualifier is ignored; each proposal uses the timelock qualifier from the topology.
 type Input = sequenceutils.WithMCMS[MCMSTopologyConfig]
 
 // MCMSTopologyConfig is the top-level, chain-agnostic changeset input.
@@ -67,10 +68,10 @@ type TimelockSpec struct {
 	Roles RoleAssignments `json:"roles"`
 
 	// TransferOwnership (optional): ownable contracts whose ownership should be
-	// moved to THIS timelock. The deployer key runs transferOwnership() now; the
-	// matching acceptOwnership() calls are emitted as MCMS batch operations
-	// (routed via the proposer MCM granted on this timelock) which the changeset
-	// turns into an accept-ownership timelock proposal. Requires Input.MCMS to be set.
+	// moved to THIS timelock. Duplicate targets are deduplicated by resolved address.
+	// The deployer runs transferOwnership() now; acceptOwnership() batch ops are
+	// emitted for MCMS and turned into accept-ownership timelock proposals.
+	// Requires Input.MCMS to be set.
 	TransferOwnership []RoleHolder `json:"transferOwnership,omitempty"`
 }
 

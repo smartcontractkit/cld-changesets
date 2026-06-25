@@ -3,6 +3,7 @@ package deploycustomtopology
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 
@@ -98,9 +99,7 @@ func buildOutput(
 	// the changeset output datastore. Point the resolve env at the deploy output
 	// (outDS), which already holds every address this changeset deployed.
 	resolveEnv := e
-	if mcmsInput != nil {
-		resolveEnv.DataStore = outDS.Seal()
-	}
+	resolveEnv.DataStore = outDS.Seal()
 
 	builder := cldf.NewOutputBuilder(resolveEnv, outDS)
 	if mcmsInput != nil {
@@ -109,9 +108,7 @@ func buildOutput(
 			if len(ops) == 0 {
 				continue
 			}
-			input := *mcmsInput
-			input.Qualifier = qualifier
-			builder = builder.WithTimelockProposal(input, ops)
+			builder = builder.WithTimelockProposal(proposalInputForQualifier(mcmsInput, qualifier), ops)
 		}
 	}
 
@@ -126,6 +123,18 @@ func buildOutput(
 	}
 
 	return out, nil
+}
+
+// proposalInputForQualifier copies proposal settings from mcmsInput and sets Qualifier from the topology
+func proposalInputForQualifier(mcmsInput *cldf.MCMSTimelockProposalInput, qualifier string) cldf.MCMSTimelockProposalInput {
+	return cldf.MCMSTimelockProposalInput{
+		OverridePreviousRoot: mcmsInput.OverridePreviousRoot,
+		ValidUntil:           mcmsInput.ValidUntil,
+		TimelockDelay:        mcmsInput.TimelockDelay,
+		TimelockAction:       mcmsInput.TimelockAction,
+		Description:          mcmsInput.Description,
+		Qualifier:            qualifier,
+	}
 }
 
 func validateConfig(e cldf.Environment, cfg MCMSTopologyConfig, mcms *cldf.MCMSTimelockProposalInput) error {
@@ -152,10 +161,7 @@ func validateConfig(e cldf.Environment, cfg MCMSTopologyConfig, mcms *cldf.MCMST
 		}
 	}
 
-	families := make([]string, 0, len(byFamily))
-	for family := range byFamily {
-		families = append(families, family)
-	}
+	families := slices.Collect(maps.Keys(byFamily))
 	slices.Sort(families)
 
 	for _, family := range families {
@@ -256,10 +262,7 @@ func sortedQualifiersWithTransfers(cfg MCMSTopologyConfig) []string {
 		}
 	}
 
-	qualifiers := make([]string, 0, len(seen))
-	for q := range seen {
-		qualifiers = append(qualifiers, q)
-	}
+	qualifiers := slices.Collect(maps.Keys(seen))
 	slices.Sort(qualifiers)
 
 	return qualifiers

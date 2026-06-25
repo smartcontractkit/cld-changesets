@@ -318,13 +318,13 @@ func TestResolveHolders(t *testing.T) {
 	t.Run("missing mcmRef errors", func(t *testing.T) {
 		t.Parallel()
 		_, err := resolveHolders([]deploycustomtopology.RoleHolder{{MCMRef: "missing"}}, refToAddr)
-		require.ErrorContains(t, err, "not been deployed")
+		require.EqualError(t, err, `holder[0]: mcmRef "missing" has not been deployed`)
 	})
 
 	t.Run("empty holder errors", func(t *testing.T) {
 		t.Parallel()
 		_, err := resolveHolders([]deploycustomtopology.RoleHolder{{}}, refToAddr)
-		require.ErrorContains(t, err, "exactly one of")
+		require.EqualError(t, err, "holder[0]: exactly one of mcmRef or address is required")
 	})
 }
 
