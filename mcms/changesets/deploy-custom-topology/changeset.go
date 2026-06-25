@@ -98,9 +98,7 @@ func buildOutput(
 	// the changeset output datastore. Point the resolve env at the deploy output
 	// (outDS), which already holds every address this changeset deployed.
 	resolveEnv := e
-	if mcmsInput != nil {
-		resolveEnv.DataStore = outDS.Seal()
-	}
+	resolveEnv.DataStore = outDS.Seal()
 
 	builder := cldf.NewOutputBuilder(resolveEnv, outDS)
 	if mcmsInput != nil {
