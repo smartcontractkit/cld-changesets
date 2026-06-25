@@ -74,6 +74,7 @@
 // Leave [Input.MCMS] nil for deploy-only runs. Set [TimelockSpec.TransferOwnership]
 // to move ownership onto a timelock: the changeset executes transferOwnership on-chain
 // and returns accept-ownership timelock proposals grouped by timelock qualifier.
+// Duplicate targets (same resolved address) are deduplicated silently.
 //
 // See mcms/evm/deploy-custom-topology/sequence_test.go for full EVM examples,
 // including the standard three-MCM topology and multi-qualifier setups.
