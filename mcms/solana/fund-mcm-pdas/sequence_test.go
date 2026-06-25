@@ -63,7 +63,7 @@ func TestSeqFundSolanaMCMPDAs_chainMismatch(t *testing.T) {
 		cldfsol.Chain{Selector: selector, DeployerKey: &deployerKey},
 		SeqFundSolanaMCMPDAsInput{ChainSelector: selector + 1},
 	)
-	require.ErrorContains(t, err, "mismatch between inputted chain selector")
+	require.ErrorContains(t, err, "mismatch between input chain selector")
 }
 
 func TestSeqFundMCMPDAs_errors(t *testing.T) {

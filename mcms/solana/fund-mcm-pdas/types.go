@@ -20,6 +20,11 @@ func (c FundingConfig) RequiredFunding() uint64 {
 	return c.ProposeMCM + c.CancellerMCM + c.BypasserMCM + c.Timelock
 }
 
+// Config holds the funding amounts per chain for the changeset.
+type Config struct {
+	FundingPerChain map[uint64]FundingConfig `json:"fundingPerChain"`
+}
+
 // Deps is the read-only dependency bundle available to the fund sequence.
 type Deps struct {
 	BlockChains chain.BlockChains

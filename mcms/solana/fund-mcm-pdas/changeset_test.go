@@ -1,4 +1,4 @@
-package fundmcmpdas
+package solfundmcmpdas
 
 import (
 	"fmt"
@@ -24,7 +24,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	soltestutils "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana/testutils"
-	solfundmcmpdas "github.com/smartcontractkit/cld-changesets/mcms/solana/fund-mcm-pdas"
 	_ "github.com/smartcontractkit/cld-changesets/mcms/solana/readers"
 )
 
@@ -228,7 +227,7 @@ type fundingRefSet struct {
 func testFundingRefs(t *testing.T, env cldf.Environment, selector uint64, qualifier string) fundingRefSet {
 	t.Helper()
 
-	targets, err := solfundmcmpdas.ResolveFundingTargets(env, selector, FundingConfig{Qualifier: qualifier})
+	targets, err := ResolveFundingTargets(env, selector, FundingConfig{Qualifier: qualifier})
 	require.NoError(t, err)
 	require.Len(t, targets, 4)
 
@@ -331,13 +330,4 @@ func rpcWithBalance(t *testing.T, balance uint64) *rpc.Client {
 	t.Cleanup(server.Close)
 
 	return rpc.New(server.URL)
-}
-
-func testPDASeed(v byte) mcmssolana.PDASeed {
-	var seed mcmssolana.PDASeed
-	for i := range seed {
-		seed[i] = v
-	}
-
-	return seed
 }

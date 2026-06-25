@@ -1,4 +1,4 @@
-package fundmcmpdas
+package solfundmcmpdas
 
 import (
 	"context"
