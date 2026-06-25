@@ -3,6 +3,7 @@ package deploycustomtopology
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 
@@ -150,10 +151,7 @@ func validateConfig(e cldf.Environment, cfg MCMSTopologyConfig, mcms *cldf.MCMST
 		}
 	}
 
-	families := make([]string, 0, len(byFamily))
-	for family := range byFamily {
-		families = append(families, family)
-	}
+	families := slices.Collect(maps.Keys(byFamily))
 	slices.Sort(families)
 
 	for _, family := range families {
@@ -254,10 +252,7 @@ func sortedQualifiersWithTransfers(cfg MCMSTopologyConfig) []string {
 		}
 	}
 
-	qualifiers := make([]string, 0, len(seen))
-	for q := range seen {
-		qualifiers = append(qualifiers, q)
-	}
+	qualifiers := slices.Collect(maps.Keys(seen))
 	slices.Sort(qualifiers)
 
 	return qualifiers

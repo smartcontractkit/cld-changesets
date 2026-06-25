@@ -2,6 +2,7 @@ package deploycustomtopology
 
 import (
 	"encoding/json"
+	"fmt"
 	"math/big"
 	"testing"
 	"time"
@@ -141,57 +142,57 @@ func TestChangeset_VerifyPreconditions(t *testing.T) {
 		{
 			name:    "no chain configs",
 			input:   Input{Cfg: MCMSTopologyConfig{}},
-			wantErr: "no chain configs",
+			wantErr: "no chain configs provided",
 		},
 		{
 			name:    "empty chain",
 			input:   Input{Cfg: MCMSTopologyConfig{ChainConfigs: map[uint64]ChainTopologyConfig{fakeEVMFamilySelector: {}}}},
-			wantErr: "no MCMs or timelocks",
+			wantErr: fmt.Sprintf("chain %d: no MCMs or timelocks to deploy", fakeEVMFamilySelector),
 		},
 		{
 			name:    "unknown chain selector family",
 			input:   Input{Cfg: MCMSTopologyConfig{ChainConfigs: map[uint64]ChainTopologyConfig{1: validChainConfig()}}},
-			wantErr: "chain selector 1",
+			wantErr: "chain selector 1: unknown chain selector 1",
 		},
 		{
 			name:    "duplicate MCM ref",
 			input:   Input{Cfg: MCMSTopologyConfig{ChainConfigs: map[uint64]ChainTopologyConfig{fakeEVMFamilySelector: dupMCM}}},
-			wantErr: "duplicate MCM ref",
+			wantErr: fmt.Sprintf(`chain %d: duplicate MCM ref "proposer"`, fakeEVMFamilySelector),
 		},
 		{
 			name:    "duplicate timelock ref",
 			input:   Input{Cfg: MCMSTopologyConfig{ChainConfigs: map[uint64]ChainTopologyConfig{fakeEVMFamilySelector: dupTimelock}}},
-			wantErr: "duplicate timelock ref",
+			wantErr: fmt.Sprintf(`chain %d: duplicate timelock ref "timelock"`, fakeEVMFamilySelector),
 		},
 		{
 			name:    "timelock ref conflicts with MCM ref",
 			input:   Input{Cfg: MCMSTopologyConfig{ChainConfigs: map[uint64]ChainTopologyConfig{fakeEVMFamilySelector: mcmTimelockRefCollision}}},
-			wantErr: "conflicts with an MCM ref",
+			wantErr: fmt.Sprintf(`chain %d: timelock ref "proposer" conflicts with an MCM ref`, fakeEVMFamilySelector),
 		},
 		{
 			name:    "undeclared mcmRef",
 			input:   Input{Cfg: MCMSTopologyConfig{ChainConfigs: map[uint64]ChainTopologyConfig{fakeEVMFamilySelector: undeclaredRef}}},
-			wantErr: "not declared",
+			wantErr: fmt.Sprintf(`chain %d: timelock "timelock": proposers[0]: mcmRef "missing" is not declared in this chain's MCMs`, fakeEVMFamilySelector),
 		},
 		{
 			name:    "role holder with both ref and address",
 			input:   Input{Cfg: MCMSTopologyConfig{ChainConfigs: map[uint64]ChainTopologyConfig{fakeEVMFamilySelector: bothRefAndAddr}}},
-			wantErr: "exactly one of mcmRef or address",
+			wantErr: fmt.Sprintf(`chain %d: timelock "timelock": proposers[0]: exactly one of mcmRef or address is required`, fakeEVMFamilySelector),
 		},
 		{
 			name:    "role holder with neither ref nor address",
 			input:   Input{Cfg: MCMSTopologyConfig{ChainConfigs: map[uint64]ChainTopologyConfig{fakeEVMFamilySelector: neitherRefNorAddr}}},
-			wantErr: "exactly one of mcmRef or address",
+			wantErr: fmt.Sprintf(`chain %d: timelock "timelock": proposers[0]: exactly one of mcmRef or address is required`, fakeEVMFamilySelector),
 		},
 		{
 			name:    "timelock missing qualifier",
 			input:   Input{Cfg: MCMSTopologyConfig{ChainConfigs: map[uint64]ChainTopologyConfig{fakeEVMFamilySelector: noQualifier}}},
-			wantErr: "qualifier is required",
+			wantErr: fmt.Sprintf(`chain %d: timelock "timelock": qualifier is required`, fakeEVMFamilySelector),
 		},
 		{
 			name:    "transfer ownership without MCMS",
 			input:   Input{Cfg: MCMSTopologyConfig{ChainConfigs: map[uint64]ChainTopologyConfig{fakeEVMFamilySelector: withTransfer}}},
-			wantErr: "requires an MCMS input",
+			wantErr: fmt.Sprintf(`chain %d: timelock "timelock": TransferOwnership requires an MCMS input to build the accept-ownership proposal`, fakeEVMFamilySelector),
 		},
 		{
 			name: "valid - no MCMS",
@@ -218,7 +219,7 @@ func TestChangeset_VerifyPreconditions(t *testing.T) {
 				return
 			}
 
-			require.ErrorContains(t, err, tt.wantErr)
+			require.EqualError(t, err, tt.wantErr)
 		})
 	}
 }
@@ -233,7 +234,7 @@ func TestChangeset_VerifyPreconditions_invalidMCMS(t *testing.T) {
 		Cfg:  MCMSTopologyConfig{ChainConfigs: map[uint64]ChainTopologyConfig{fakeEVMFamilySelector: validChainConfig()}},
 		MCMS: bad,
 	})
-	require.ErrorContains(t, err, "invalid MCMS timelock proposal input")
+	require.EqualError(t, err, `invalid MCMS timelock proposal input: invalid MCMS timelock proposal input: invalid timelock action "not-a-real-action"`)
 }
 
 func TestChangeset_Apply_deploysAndWritesAddresses(t *testing.T) {
@@ -260,7 +261,7 @@ func TestChangeset_Apply_proposalGroupsWithoutMCMSErrors(t *testing.T) {
 	_, err := Changeset{}.Apply(testEnv(t), Input{
 		Cfg: MCMSTopologyConfig{ChainConfigs: map[uint64]ChainTopologyConfig{fakeEVMFamilySelector: withTransfer}},
 	})
-	require.ErrorContains(t, err, "no MCMS input was provided")
+	require.EqualError(t, err, "sequences returned accept-ownership batch operations but no MCMS input was provided")
 }
 
 func TestChangeset_Apply_unregisteredFamilyErrors(t *testing.T) {
@@ -270,7 +271,7 @@ func TestChangeset_Apply_unregisteredFamilyErrors(t *testing.T) {
 	_, err := Changeset{}.Apply(testEnv(t), Input{
 		Cfg: MCMSTopologyConfig{ChainConfigs: map[uint64]ChainTopologyConfig{1: validChainConfig()}},
 	})
-	require.ErrorContains(t, err, "chain selector 1")
+	require.EqualError(t, err, "chain selector 1: unknown chain selector 1")
 }
 
 func TestBatchOpsForQualifier(t *testing.T) {

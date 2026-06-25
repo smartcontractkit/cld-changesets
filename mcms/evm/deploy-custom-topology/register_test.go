@@ -1,6 +1,7 @@
 package evmdeploytopology
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -19,7 +20,7 @@ func TestVerifyEVMChains(t *testing.T) {
 	err := verifyEVMChains(env, []deploycustomtopology.ChainInput{
 		{ChainSelector: chainselectors.TEST_90000001.Selector},
 	})
-	require.ErrorContains(t, err, "not found in environment")
+	require.EqualError(t, err, fmt.Sprintf("EVM chain %d not found in environment", chainselectors.TEST_90000001.Selector))
 }
 
 func TestRegistration(t *testing.T) {

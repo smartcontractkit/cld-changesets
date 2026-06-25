@@ -2,7 +2,6 @@ package deploycustomtopology
 
 import (
 	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/Masterminds/semver/v3"
@@ -79,10 +78,10 @@ func TestRegister_andLookup(t *testing.T) {
 	tests := []struct {
 		name    string
 		chains  []ChainInput
-		wantErr bool
+		wantErr string
 	}{
 		{name: "verify success", chains: []ChainInput{{ChainSelector: 1}}},
-		{name: "verify hook error", chains: nil, wantErr: true},
+		{name: "verify hook error", chains: nil, wantErr: "family test-deploy-custom-topology-family-a: no chains"},
 	}
 
 	for _, tt := range tests {
@@ -90,12 +89,12 @@ func TestRegister_andLookup(t *testing.T) {
 			t.Parallel()
 
 			err := reg.VerifyForFamily(family, cldf.Environment{}, tt.chains)
-			if tt.wantErr {
-				require.Error(t, err)
+			if tt.wantErr == "" {
+				require.NoError(t, err)
 				return
 			}
 
-			require.NoError(t, err)
+			require.EqualError(t, err, tt.wantErr)
 		})
 	}
 }
@@ -139,10 +138,15 @@ func TestSequenceForFamily_errors(t *testing.T) {
 	reg := newTestRegistry()
 
 	tests := []struct {
-		name   string
-		family string
+		name    string
+		family  string
+		wantErr string
 	}{
-		{name: "missing family", family: "test-deploy-custom-topology-family-missing"},
+		{
+			name:    "missing family",
+			family:  "test-deploy-custom-topology-family-missing",
+			wantErr: `test deploy-custom-topology: no sequence registered for family "test-deploy-custom-topology-family-missing" (none registered)`,
+		},
 	}
 
 	for _, tt := range tests {
@@ -150,7 +154,7 @@ func TestSequenceForFamily_errors(t *testing.T) {
 			t.Parallel()
 
 			_, err := reg.SequenceForFamily(tt.family)
-			require.ErrorContains(t, err, fmt.Sprintf(`no sequence registered for family %q`, tt.family))
+			require.EqualError(t, err, tt.wantErr)
 		})
 	}
 }
@@ -178,9 +182,18 @@ func TestVerifyForFamily(t *testing.T) {
 		chains  []ChainInput
 		wantErr string
 	}{
-		{name: "missing family", family: "test-deploy-custom-topology-family-missing-verify", wantErr: "no sequence registered for family"},
+		{
+			name:    "missing family",
+			family:  "test-deploy-custom-topology-family-missing-verify",
+			wantErr: `test deploy-custom-topology: no sequence registered for family "test-deploy-custom-topology-family-missing-verify" (registered: test-deploy-custom-topology-family-d, test-deploy-custom-topology-family-e)`,
+		},
 		{name: "nil verify hook", family: nilHookFamily},
-		{name: "wrapped verify error", family: wrapFamily, chains: []ChainInput{{ChainSelector: 1}}, wantErr: "boom"},
+		{
+			name:    "wrapped verify error",
+			family:  wrapFamily,
+			chains:  []ChainInput{{ChainSelector: 1}},
+			wantErr: "family test-deploy-custom-topology-family-e: boom",
+		},
 	}
 
 	for _, tt := range tests {
@@ -193,10 +206,7 @@ func TestVerifyForFamily(t *testing.T) {
 				return
 			}
 
-			require.ErrorContains(t, err, tt.wantErr)
-			if tt.family == wrapFamily {
-				require.ErrorContains(t, err, fmt.Sprintf("family %s:", wrapFamily))
-			}
+			require.EqualError(t, err, tt.wantErr)
 		})
 	}
 }
