@@ -1,4 +1,4 @@
-package deploy_test
+package evmdeploy_test
 
 import (
 	"math/big"
@@ -23,7 +23,6 @@ import (
 	"github.com/smartcontractkit/cld-changesets/mcms/changesets/deploy"
 	evmreaders "github.com/smartcontractkit/cld-changesets/mcms/evm/readers"
 
-	// Import EVM deploy package to auto-register the EVM family via init().
 	_ "github.com/smartcontractkit/cld-changesets/mcms/evm/deploy"
 )
 
