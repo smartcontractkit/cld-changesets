@@ -14,6 +14,8 @@ import (
 )
 
 func TestOpFundKey(t *testing.T) {
+	t.Parallel()
+
 	selector := chainselectors.TEST_22222222222222222222222222222222222222222222.Selector
 	deployerKey := solana.NewWallet().PrivateKey
 	target := solana.NewWallet().PublicKey()
@@ -49,6 +51,8 @@ func TestOpFundKey(t *testing.T) {
 }
 
 func TestOpFundKey_missingDeployerKey(t *testing.T) {
+	t.Parallel()
+
 	selector := chainselectors.TEST_22222222222222222222222222222222222222222222.Selector
 	_, err := operations.ExecuteOperation(
 		optest.NewBundle(t),
@@ -63,6 +67,8 @@ func TestOpFundKey_missingDeployerKey(t *testing.T) {
 }
 
 func TestOpFundKey_confirmError(t *testing.T) {
+	t.Parallel()
+
 	selector := chainselectors.TEST_22222222222222222222222222222222222222222222.Selector
 	deployerKey := solana.NewWallet().PrivateKey
 	chain := cldf_solana.Chain{

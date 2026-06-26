@@ -16,7 +16,7 @@ import (
 // FundingTarget is a signer PDA and the lamports to send to it.
 type FundingTarget struct {
 	Address solanago.PublicKey `json:"address"`
-	Amount  uint64            `json:"amount"`
+	Amount  uint64             `json:"amount"`
 }
 
 // ResolveFundingTargets resolves MCMS and timelock signer PDAs from the environment datastore.

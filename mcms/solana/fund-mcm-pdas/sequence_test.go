@@ -21,6 +21,8 @@ import (
 )
 
 func TestSeqFundSolanaMCMPDAs(t *testing.T) {
+	t.Parallel()
+
 	selector := chainselectors.TEST_22222222222222222222222222222222222222222222.Selector
 	deployerKey := solana.NewWallet().PrivateKey
 	var confirmed int
@@ -54,6 +56,8 @@ func TestSeqFundSolanaMCMPDAs(t *testing.T) {
 }
 
 func TestSeqFundSolanaMCMPDAs_chainMismatch(t *testing.T) {
+	t.Parallel()
+
 	selector := chainselectors.TEST_22222222222222222222222222222222222222222222.Selector
 	deployerKey := solana.NewWallet().PrivateKey
 
@@ -67,6 +71,8 @@ func TestSeqFundSolanaMCMPDAs_chainMismatch(t *testing.T) {
 }
 
 func TestSeqFundMCMPDAs_errors(t *testing.T) {
+	t.Parallel()
+
 	selector := chainselectors.TEST_22222222222222222222222222222222222222222222.Selector
 
 	_, err := operations.ExecuteSequence(
@@ -93,6 +99,8 @@ func TestSeqFundMCMPDAs_errors(t *testing.T) {
 }
 
 func TestSeqFundMCMPDAs_success(t *testing.T) {
+	t.Parallel()
+
 	selector := chainselectors.TEST_22222222222222222222222222222222222222222222.Selector
 	deployerKey := solana.NewWallet().PrivateKey
 	solChain := cldfsol.Chain{

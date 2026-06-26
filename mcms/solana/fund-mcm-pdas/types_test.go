@@ -10,6 +10,8 @@ import (
 )
 
 func TestFundingConfigRequiredFunding(t *testing.T) {
+	t.Parallel()
+
 	cfg := FundingConfig{
 		ProposeMCM:   100,
 		CancellerMCM: 200,
@@ -20,6 +22,8 @@ func TestFundingConfigRequiredFunding(t *testing.T) {
 }
 
 func TestEnvFromDeps(t *testing.T) {
+	t.Parallel()
+
 	ds := cldfdatastore.NewMemoryDataStore().Seal()
 	blockChains := chain.NewBlockChains(nil)
 	deps := Deps{

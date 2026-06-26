@@ -20,6 +20,8 @@ import (
 )
 
 func TestValidateMCMSRefs(t *testing.T) {
+	t.Parallel()
+
 	selector := chainselectors.TEST_22222222222222222222222222222222222222222222.Selector
 	version := semver.MustParse("1.0.0")
 
@@ -57,6 +59,8 @@ func TestValidateMCMSRefs(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			ds := datastore.NewMemoryDataStore()
 			for _, ref := range tt.refs {
 				addValidateRef(t, ds, selector, ref.contractType, ref.address, version, "")
@@ -78,6 +82,8 @@ func TestValidateMCMSRefs(t *testing.T) {
 }
 
 func TestValidateDeployerBalance(t *testing.T) {
+	t.Parallel()
+
 	selector := chainselectors.TEST_22222222222222222222222222222222222222222222.Selector
 	deployerKey := solana.NewWallet().PrivateKey
 
@@ -130,6 +136,8 @@ func TestValidateDeployerBalance(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			err := validateDeployerBalance(
 				validateTestEnv(datastore.NewMemoryDataStore().Seal(), selector, tt.chain),
 				selector,
@@ -153,6 +161,7 @@ type validateRefSpec struct {
 func completeMCMSRefs() []validateRefSpec {
 	mcmProgram := solana.NewWallet().PublicKey()
 	timelockProgram := solana.NewWallet().PublicKey()
+
 	return []validateRefSpec{
 		{mcmscontracts.RBACTimelock, mcmssolana.ContractAddress(timelockProgram, testPDASeed(4))},
 		{mcmscontracts.ProposerManyChainMultisig, mcmssolana.ContractAddress(mcmProgram, testPDASeed(1))},

@@ -21,6 +21,8 @@ import (
 )
 
 func TestResolveFundingTargets(t *testing.T) {
+	t.Parallel()
+
 	selector := chainselectors.TEST_22222222222222222222222222222222222222222222.Selector
 	mcmProgram := solanago.NewWallet().PublicKey()
 	timelockProgram := solanago.NewWallet().PublicKey()
@@ -80,6 +82,8 @@ func TestResolveFundingTargets(t *testing.T) {
 }
 
 func TestResolveFundingTargets_errors(t *testing.T) {
+	t.Parallel()
+
 	selector := chainselectors.TEST_22222222222222222222222222222222222222222222.Selector
 
 	env := helperTestEnv(datastore.NewMemoryDataStore().Seal(), selector)
@@ -111,6 +115,8 @@ func TestResolveFundingTargets_errors(t *testing.T) {
 }
 
 func TestSignerPDAFromRef_errors(t *testing.T) {
+	t.Parallel()
+
 	_, err := mcmsSignerPDAFromRef("not-valid")
 	require.Error(t, err)
 

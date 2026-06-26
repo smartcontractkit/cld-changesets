@@ -66,6 +66,7 @@ func TestChangeset(t *testing.T) {
 				env: func() cldf.Environment {
 					env := rt1.Environment()
 					env.BlockChains = cldf_chain.NewBlockChains(nil)
+
 					return env
 				}(),
 				config: Config{
@@ -109,6 +110,7 @@ func TestChangeset(t *testing.T) {
 					chain := env.BlockChains.SolanaChains()[selector1]
 					chain.DeployerKey = nil
 					env.BlockChains = cldf_chain.NewBlockChains(map[uint64]cldf_chain.BlockChain{selector1: chain})
+
 					return env
 				}(),
 				config: Config{
