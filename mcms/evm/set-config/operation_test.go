@@ -2,15 +2,14 @@ package evmsetconfig
 
 import (
 	"crypto/ecdsa"
-	"math/big"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 
 	chainselectors "github.com/smartcontractkit/chain-selectors"
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
+	opscontract "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/operations2/contract"
 	mcmscontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/mcms"
 	cldftesthelpers "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils/testhelpers"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/runtime"
@@ -35,22 +34,6 @@ func TestOpEVMSetConfigMCM_missingDeployerKey(t *testing.T) {
 		},
 	)
 	require.ErrorContains(t, err, "missing deployer key")
-}
-
-func TestCloneTransactOptsWithGas(t *testing.T) {
-	t.Parallel()
-
-	require.Nil(t, cloneTransactOptsWithGas(nil, 100, 200))
-
-	opts := &bind.TransactOpts{GasLimit: 1, GasPrice: big.NewInt(1)}
-	got := cloneTransactOptsWithGas(opts, 0, 0)
-	require.Equal(t, uint64(1), got.GasLimit)
-	require.Equal(t, int64(1), got.GasPrice.Int64())
-	require.NotSame(t, opts, got)
-
-	got = cloneTransactOptsWithGas(opts, 500_000, 30_000_000_000)
-	require.Equal(t, uint64(500_000), got.GasLimit)
-	require.Equal(t, uint64(30_000_000_000), got.GasPrice.Uint64())
 }
 
 func TestOpEVMSetConfigInputGasOverridable(t *testing.T) {
@@ -108,12 +91,12 @@ func TestOpEVMSetConfigMCM(t *testing.T) {
 				},
 			)
 			require.NoError(t, err)
-			require.Equal(t, refs.Canceller, report.Output.To)
-			require.NotEmpty(t, report.Output.Data)
-			require.Equal(t, !tt.noSend, report.Output.Confirmed)
+			require.Equal(t, refs.Canceller.Hex(), report.Output.Tx.To)
+			require.NotEmpty(t, report.Output.Tx.Data)
+			require.Equal(t, !tt.noSend, report.Output.Executed())
 
 			if tt.noSend {
-				batch, err := evmCallOutputsToBatch(selector, []EVMCallOutput{report.Output})
+				batch, err := opscontract.NewBatchOperationFromWrites([]opscontract.WriteOutput{report.Output})
 				require.NoError(t, err)
 				require.Len(t, batch.Transactions, 1)
 				require.NoError(t, rt.Exec(

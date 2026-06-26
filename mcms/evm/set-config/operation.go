@@ -2,19 +2,20 @@ package evmsetconfig
 
 import (
 	"fmt"
+	"math/big"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	mcmsevm "github.com/smartcontractkit/mcms/sdk/evm"
-	mcmsbindings "github.com/smartcontractkit/mcms/sdk/evm/bindings"
-	mcmstypes "github.com/smartcontractkit/mcms/types"
-
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
+	opscontract "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/operations2/contract"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	cldfproposalutils "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
+	mcmsevm "github.com/smartcontractkit/mcms/sdk/evm"
+	mcmsbindings "github.com/smartcontractkit/mcms/sdk/evm/bindings"
+	mcmstypes "github.com/smartcontractkit/mcms/types"
 
 	"github.com/smartcontractkit/cld-changesets/mcms/evm/internal/gasboost"
 )
@@ -50,49 +51,61 @@ var OpEVMSetConfigMCM = operations.NewOperation(
 	"evm-mcm-set-config",
 	semver.MustParse("1.0.0"),
 	"Sets MCMS config on an EVM MCM contract",
-	func(b operations.Bundle, deps cldf_evm.Chain, in OpEVMSetConfigInput) (EVMCallOutput, error) {
+	func(b operations.Bundle, deps cldf_evm.Chain, in OpEVMSetConfigInput) (opscontract.WriteOutput, error) {
 		if !in.NoSend && deps.DeployerKey == nil {
-			return EVMCallOutput{}, fmt.Errorf("missing deployer key for chain %d", deps.Selector)
+			return opscontract.WriteOutput{}, fmt.Errorf("missing deployer key for chain %d", deps.Selector)
 		}
 
 		var opts *bind.TransactOpts
 		if in.NoSend {
 			opts = cldf.SimTransactOpts()
 		} else {
-			opts = cloneTransactOptsWithGas(deps.DeployerKey, in.GasLimit, in.GasPrice)
+			opts = gasboost.CloneTransactOptsWithGas(deps.DeployerKey, in.GasLimit, in.GasPrice)
 		}
 		if opts == nil {
-			return EVMCallOutput{}, fmt.Errorf("failed to build transact opts for chain %d", deps.Selector)
+			return opscontract.WriteOutput{}, fmt.Errorf("failed to build transact opts for chain %d", deps.Selector)
 		}
 		opts.Context = b.GetContext()
+
 		configurer := mcmsevm.NewConfigurer(deps.Client, opts)
 		res, err := configurer.SetConfig(b.GetContext(), in.Target.Address.Hex(), &in.Target.Config, false)
 		if err != nil {
-			return EVMCallOutput{}, fmt.Errorf("failed to set config on %s: %w", in.Target.Address, err)
+			return opscontract.WriteOutput{}, fmt.Errorf("failed to set config on %s: %w", in.Target.Address, err)
 		}
 
 		tx, ok := res.RawData.(*types.Transaction)
 		if !ok {
-			return EVMCallOutput{}, fmt.Errorf("unexpected raw data type %T from SetConfig", res.RawData)
+			return opscontract.WriteOutput{}, fmt.Errorf("unexpected raw data type %T from SetConfig", res.RawData)
 		}
 
-		confirmed := false
-		if !in.NoSend {
-			if _, err = cldf.ConfirmIfNoErrorWithABI(deps, tx, mcmsbindings.ManyChainMultiSigABI, err); err != nil {
-				return EVMCallOutput{}, fmt.Errorf("failed to confirm set config tx against %s: %w", in.Target.Address, err)
-			}
-			b.Logger.Infow("SetConfig tx confirmed", "txHash", res.Hash, "address", in.Target.Address.Hex())
-			confirmed = true
+		out := writeOutputFromSetConfig(deps.Selector, in.Target, tx)
+		if in.NoSend {
+			return out, nil
 		}
 
-		return EVMCallOutput{
-			To:           in.Target.Address,
-			Data:         tx.Data(),
-			ContractType: in.Target.ContractType,
-			Confirmed:    confirmed,
-		}, nil
+		if _, err = cldf.ConfirmIfNoErrorWithABI(deps, tx, mcmsbindings.ManyChainMultiSigABI, err); err != nil {
+			return opscontract.WriteOutput{}, fmt.Errorf("failed to confirm set config tx against %s: %w", in.Target.Address, err)
+		}
+		b.Logger.Infow("SetConfig tx confirmed", "txHash", res.Hash, "address", in.Target.Address.Hex())
+
+		out.ExecInfo = &opscontract.ExecInfo{Hash: res.Hash}
+
+		return out, nil
 	},
 )
+
+func writeOutputFromSetConfig(chainSelector uint64, target MCMSetConfigTarget, tx *types.Transaction) opscontract.WriteOutput {
+	return opscontract.WriteOutput{
+		ChainSelector: chainSelector,
+		Tx: mcmsevm.NewTransaction(
+			target.Address,
+			tx.Data(),
+			big.NewInt(0),
+			string(target.ContractType),
+			[]string{},
+		),
+	}
+}
 
 func retrySetConfigWithGasBoost(cfg *cldfproposalutils.GasBoostConfig) operations.ExecuteOption[OpEVMSetConfigInput, cldf_evm.Chain] {
 	if cfg == nil {
