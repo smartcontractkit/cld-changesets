@@ -1,11 +1,29 @@
 package gasboost
 
 import (
+	"math/big"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	cldfproposalutils "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
 	"github.com/stretchr/testify/require"
 )
+
+func TestCloneTransactOptsWithGas(t *testing.T) {
+	t.Parallel()
+
+	require.Nil(t, CloneTransactOptsWithGas(nil, 100, 200))
+
+	opts := &bind.TransactOpts{GasLimit: 1, GasPrice: big.NewInt(1)}
+	got := CloneTransactOptsWithGas(opts, 0, 0)
+	require.Equal(t, uint64(1), got.GasLimit)
+	require.Equal(t, int64(1), got.GasPrice.Int64())
+	require.NotSame(t, opts, got)
+
+	got = CloneTransactOptsWithGas(opts, 500_000, 30_000_000_000)
+	require.Equal(t, uint64(500_000), got.GasLimit)
+	require.Equal(t, uint64(30_000_000_000), got.GasPrice.Uint64())
+}
 
 func TestToContractConfig(t *testing.T) {
 	t.Parallel()
