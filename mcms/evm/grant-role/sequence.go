@@ -44,9 +44,10 @@ func runEVMGrantRole(
 
 	useMCMS := in.MCMS != nil
 	var writes []opscontract.WriteOutput
+	var addresses []common.Address
 
 	for _, grant := range in.Grants {
-		addresses, err := addressesNeedingGrant(b, chain, timelock, grant)
+		addresses, err = addressesNeedingGrant(b, chain, timelock, grant)
 		if err != nil {
 			return sequenceutils.OnChainOutput{}, err
 		}
@@ -57,11 +58,12 @@ func runEVMGrantRole(
 				Role:     grant.Role,
 				Address:  address,
 			}
-			if err := validateGrantRoleTarget(target); err != nil {
+			if err = validateGrantRoleTarget(target); err != nil {
 				return sequenceutils.OnChainOutput{}, err
 			}
 
-			report, err := operations.ExecuteOperation(
+			var report operations.Report[OpEVMGrantRoleInput, opscontract.WriteOutput]
+			report, err = operations.ExecuteOperation(
 				b,
 				OpEVMGrantRole,
 				chain,
@@ -174,5 +176,5 @@ func timelockAddress(env cldf.Environment, in grantrole.SeqInput) (common.Addres
 		return common.Address{}, fmt.Errorf("resolve timelock for chain %d: %w", in.ChainSelector, err)
 	}
 
-	return parseEVMAddress(ref.Address, "timelock")
+	return parseTimelockAddress(ref.Address)
 }

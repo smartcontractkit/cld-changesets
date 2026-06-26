@@ -208,17 +208,17 @@ func TestValidateEVMChains(t *testing.T) {
 	}
 }
 
-func TestParseEVMAddress(t *testing.T) {
+func TestParseTimelockAddress(t *testing.T) {
 	t.Parallel()
 
-	addr, err := parseEVMAddress(testTimelockAddr, "timelock")
+	addr, err := parseTimelockAddress(testTimelockAddr)
 	require.NoError(t, err)
 	require.Equal(t, testTimelockAddr, addr.Hex())
 
-	_, err = parseEVMAddress("not-an-address", "timelock")
+	_, err = parseTimelockAddress("not-an-address")
 	require.EqualError(t, err, `timelock address "not-an-address" is not a valid EVM address`)
 
-	_, err = parseEVMAddress("0x0000000000000000000000000000000000000000", "timelock")
+	_, err = parseTimelockAddress("0x0000000000000000000000000000000000000000")
 	require.EqualError(t, err, "timelock address must not be zero")
 }
 

@@ -42,7 +42,7 @@ func validateMCMSRefs(env cldf.Environment, in grantrole.SeqInput) error {
 	if err != nil {
 		return fmt.Errorf("timelock not present on chain %d: %w", in.ChainSelector, err)
 	}
-	if _, err = parseEVMAddress(timelockRef.Address, "timelock"); err != nil {
+	if _, err = parseTimelockAddress(timelockRef.Address); err != nil {
 		return fmt.Errorf("invalid timelock ref on chain %d: %w", in.ChainSelector, err)
 	}
 
@@ -74,13 +74,13 @@ func validateRoles(in grantrole.SeqInput) error {
 	return nil
 }
 
-func parseEVMAddress(raw string, name string) (common.Address, error) {
+func parseTimelockAddress(raw string) (common.Address, error) {
 	if !common.IsHexAddress(raw) {
-		return common.Address{}, fmt.Errorf("%s address %q is not a valid EVM address", name, raw)
+		return common.Address{}, fmt.Errorf("timelock address %q is not a valid EVM address", raw)
 	}
 	addr := common.HexToAddress(raw)
 	if addr == (common.Address{}) {
-		return common.Address{}, errors.New(name + " address must not be zero")
+		return common.Address{}, errors.New("timelock address must not be zero")
 	}
 
 	return addr, nil
