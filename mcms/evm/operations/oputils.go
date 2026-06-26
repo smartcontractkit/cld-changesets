@@ -1,4 +1,4 @@
-package oputil
+package operations
 
 import (
 	"context"
@@ -30,8 +30,6 @@ import (
 )
 
 // EVMCallInput is the input structure for an EVM call operation.
-// Why not pull the chain selector from the chain dependency? Because addresses might be the same across chains and we need to differentiate them.
-// This ensures no false report matches between operation runs that have the same call input and address but a different target chain.
 type EVMCallInput[IN any] struct {
 	// Address is the address of the contract to call.
 	Address common.Address `json:"address"`
@@ -350,7 +348,7 @@ func NewEVMDeployOperation[IN any](
 	)
 }
 
-// cloneTransactOptsWithGas ensures that we don't impact the transact opts used by other operations.
+// CloneTransactOptsWithGas ensures that we don't impact the transact opts used by other operations.
 func CloneTransactOptsWithGas(opts *bind.TransactOpts, gasLimit uint64, gasPrice uint64) *bind.TransactOpts {
 	if opts == nil {
 		return nil
@@ -375,8 +373,9 @@ func GasBoostConfigsForChainMap[T any](chainMap map[uint64]T, gasBoostConfigs ma
 	}
 
 	for chainSelector := range chainMap {
-		if _, ok := gasBoostConfigs[chainSelector]; ok {
-			cfgs[chainSelector] = new(gasBoostConfigs[chainSelector])
+		if cfg, ok := gasBoostConfigs[chainSelector]; ok {
+			cfgCopy := cfg
+			cfgs[chainSelector] = &cfgCopy
 		} else {
 			cfgs[chainSelector] = nil
 		}
