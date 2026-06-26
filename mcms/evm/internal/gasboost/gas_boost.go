@@ -1,11 +1,31 @@
 package gasboost
 
 import (
+	"math/big"
+
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	cldfevm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	opscontract "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/operations2/contract"
 	cldfproposalutils "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 )
+
+// CloneTransactOptsWithGas returns a copy of opts with optional gas limit and price overrides.
+func CloneTransactOptsWithGas(opts *bind.TransactOpts, gasLimit, gasPrice uint64) *bind.TransactOpts {
+	if opts == nil {
+		return nil
+	}
+
+	newOpts := *opts
+	if gasLimit > 0 {
+		newOpts.GasLimit = gasLimit
+	}
+	if gasPrice > 0 {
+		newOpts.GasPrice = new(big.Int).SetUint64(gasPrice)
+	}
+
+	return &newOpts
+}
 
 // ToContractConfig converts proposal gas-boost settings to framework contract gas-boost config.
 func ToContractConfig(cfg *cldfproposalutils.GasBoostConfig) *opscontract.GasBoostConfig {

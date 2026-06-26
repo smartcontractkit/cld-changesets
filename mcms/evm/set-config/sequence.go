@@ -2,15 +2,14 @@ package evmsetconfig
 
 import (
 	"fmt"
-	"math/big"
 	"strconv"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/ethereum/go-ethereum/common"
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
+	opscontract "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/operations2/contract"
 	"github.com/smartcontractkit/chainlink-deployments-framework/changeset/sequenceutils"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
-	cldfproposalutils "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 
@@ -40,11 +39,7 @@ func runEVMSetConfig(
 	}
 
 	useMCMS := in.MCMS != nil
-
-	var outs []EVMCallOutput
-	if useMCMS {
-		outs = make([]EVMCallOutput, 0, len(targets))
-	}
+	var writes []opscontract.WriteOutput
 
 	for _, target := range targets {
 		opReport, execErr := operations.ExecuteOperation(
@@ -62,29 +57,33 @@ func runEVMSetConfig(
 			return sequenceutils.OnChainOutput{}, execErr
 		}
 
-		if !useMCMS {
+		if useMCMS {
+			writes = append(writes, opReport.Output)
 			continue
 		}
 
-		out := opReport.Output
-		out.ContractType = target.ContractType
-		outs = append(outs, out)
+		if opReport.Output.Executed() {
+			b.Logger.Infow("SetConfig tx confirmed",
+				"chainSelector", chain.Selector,
+				"address", target.Address.Hex(),
+				"txHash", opReport.Output.ExecInfo.Hash,
+			)
+		}
 	}
 
-	out := sequenceutils.OnChainOutput{}
 	if !useMCMS {
-		return out, nil
+		return sequenceutils.OnChainOutput{}, nil
 	}
 
-	batch, err := evmCallOutputsToBatch(in.ChainSelector, outs)
+	batch, err := opscontract.NewBatchOperationFromWrites(writes)
 	if err != nil {
 		return sequenceutils.OnChainOutput{}, err
 	}
-	if len(batch.Transactions) > 0 {
-		out.BatchOps = []mcmstypes.BatchOperation{batch}
+	if len(batch.Transactions) == 0 {
+		return sequenceutils.OnChainOutput{}, nil
 	}
 
-	return out, nil
+	return sequenceutils.OnChainOutput{BatchOps: []mcmstypes.BatchOperation{batch}}, nil
 }
 
 func setConfigTargets(e cldf.Environment, configs []setconfig.ContractSetConfig) ([]MCMSetConfigTarget, error) {
@@ -107,32 +106,4 @@ func setConfigTargets(e cldf.Environment, configs []setconfig.ContractSetConfig)
 	}
 
 	return targets, nil
-}
-
-func evmCallOutputsToBatch(chainSelector uint64, outs []EVMCallOutput) (mcmstypes.BatchOperation, error) {
-	result := mcmstypes.BatchOperation{
-		ChainSelector: mcmstypes.ChainSelector(chainSelector),
-		Transactions:  []mcmstypes.Transaction{},
-	}
-
-	for _, out := range outs {
-		if out.Confirmed {
-			continue
-		}
-
-		batchOperation, err := cldfproposalutils.BatchOperationForChain(
-			chainSelector,
-			out.To.Hex(),
-			out.Data,
-			big.NewInt(0),
-			string(out.ContractType),
-			[]string{},
-		)
-		if err != nil {
-			return mcmstypes.BatchOperation{}, fmt.Errorf("failed to create batch operation for chain %d: %w", chainSelector, err)
-		}
-		result.Transactions = append(result.Transactions, batchOperation.Transactions...)
-	}
-
-	return result, nil
 }
