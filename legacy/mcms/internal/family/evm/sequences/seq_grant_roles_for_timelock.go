@@ -15,7 +15,7 @@ import (
 
 	"github.com/smartcontractkit/cld-changesets/internal/mcmsrole"
 	opevmlegacy "github.com/smartcontractkit/cld-changesets/legacy/mcms/internal/family/evm/operations"
-	evmops "github.com/smartcontractkit/cld-changesets/mcms/evm/operations"
+	evmops "github.com/smartcontractkit/cld-changesets/legacy/mcms/oputils"
 )
 
 type SeqGrantRolesTimelockDeps struct {
