@@ -9,7 +9,7 @@ import (
 	bindings "github.com/smartcontractkit/ccip-owner-contracts/pkg/gethwrappers"
 	mcmscontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/mcms"
 
-	"github.com/smartcontractkit/cld-changesets/mcms/evm/operations"
+	"github.com/smartcontractkit/cld-changesets/legacy/mcms/oputils"
 )
 
 type OpEVMSetConfigMCMInput struct {
@@ -19,7 +19,7 @@ type OpEVMSetConfigMCMInput struct {
 	GroupParents    [32]uint8        `json:"groupParents"`
 }
 
-var OpEVMSetConfigMCM = operations.NewEVMCallOperation(
+var OpEVMSetConfigMCM = oputils.NewEVMCallOperation(
 	"evm-mcm-set-config",
 	semver.MustParse("1.0.0"),
 	"Sets Config on the deployed MCM contract",

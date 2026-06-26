@@ -9,7 +9,7 @@ import (
 	mcmscontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/mcms"
 	"github.com/smartcontractkit/mcms/sdk/evm/bindings"
 
-	evmops "github.com/smartcontractkit/cld-changesets/mcms/evm/operations"
+	evmops "github.com/smartcontractkit/cld-changesets/legacy/mcms/oputils"
 )
 
 // OpGrantRoleInput is the input to OpGrantRole.

@@ -1,4 +1,4 @@
-package operations_test
+package oputils_test
 
 import (
 	"encoding/json"
@@ -27,8 +27,8 @@ import (
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 
 	mcmschangesets "github.com/smartcontractkit/cld-changesets/legacy/mcms/changesets"
+	"github.com/smartcontractkit/cld-changesets/legacy/mcms/oputils"
 	evmstate "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/evm"
-	evmops "github.com/smartcontractkit/cld-changesets/mcms/evm/operations"
 )
 
 func TestCloneTransactOptsWithGas(t *testing.T) {
@@ -36,16 +36,16 @@ func TestCloneTransactOptsWithGas(t *testing.T) {
 
 	orig := &bind.TransactOpts{GasLimit: 100, GasPrice: big.NewInt(123)}
 
-	cloned := evmops.CloneTransactOptsWithGas(orig, 200, 456)
+	cloned := oputils.CloneTransactOptsWithGas(orig, 200, 456)
 	assert.NotSame(t, orig, cloned)
 	assert.Equal(t, uint64(200), cloned.GasLimit)
 	assert.Equal(t, big.NewInt(456), cloned.GasPrice)
 
-	cloned2 := evmops.CloneTransactOptsWithGas(orig, 0, 0)
+	cloned2 := oputils.CloneTransactOptsWithGas(orig, 0, 0)
 	assert.Equal(t, orig.GasLimit, cloned2.GasLimit)
 	assert.Equal(t, orig.GasPrice, cloned2.GasPrice)
 
-	assert.Nil(t, evmops.CloneTransactOptsWithGas(nil, 1, 1))
+	assert.Nil(t, oputils.CloneTransactOptsWithGas(nil, 1, 1))
 }
 
 func TestGasBoostConfigsForChainMap(t *testing.T) {
@@ -55,24 +55,24 @@ func TestGasBoostConfigsForChainMap(t *testing.T) {
 	gasBoostConfigs := map[uint64]cldfproposalutils.GasBoostConfig{
 		1: {InitialGasLimit: 10},
 	}
-	cfgs := evmops.GasBoostConfigsForChainMap(chainMap, gasBoostConfigs)
+	cfgs := oputils.GasBoostConfigsForChainMap(chainMap, gasBoostConfigs)
 	assert.Len(t, cfgs, 2)
 	assert.NotNil(t, cfgs[1])
 	assert.Nil(t, cfgs[2])
 
-	assert.Empty(t, evmops.GasBoostConfigsForChainMap[string](chainMap, nil))
-	assert.Empty(t, evmops.GasBoostConfigsForChainMap[string](nil, gasBoostConfigs))
+	assert.Empty(t, oputils.GasBoostConfigsForChainMap[string](chainMap, nil))
+	assert.Empty(t, oputils.GasBoostConfigsForChainMap[string](nil, gasBoostConfigs))
 }
 
 func TestGetBoostedGasForAttempt(t *testing.T) {
 	t.Parallel()
 
 	cfg := cldfproposalutils.GasBoostConfig{}
-	limit, price := evmops.GetBoostedGasForAttempt(cfg, 0)
+	limit, price := oputils.GetBoostedGasForAttempt(cfg, 0)
 	assert.Equal(t, uint64(200_000), limit)
 	assert.Equal(t, uint64(20_000_000_000), price)
 
-	limit, price = evmops.GetBoostedGasForAttempt(cfg, 2)
+	limit, price = oputils.GetBoostedGasForAttempt(cfg, 2)
 	assert.Equal(t, uint64(200_000+2*50_000), limit)
 	assert.Equal(t, uint64(20_000_000_000+2*10_000_000_000), price)
 
@@ -82,7 +82,7 @@ func TestGetBoostedGasForAttempt(t *testing.T) {
 		InitialGasPrice:   2000,
 		GasPriceIncrement: 100,
 	}
-	limit, price = evmops.GetBoostedGasForAttempt(cfg, 3)
+	limit, price = oputils.GetBoostedGasForAttempt(cfg, 3)
 	assert.Equal(t, uint64(1000+3*100), limit)
 	assert.Equal(t, uint64(2000+3*100), price)
 }
@@ -91,10 +91,10 @@ func TestRetryWithGasBoost(t *testing.T) {
 	t.Parallel()
 
 	cfg := &cldfproposalutils.GasBoostConfig{InitialGasLimit: 1000, GasLimitIncrement: 100}
-	assert.NotNil(t, evmops.RetryDeploymentWithGasBoost[any](cfg))
-	assert.NotNil(t, evmops.RetryDeploymentWithGasBoost[string](nil))
-	assert.NotNil(t, evmops.RetryCallWithGasBoost[any](cfg))
-	assert.NotNil(t, evmops.RetryCallWithGasBoost[string](nil))
+	assert.NotNil(t, oputils.RetryDeploymentWithGasBoost[any](cfg))
+	assert.NotNil(t, oputils.RetryDeploymentWithGasBoost[string](nil))
+	assert.NotNil(t, oputils.RetryCallWithGasBoost[any](cfg))
+	assert.NotNil(t, oputils.RetryCallWithGasBoost[string](nil))
 }
 
 func TestContractOpts_Validate(t *testing.T) {
@@ -102,34 +102,34 @@ func TestContractOpts_Validate(t *testing.T) {
 
 	tests := []struct {
 		desc       string
-		opts       *evmops.ContractOpts
+		opts       *oputils.ContractOpts
 		isZkSyncVM bool
 		err        string
 	}{
 		{
 			desc:       "valid evm opts",
-			opts:       &evmops.ContractOpts{Version: semver.MustParse("1.0.0"), EVMBytecode: []byte{0x01}},
+			opts:       &oputils.ContractOpts{Version: semver.MustParse("1.0.0"), EVMBytecode: []byte{0x01}},
 			isZkSyncVM: false,
 		},
 		{
 			desc:       "valid zksyncvm opts",
-			opts:       &evmops.ContractOpts{Version: semver.MustParse("1.0.0"), ZkSyncVMBytecode: []byte{0x05}},
+			opts:       &oputils.ContractOpts{Version: semver.MustParse("1.0.0"), ZkSyncVMBytecode: []byte{0x05}},
 			isZkSyncVM: true,
 		},
 		{
 			desc: "nil version",
-			opts: &evmops.ContractOpts{},
+			opts: &oputils.ContractOpts{},
 			err:  "version must be defined",
 		},
 		{
 			desc:       "missing evm bytecode",
-			opts:       &evmops.ContractOpts{Version: semver.MustParse("1.0.0")},
+			opts:       &oputils.ContractOpts{Version: semver.MustParse("1.0.0")},
 			isZkSyncVM: false,
 			err:        "evm bytecode must be defined",
 		},
 		{
 			desc:       "missing zkSyncVM bytecode",
-			opts:       &evmops.ContractOpts{Version: semver.MustParse("1.0.0")},
+			opts:       &oputils.ContractOpts{Version: semver.MustParse("1.0.0")},
 			isZkSyncVM: true,
 			err:        "zkSyncVM bytecode must be defined",
 		},
@@ -166,27 +166,27 @@ func TestNewEVMDeployOperation_Errors(t *testing.T) {
 
 	t.Run("nil metadata", func(t *testing.T) {
 		t.Parallel()
-		op := evmops.NewEVMDeployOperation[any]("op-nil-meta", semver.MustParse("1.0.0"), "d", "T", nil,
-			&evmops.ContractOpts{Version: semver.MustParse("1.0.0"), EVMBytecode: []byte{0x01}}, noArgs)
-		_, err := operations.ExecuteOperation(bundle, op, chain, evmops.EVMDeployInput[any]{ChainSelector: sel})
+		op := oputils.NewEVMDeployOperation[any]("op-nil-meta", semver.MustParse("1.0.0"), "d", "T", nil,
+			&oputils.ContractOpts{Version: semver.MustParse("1.0.0"), EVMBytecode: []byte{0x01}}, noArgs)
+		_, err := operations.ExecuteOperation(bundle, op, chain, oputils.EVMDeployInput[any]{ChainSelector: sel})
 		require.ErrorContains(t, err, "contract metadata must be provided")
 	})
 
 	t.Run("no contract opts", func(t *testing.T) {
 		t.Parallel()
-		op := evmops.NewEVMDeployOperation[any]("op-no-opts", semver.MustParse("1.0.0"), "d",
+		op := oputils.NewEVMDeployOperation[any]("op-no-opts", semver.MustParse("1.0.0"), "d",
 			mcmscontracts.CallProxy, bindings.CallProxyMetaData, nil, noArgs)
-		_, err := operations.ExecuteOperation(bundle, op, chain, evmops.EVMDeployInput[any]{ChainSelector: sel})
+		_, err := operations.ExecuteOperation(bundle, op, chain, oputils.EVMDeployInput[any]{ChainSelector: sel})
 		require.ErrorContains(t, err, "must define ContractOpts")
 	})
 
 	t.Run("invalid contract opts", func(t *testing.T) {
 		t.Parallel()
-		op := evmops.NewEVMDeployOperation[any]("op-bad-opts", semver.MustParse("1.0.0"), "d",
+		op := oputils.NewEVMDeployOperation[any]("op-bad-opts", semver.MustParse("1.0.0"), "d",
 			mcmscontracts.CallProxy, bindings.CallProxyMetaData, nil, noArgs)
-		_, err := operations.ExecuteOperation(bundle, op, chain, evmops.EVMDeployInput[any]{
+		_, err := operations.ExecuteOperation(bundle, op, chain, oputils.EVMDeployInput[any]{
 			ChainSelector: sel,
-			ContractOpts:  &evmops.ContractOpts{},
+			ContractOpts:  &oputils.ContractOpts{},
 		})
 		require.ErrorContains(t, err, "version must be defined")
 	})
@@ -194,12 +194,12 @@ func TestNewEVMDeployOperation_Errors(t *testing.T) {
 	t.Run("deploy failure", func(t *testing.T) {
 		t.Parallel()
 		badArgs := func(any) []any { return []any{"not-an-address"} }
-		op := evmops.NewEVMDeployOperation[any]("op-deploy-fail", semver.MustParse("1.0.0"), "d",
+		op := oputils.NewEVMDeployOperation[any]("op-deploy-fail", semver.MustParse("1.0.0"), "d",
 			mcmscontracts.CallProxy, bindings.CallProxyMetaData,
-			&evmops.ContractOpts{Version: semver.MustParse("1.0.0"), EVMBytecode: common.FromHex(bindings.CallProxyBin)},
+			&oputils.ContractOpts{Version: semver.MustParse("1.0.0"), EVMBytecode: common.FromHex(bindings.CallProxyBin)},
 			badArgs)
 		_, err := operations.ExecuteOperation(bundle, op, chain,
-			evmops.EVMDeployInput[any]{ChainSelector: sel})
+			oputils.EVMDeployInput[any]{ChainSelector: sel})
 		require.Error(t, err)
 	})
 }
@@ -213,10 +213,10 @@ func TestAddEVMCallSequenceToCSOutput_SequenceError(t *testing.T) {
 	require.NoError(t, err)
 
 	csOutput := cldf.ChangesetOutput{}
-	seqReport := operations.SequenceReport[string, map[uint64][]evmops.EVMCallOutput]{}
+	seqReport := operations.SequenceReport[string, map[uint64][]oputils.EVMCallOutput]{}
 	seqErr := errors.New("sequence failed")
 
-	result, err := evmops.AddEVMCallSequenceToCSOutput(
+	result, err := oputils.AddEVMCallSequenceToCSOutput(
 		*env,
 		csOutput,
 		seqReport,
@@ -241,9 +241,9 @@ func TestAddEVMCallSequenceToCSOutput_NoMCMS(t *testing.T) {
 	require.NoError(t, err)
 
 	csOutput := cldf.ChangesetOutput{}
-	seqReport := operations.SequenceReport[string, map[uint64][]evmops.EVMCallOutput]{}
+	seqReport := operations.SequenceReport[string, map[uint64][]oputils.EVMCallOutput]{}
 
-	result, err := evmops.AddEVMCallSequenceToCSOutput(
+	result, err := oputils.AddEVMCallSequenceToCSOutput(
 		*env,
 		csOutput,
 		seqReport,
@@ -266,10 +266,10 @@ func TestAddEVMCallSequenceToCSOutput_AllConfirmed(t *testing.T) {
 	require.NoError(t, err)
 
 	csOutput := cldf.ChangesetOutput{}
-	seqReport := operations.SequenceReport[string, map[uint64][]evmops.EVMCallOutput]{}
+	seqReport := operations.SequenceReport[string, map[uint64][]oputils.EVMCallOutput]{}
 	mcmsCfg := &cldfproposalutils.TimelockConfig{}
 
-	result, err := evmops.AddEVMCallSequenceToCSOutput(
+	result, err := oputils.AddEVMCallSequenceToCSOutput(
 		*env,
 		csOutput,
 		seqReport,
@@ -334,9 +334,9 @@ func TestAddEVMCallSequenceToCSOutput_ProposalCombination(t *testing.T) {
 		MCMSTimelockProposals: []mcmslib.TimelockProposal{existingProposal1, existingProposal2},
 	}
 
-	seqReport := operations.SequenceReport[string, map[uint64][]evmops.EVMCallOutput]{
-		Report: operations.Report[string, map[uint64][]evmops.EVMCallOutput]{
-			Output: map[uint64][]evmops.EVMCallOutput{
+	seqReport := operations.SequenceReport[string, map[uint64][]oputils.EVMCallOutput]{
+		Report: operations.Report[string, map[uint64][]oputils.EVMCallOutput]{
+			Output: map[uint64][]oputils.EVMCallOutput{
 				selector2: {{
 					To:           common.HexToAddress("0x3333333333333333333333333333333333333333"),
 					Data:         []byte("new_call_data"),
@@ -352,7 +352,7 @@ func TestAddEVMCallSequenceToCSOutput_ProposalCombination(t *testing.T) {
 		MCMSAction: mcmstypes.TimelockActionSchedule,
 	}
 
-	result, err := evmops.AddEVMCallSequenceToCSOutput(
+	result, err := oputils.AddEVMCallSequenceToCSOutput(
 		rt.Environment(),
 		csOutput,
 		seqReport,

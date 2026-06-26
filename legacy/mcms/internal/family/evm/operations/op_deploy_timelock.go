@@ -11,7 +11,7 @@ import (
 	zkbindings "github.com/smartcontractkit/mcms/sdk/zksync/bindings"
 
 	"github.com/smartcontractkit/cld-changesets/internal/semvers"
-	"github.com/smartcontractkit/cld-changesets/mcms/evm/operations"
+	"github.com/smartcontractkit/cld-changesets/legacy/mcms/oputils"
 )
 
 type OpDeployTimelockInput struct {
@@ -23,13 +23,13 @@ type OpDeployTimelockInput struct {
 	Bypassers        []common.Address `json:"bypassers"`  // Bypasser of the timelock contract, usually the deployer key
 }
 
-var OpDeployTimelock = operations.NewEVMDeployOperation(
+var OpDeployTimelock = oputils.NewEVMDeployOperation(
 	"evm-timelock-deploy",
 	semver.MustParse("1.0.0"),
 	"Deploys Timelock contract on the specified EVM chains",
 	mcmscontracts.RBACTimelock,
 	bindings.RBACTimelockMetaData,
-	&operations.ContractOpts{
+	&oputils.ContractOpts{
 		Version:          &semvers.V1_0_0,
 		EVMBytecode:      common.FromHex(bindings.RBACTimelockBin),
 		ZkSyncVMBytecode: zkbindings.RBACTimelockZkBytecode,
