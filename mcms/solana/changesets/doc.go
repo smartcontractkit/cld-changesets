@@ -5,10 +5,6 @@
 // and mcms/evm/<name>. Solana-only changesets that have no chain-agnostic layer
 // — because the concept is inherently Solana-specific — live here instead.
 //
-// Each changeset subdirectory exports a Changeset type and Config. Sequences and
-// operations for that changeset live in the matching mcms/solana/<name> package
-// (for example mcms/solana/fund-mcm-pdas).
-//
 // # Available changesets
 //
 //   - fund-mcm-pdas — fund MCMS signer PDAs with lamports

@@ -1,4 +1,4 @@
-package solfundmcmpdas
+package fundmcmpdas
 
 import (
 	"testing"

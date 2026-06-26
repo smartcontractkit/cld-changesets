@@ -5,12 +5,10 @@ import (
 
 	"github.com/gagliardetto/solana-go/rpc"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
-
-	solfundmcmpdas "github.com/smartcontractkit/cld-changesets/mcms/solana/fund-mcm-pdas"
 )
 
 func validateMCMSRefs(e cldf.Environment, chainSelector uint64, cfg FundingConfig) error {
-	if _, err := solfundmcmpdas.ResolveFundingTargets(e, chainSelector, cfg); err != nil {
+	if _, err := ResolveFundingTargets(e, chainSelector, cfg); err != nil {
 		return fmt.Errorf("validate funding targets for chain %d: %w", chainSelector, err)
 	}
 

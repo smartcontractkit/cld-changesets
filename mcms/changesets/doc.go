@@ -29,7 +29,6 @@
 // would follow mcms/evm/changesets if added in the future.
 //
 // Family implementation packages (mcms/evm/<name>, mcms/solana/<name>) contain
-// sequences and operations; multi-family changesets register them via init.
-// Solana-only changeset entrypoints live under mcms/solana/changesets and import
-// their sequences from the matching mcms/solana/<name> package.
+// sequences and operations registered by multi-family changesets via init.
+// Solana-only changesets live under mcms/solana/changesets.
 package changesets

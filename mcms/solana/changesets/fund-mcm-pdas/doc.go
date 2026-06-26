@@ -1,8 +1,8 @@
 // Package fundmcmpdas funds MCMS signer PDAs on Solana chains.
 //
 // This is a Solana-only changeset: PDAs and signer funding are Solana-specific
-// concepts. The changeset entrypoint lives here under mcms/solana/changesets;
-// sequences and operations are in mcms/solana/fund-mcm-pdas.
+// concepts. Everything — changeset, sequences, and operations — lives in this
+// package under mcms/solana/changesets.
 //
 // # Usage
 //
