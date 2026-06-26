@@ -21,7 +21,7 @@ import (
 
 	"github.com/smartcontractkit/cld-changesets/internal/mcmsrole"
 	seqevm "github.com/smartcontractkit/cld-changesets/legacy/mcms/internal/family/evm/sequences"
-	evmops "github.com/smartcontractkit/cld-changesets/legacy/mcms/operations"
+	evmops "github.com/smartcontractkit/cld-changesets/legacy/mcms/oputils"
 )
 
 // GrantRolesForTimelock grants RBACTimelock roles to the MCMS contracts in timelockContracts.

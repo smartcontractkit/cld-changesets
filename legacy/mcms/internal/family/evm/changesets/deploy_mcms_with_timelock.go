@@ -12,7 +12,7 @@ import (
 
 	opevm "github.com/smartcontractkit/cld-changesets/legacy/mcms/internal/family/evm/operations"
 	seqevm "github.com/smartcontractkit/cld-changesets/legacy/mcms/internal/family/evm/sequences"
-	evmops "github.com/smartcontractkit/cld-changesets/legacy/mcms/operations"
+	evmops "github.com/smartcontractkit/cld-changesets/legacy/mcms/oputils"
 	evmstate "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/evm"
 )
 

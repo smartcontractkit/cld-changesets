@@ -16,7 +16,7 @@ import (
 	mcmsevmsdk "github.com/smartcontractkit/mcms/sdk/evm"
 
 	"github.com/smartcontractkit/cld-changesets/internal/mcmsrole"
-	evmops "github.com/smartcontractkit/cld-changesets/legacy/mcms/operations"
+	evmops "github.com/smartcontractkit/cld-changesets/legacy/mcms/oputils"
 	timelockops "github.com/smartcontractkit/cld-changesets/mcms/evm/deploy/v1_0_0/operations/rbac_timelock"
 	evmgrantrole "github.com/smartcontractkit/cld-changesets/mcms/evm/grant-role"
 )

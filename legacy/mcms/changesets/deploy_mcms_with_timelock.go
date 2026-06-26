@@ -21,7 +21,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 
 	evmchangesets "github.com/smartcontractkit/cld-changesets/legacy/mcms/internal/family/evm/changesets"
-	evmops "github.com/smartcontractkit/cld-changesets/legacy/mcms/operations"
+	evmops "github.com/smartcontractkit/cld-changesets/legacy/mcms/oputils"
 	"github.com/smartcontractkit/cld-changesets/legacy/pkg/family/evm"
 	solchangesets "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana/changesets"
 )

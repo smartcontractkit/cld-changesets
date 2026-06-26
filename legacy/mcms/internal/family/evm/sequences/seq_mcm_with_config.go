@@ -15,7 +15,7 @@ import (
 	mcmsTypes "github.com/smartcontractkit/mcms/types"
 
 	opevmlegacy "github.com/smartcontractkit/cld-changesets/legacy/mcms/internal/family/evm/operations"
-	evmops "github.com/smartcontractkit/cld-changesets/legacy/mcms/operations"
+	evmops "github.com/smartcontractkit/cld-changesets/legacy/mcms/oputils"
 )
 
 type SeqDeployMCMWithConfigInput struct {
