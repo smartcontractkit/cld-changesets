@@ -9,7 +9,7 @@ import (
 	bindings "github.com/smartcontractkit/ccip-owner-contracts/pkg/gethwrappers"
 	mcmscontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/mcms"
 
-	"github.com/smartcontractkit/cld-changesets/mcms/evm/operations"
+	"github.com/smartcontractkit/cld-changesets/legacy/mcms/operations"
 )
 
 type OpEVMSetConfigMCMInput struct {

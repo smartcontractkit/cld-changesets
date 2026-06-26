@@ -12,8 +12,8 @@ import (
 
 	opevm "github.com/smartcontractkit/cld-changesets/legacy/mcms/internal/family/evm/operations"
 	seqevm "github.com/smartcontractkit/cld-changesets/legacy/mcms/internal/family/evm/sequences"
+	evmops "github.com/smartcontractkit/cld-changesets/legacy/mcms/operations"
 	evmstate "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/evm"
-	evmops "github.com/smartcontractkit/cld-changesets/mcms/evm/operations"
 )
 
 // DeployMCMSOption is a function that modifies a TypeAndVersion before or after deployment.

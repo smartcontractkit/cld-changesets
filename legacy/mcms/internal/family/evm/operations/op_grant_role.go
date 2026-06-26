@@ -9,7 +9,7 @@ import (
 	mcmscontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/mcms"
 	"github.com/smartcontractkit/mcms/sdk/evm/bindings"
 
-	"github.com/smartcontractkit/cld-changesets/mcms/evm/operations"
+	"github.com/smartcontractkit/cld-changesets/legacy/mcms/operations"
 )
 
 type OpGrantRoleInput struct {

@@ -16,9 +16,9 @@ import (
 	mcmsevmsdk "github.com/smartcontractkit/mcms/sdk/evm"
 
 	"github.com/smartcontractkit/cld-changesets/internal/mcmsrole"
+	evmops "github.com/smartcontractkit/cld-changesets/legacy/mcms/operations"
 	timelockops "github.com/smartcontractkit/cld-changesets/mcms/evm/deploy/v1_0_0/operations/rbac_timelock"
 	evmgrantrole "github.com/smartcontractkit/cld-changesets/mcms/evm/grant-role"
-	evmops "github.com/smartcontractkit/cld-changesets/mcms/evm/operations"
 )
 
 // TestOpGrantRole deploys a timelock with the deployer as admin and grants the

@@ -9,7 +9,7 @@ import (
 	zkbindings "github.com/smartcontractkit/mcms/sdk/zksync/bindings"
 
 	"github.com/smartcontractkit/cld-changesets/internal/semvers"
-	"github.com/smartcontractkit/cld-changesets/mcms/evm/operations"
+	"github.com/smartcontractkit/cld-changesets/legacy/mcms/operations"
 )
 
 type OpDeployCallProxyInput struct {

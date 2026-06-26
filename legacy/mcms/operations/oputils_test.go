@@ -27,8 +27,8 @@ import (
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 
 	mcmschangesets "github.com/smartcontractkit/cld-changesets/legacy/mcms/changesets"
+	evmops "github.com/smartcontractkit/cld-changesets/legacy/mcms/operations"
 	evmstate "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/evm"
-	evmops "github.com/smartcontractkit/cld-changesets/mcms/evm/operations"
 )
 
 func TestCloneTransactOptsWithGas(t *testing.T) {
