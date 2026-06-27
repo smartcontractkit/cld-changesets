@@ -44,7 +44,7 @@ func runEVMGrantRole(
 
 	useMCMS := in.MCMS != nil
 	var writes []opscontract.WriteOutput
-	var addresses []common.Address
+	var addresses []string
 
 	for _, grant := range in.Grants {
 		addresses, err = addressesNeedingGrant(b, chain, timelock, grant)
@@ -53,10 +53,15 @@ func runEVMGrantRole(
 		}
 
 		for _, address := range addresses {
+			grantee, parseErr := parseEVMAddress(address)
+			if parseErr != nil {
+				return sequenceutils.OnChainOutput{}, fmt.Errorf("parse grantee address %q: %w", address, parseErr)
+			}
+
 			target := GrantRoleTarget{
 				Timelock: timelock,
 				Role:     grant.Role,
-				Address:  address,
+				Address:  grantee,
 			}
 			if err = validateGrantRoleTarget(target); err != nil {
 				return sequenceutils.OnChainOutput{}, err
@@ -73,7 +78,7 @@ func runEVMGrantRole(
 				},
 				retryGrantRoleWithGasBoost(in.GasBoostConfig),
 				operations.WithIdempotencyKey[OpEVMGrantRoleInput, cldf_evm.Chain](
-					strconv.FormatUint(chain.Selector, 10)+":"+timelock.Hex()+":"+grant.Role.String()+":"+address.Hex(),
+					strconv.FormatUint(chain.Selector, 10)+":"+timelock.Hex()+":"+grant.Role.String()+":"+address,
 				),
 			)
 			if err != nil {
@@ -90,7 +95,7 @@ func runEVMGrantRole(
 					"role", grant.Role.String(),
 					"chainSelector", chain.Selector,
 					"timelock", timelock.Hex(),
-					"address", address.Hex(),
+					"address", grantee.Hex(),
 					"txHash", report.Output.ExecInfo.Hash,
 				)
 			}
@@ -118,7 +123,7 @@ func addressesNeedingGrant(
 	chain cldf_evm.Chain,
 	timelock common.Address,
 	grant grantrole.RoleGrant,
-) ([]common.Address, error) {
+) ([]string, error) {
 	addressesWithRole, err := addressesForRole(b, chain, timelock, grant.Role)
 	if err != nil {
 		return nil, err
@@ -127,9 +132,9 @@ func addressesNeedingGrant(
 		return grant.Addresses, nil
 	}
 
-	out := make([]common.Address, 0, len(grant.Addresses))
+	out := make([]string, 0, len(grant.Addresses))
 	for _, address := range grant.Addresses {
-		if slices.Contains(addressesWithRole, address.Hex()) {
+		if slices.Contains(addressesWithRole, common.HexToAddress(address).Hex()) {
 			continue
 		}
 		out = append(out, address)

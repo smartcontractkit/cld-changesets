@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/common"
 	chainselectors "github.com/smartcontractkit/chain-selectors"
 	cldf_chain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/changeset/sequenceutils"
@@ -42,7 +41,7 @@ func TestChangeset_VerifyPreconditions_NoDatastore(t *testing.T) {
 			GrantsByChain: map[uint64][]RoleGrant{
 				chainselectors.TEST_90000001.Selector: {{
 					Role:      mcmssdk.TimelockRoleProposer,
-					Addresses: []common.Address{common.HexToAddress("0x1")},
+					Addresses: []string{"0x0000000000000000000000000000000000000001"},
 				}},
 			},
 		},
@@ -55,7 +54,7 @@ func TestChangeset_VerifyPreconditions_NoDatastore(t *testing.T) {
 func TestChangeset_VerifyPreconditions_InvalidInput(t *testing.T) {
 	t.Parallel()
 
-	validAddress := common.HexToAddress("0x1")
+	validAddress := "0x0000000000000000000000000000000000000001"
 	tests := []struct {
 		name    string
 		input   Input
@@ -76,7 +75,7 @@ func TestChangeset_VerifyPreconditions_InvalidInput(t *testing.T) {
 		{
 			name: "unsupported role",
 			input: Input{Cfg: Config{GrantsByChain: map[uint64][]RoleGrant{
-				chainselectors.TEST_90000001.Selector: {{Role: mcmssdk.TimelockRole(99), Addresses: []common.Address{validAddress}}},
+				chainselectors.TEST_90000001.Selector: {{Role: mcmssdk.TimelockRole(99), Addresses: []string{validAddress}}},
 			}}},
 			wantErr: fmt.Sprintf("chain %d grants[0]: unsupported timelock role Unknown", chainselectors.TEST_90000001.Selector),
 		},
@@ -88,21 +87,21 @@ func TestChangeset_VerifyPreconditions_InvalidInput(t *testing.T) {
 			wantErr: fmt.Sprintf("chain %d grants[0]: no addresses provided", chainselectors.TEST_90000001.Selector),
 		},
 		{
-			name: "zero address",
+			name: "empty address",
 			input: Input{Cfg: Config{GrantsByChain: map[uint64][]RoleGrant{
 				chainselectors.TEST_90000001.Selector: {{
 					Role:      mcmssdk.TimelockRoleProposer,
-					Addresses: []common.Address{{}},
+					Addresses: []string{""},
 				}},
 			}}},
-			wantErr: fmt.Sprintf("chain %d grants[0].addresses[0]: address must not be zero", chainselectors.TEST_90000001.Selector),
+			wantErr: fmt.Sprintf("chain %d grants[0].addresses[0]: address must not be empty", chainselectors.TEST_90000001.Selector),
 		},
 		{
 			name: "duplicate grant",
 			input: Input{Cfg: Config{GrantsByChain: map[uint64][]RoleGrant{
 				chainselectors.TEST_90000001.Selector: {{
 					Role:      mcmssdk.TimelockRoleProposer,
-					Addresses: []common.Address{validAddress, validAddress},
+					Addresses: []string{validAddress, validAddress},
 				}},
 			}}},
 			wantErr: fmt.Sprintf("chain %d grants[0].addresses[1]: duplicate grant for role Proposer and address 0x0000000000000000000000000000000000000001", chainselectors.TEST_90000001.Selector),
@@ -114,7 +113,7 @@ func TestChangeset_VerifyPreconditions_InvalidInput(t *testing.T) {
 				Cfg: Config{GrantsByChain: map[uint64][]RoleGrant{
 					chainselectors.TEST_90000001.Selector: {{
 						Role:      mcmssdk.TimelockRoleProposer,
-						Addresses: []common.Address{validAddress},
+						Addresses: []string{validAddress},
 					}},
 				}},
 			},
@@ -143,7 +142,7 @@ func TestChangeset_VerifyPreconditions_unsupportedFamily(t *testing.T) {
 				GrantsByChain: map[uint64][]RoleGrant{
 					chainselectors.APTOS_MAINNET.Selector: {{
 						Role:      mcmssdk.TimelockRoleProposer,
-						Addresses: []common.Address{common.HexToAddress("0x1")},
+						Addresses: []string{"0x0000000000000000000000000000000000000001"},
 					}},
 				},
 			},
@@ -160,7 +159,7 @@ func TestChangeset_Apply_unsupportedFamily(t *testing.T) {
 			GrantsByChain: map[uint64][]RoleGrant{
 				chainselectors.APTOS_MAINNET.Selector: {{
 					Role:      mcmssdk.TimelockRoleProposer,
-					Addresses: []common.Address{common.HexToAddress("0x1")},
+					Addresses: []string{"0x0000000000000000000000000000000000000001"},
 				}},
 			},
 		},

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/smartcontractkit/chainlink-deployments-framework/changeset/sequenceutils"
 	cldfdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
@@ -138,13 +137,13 @@ func validateGrants(grantsByChain map[uint64][]RoleGrant) error {
 				return fmt.Errorf("chain %d grants[%d]: no addresses provided", chainSelector, grantIdx)
 			}
 			for addrIdx, addr := range grant.Addresses {
-				if addr == (common.Address{}) {
-					return fmt.Errorf("chain %d grants[%d].addresses[%d]: address must not be zero", chainSelector, grantIdx, addrIdx)
+				if addr == "" {
+					return fmt.Errorf("chain %d grants[%d].addresses[%d]: address must not be empty", chainSelector, grantIdx, addrIdx)
 				}
-				key := grant.Role.String() + ":" + addr.Hex()
+				key := grant.Role.String() + ":" + addr
 				if _, ok := seen[key]; ok {
 					return fmt.Errorf("chain %d grants[%d].addresses[%d]: duplicate grant for role %s and address %s",
-						chainSelector, grantIdx, addrIdx, grant.Role.String(), addr.Hex())
+						chainSelector, grantIdx, addrIdx, grant.Role.String(), addr)
 				}
 				seen[key] = struct{}{}
 			}

@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 
 	chainselectors "github.com/smartcontractkit/chain-selectors"
@@ -108,7 +107,7 @@ func TestValidateMCMSRefs(t *testing.T) {
 			},
 			mcms: &mcmsInput,
 			wantErr: fmt.Sprintf(
-				`invalid timelock ref on chain %d: timelock address "not-an-address" is not a valid EVM address`,
+				`invalid timelock ref on chain %d: address "not-an-address" is not a valid EVM address`,
 				chainselectors.TEST_90000001.Selector,
 			),
 		},
@@ -144,7 +143,7 @@ func TestValidateEVMChains(t *testing.T) {
 	t.Parallel()
 
 	version := semver.MustParse("1.0.0")
-	grantee := common.HexToAddress("0x00000000000000000000000000000000000000aa")
+	grantee := "0x00000000000000000000000000000000000000aa"
 
 	tests := []struct {
 		name    string
@@ -159,7 +158,7 @@ func TestValidateEVMChains(t *testing.T) {
 				ChainSelector: chainselectors.TEST_90000001.Selector,
 				Grants: []grantrole.RoleGrant{{
 					Role:      mcmssdk.TimelockRoleExecutor,
-					Addresses: []common.Address{grantee},
+					Addresses: []string{grantee},
 				}},
 			}},
 			wantErr: fmt.Sprintf("EVM chain %d not found in environment", chainselectors.TEST_90000001.Selector),
@@ -173,7 +172,7 @@ func TestValidateEVMChains(t *testing.T) {
 				ChainSelector: chainselectors.TEST_90000001.Selector,
 				Grants: []grantrole.RoleGrant{{
 					Role:      mcmssdk.TimelockRole(99),
-					Addresses: []common.Address{grantee},
+					Addresses: []string{grantee},
 				}},
 			}},
 			wantErr: fmt.Sprintf("chain %d: grants[0]: unsupported timelock role Unknown", chainselectors.TEST_90000001.Selector),
@@ -187,7 +186,7 @@ func TestValidateEVMChains(t *testing.T) {
 				ChainSelector: chainselectors.TEST_90000001.Selector,
 				Grants: []grantrole.RoleGrant{{
 					Role:      mcmssdk.TimelockRoleExecutor,
-					Addresses: []common.Address{grantee},
+					Addresses: []string{grantee},
 				}},
 			}},
 		},
@@ -208,18 +207,26 @@ func TestValidateEVMChains(t *testing.T) {
 	}
 }
 
+func TestParseEVMAddress(t *testing.T) {
+	t.Parallel()
+
+	addr, err := parseEVMAddress(testTimelockAddr)
+	require.NoError(t, err)
+	require.Equal(t, testTimelockAddr, addr.Hex())
+
+	_, err = parseEVMAddress("not-an-address")
+	require.EqualError(t, err, `address "not-an-address" is not a valid EVM address`)
+
+	_, err = parseEVMAddress("0x0000000000000000000000000000000000000000")
+	require.EqualError(t, err, "address must not be zero")
+}
+
 func TestParseTimelockAddress(t *testing.T) {
 	t.Parallel()
 
 	addr, err := parseTimelockAddress(testTimelockAddr)
 	require.NoError(t, err)
 	require.Equal(t, testTimelockAddr, addr.Hex())
-
-	_, err = parseTimelockAddress("not-an-address")
-	require.EqualError(t, err, `timelock address "not-an-address" is not a valid EVM address`)
-
-	_, err = parseTimelockAddress("0x0000000000000000000000000000000000000000")
-	require.EqualError(t, err, "timelock address must not be zero")
 }
 
 func TestTimelockAddress(t *testing.T) {
@@ -250,7 +257,7 @@ func TestTimelockAddress(t *testing.T) {
 			validateTestEnv(ds.Seal()),
 			grantrole.SeqInput{ChainSelector: chainselectors.TEST_90000001.Selector},
 		)
-		require.EqualError(t, err, `timelock address "not-an-address" is not a valid EVM address`)
+		require.EqualError(t, err, `address "not-an-address" is not a valid EVM address`)
 	})
 
 	t.Run("success", func(t *testing.T) {

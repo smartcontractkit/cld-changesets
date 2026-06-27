@@ -23,6 +23,9 @@ func validateEVMChains(env cldf.Environment, chains []grantrole.SeqInput) error 
 		if err := validateRoles(in); err != nil {
 			return fmt.Errorf("chain %d: %w", in.ChainSelector, err)
 		}
+		if err := validateGrantAddresses(in); err != nil {
+			return fmt.Errorf("chain %d: %w", in.ChainSelector, err)
+		}
 	}
 
 	return nil
@@ -74,14 +77,30 @@ func validateRoles(in grantrole.SeqInput) error {
 	return nil
 }
 
-func parseTimelockAddress(raw string) (common.Address, error) {
+func validateGrantAddresses(in grantrole.SeqInput) error {
+	for i, grant := range in.Grants {
+		for j, addr := range grant.Addresses {
+			if _, err := parseEVMAddress(addr); err != nil {
+				return fmt.Errorf("grants[%d].addresses[%d]: %w", i, j, err)
+			}
+		}
+	}
+
+	return nil
+}
+
+func parseEVMAddress(raw string) (common.Address, error) {
 	if !common.IsHexAddress(raw) {
-		return common.Address{}, fmt.Errorf("timelock address %q is not a valid EVM address", raw)
+		return common.Address{}, fmt.Errorf("address %q is not a valid EVM address", raw)
 	}
 	addr := common.HexToAddress(raw)
 	if addr == (common.Address{}) {
-		return common.Address{}, errors.New("timelock address must not be zero")
+		return common.Address{}, errors.New("address must not be zero")
 	}
 
 	return addr, nil
+}
+
+func parseTimelockAddress(raw string) (common.Address, error) {
+	return parseEVMAddress(raw)
 }
