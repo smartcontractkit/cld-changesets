@@ -1,7 +1,6 @@
 package grantrole
 
 import (
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/changeset/sequenceutils"
 	cldfdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
@@ -14,7 +13,7 @@ import (
 // RoleGrant grants one timelock role to multiple accounts.
 type RoleGrant struct {
 	Role      mcmssdk.TimelockRole `json:"role"`
-	Addresses []common.Address     `json:"addresses"`
+	Addresses []string             `json:"addresses"`
 }
 
 // Config selects timelock role grants by chain selector.
