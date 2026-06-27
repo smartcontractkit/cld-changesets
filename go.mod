@@ -4,6 +4,9 @@ go 1.26.2
 
 replace github.com/fbsobreira/gotron-sdk => github.com/smartcontractkit/chainlink-tron/relayer/gotron-sdk v0.0.5-0.20251014120029-d73d15cc23f7
 
+// TODO: remove once mcms lib is released
+replace github.com/smartcontractkit/mcms => /Users/pablo/mcms
+
 require (
 	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/aptos-labs/aptos-go-sdk v1.13.0

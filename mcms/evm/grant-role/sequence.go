@@ -2,7 +2,6 @@ package evmgrantrole
 
 import (
 	"fmt"
-	"slices"
 	"strconv"
 
 	"github.com/Masterminds/semver/v3"
@@ -13,7 +12,6 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/changeset/sequenceutils"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
-	mcmssdk "github.com/smartcontractkit/mcms/sdk"
 	mcmsevm "github.com/smartcontractkit/mcms/sdk/evm"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 
@@ -47,7 +45,13 @@ func runEVMGrantRole(
 	var addresses []string
 
 	for _, grant := range in.Grants {
-		addresses, err = addressesNeedingGrant(b, chain, timelock, grant)
+		addresses, err = grantrole.AddressesNeedingGrant(
+			b.GetContext(),
+			mcmsevm.NewTimelockInspector(chain.Client),
+			timelock.Hex(),
+			grant,
+			func(address string) string { return common.HexToAddress(address).Hex() },
+		)
 		if err != nil {
 			return sequenceutils.OnChainOutput{}, err
 		}
@@ -115,55 +119,6 @@ func runEVMGrantRole(
 	}
 
 	return sequenceutils.OnChainOutput{BatchOps: []mcmstypes.BatchOperation{batch}}, nil
-}
-
-// addressesNeedingGrant returns the set of addresses that don't yet have the provided role.
-func addressesNeedingGrant(
-	b operations.Bundle,
-	chain cldf_evm.Chain,
-	timelock common.Address,
-	grant grantrole.RoleGrant,
-) ([]string, error) {
-	addressesWithRole, err := addressesForRole(b, chain, timelock, grant.Role)
-	if err != nil {
-		return nil, err
-	}
-	if len(addressesWithRole) == 0 {
-		return grant.Addresses, nil
-	}
-
-	out := make([]string, 0, len(grant.Addresses))
-	for _, address := range grant.Addresses {
-		if slices.Contains(addressesWithRole, common.HexToAddress(address).Hex()) {
-			continue
-		}
-		out = append(out, address)
-	}
-
-	return out, nil
-}
-
-func addressesForRole(
-	b operations.Bundle,
-	chain cldf_evm.Chain,
-	timelock common.Address,
-	role mcmssdk.TimelockRole,
-) ([]string, error) {
-	inspector := mcmsevm.NewTimelockInspector(chain.Client)
-	switch role {
-	case mcmssdk.TimelockRoleProposer:
-		return inspector.GetProposers(b.GetContext(), timelock.Hex())
-	case mcmssdk.TimelockRoleCanceller:
-		return inspector.GetCancellers(b.GetContext(), timelock.Hex())
-	case mcmssdk.TimelockRoleBypasser:
-		return inspector.GetBypassers(b.GetContext(), timelock.Hex())
-	case mcmssdk.TimelockRoleExecutor:
-		return inspector.GetExecutors(b.GetContext(), timelock.Hex())
-	case mcmssdk.TimelockRoleAdmin:
-		return nil, nil
-	default:
-		return nil, fmt.Errorf("unsupported timelock role %s", role.String())
-	}
 }
 
 func timelockAddress(env cldf.Environment, in grantrole.SeqInput) (common.Address, error) {
