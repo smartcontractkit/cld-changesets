@@ -2,10 +2,10 @@ package grantrole
 
 import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
+	opscontract "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/operations2/contract"
 	"github.com/smartcontractkit/chainlink-deployments-framework/changeset/sequenceutils"
 	cldfdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 	mcmssdk "github.com/smartcontractkit/mcms/sdk"
 )
@@ -20,7 +20,7 @@ type RoleGrant struct {
 type Config struct {
 	GrantsByChain map[uint64][]RoleGrant `json:"grantsByChain"`
 	// GasBoostConfig optionally configures EVM retry gas boosting for direct sends.
-	GasBoostConfig *proposalutils.GasBoostConfig `json:"gasBoostConfig,omitempty"`
+	GasBoostConfig *opscontract.GasBoostConfig `json:"gasBoostConfig,omitempty"`
 }
 
 // Input is the grant-role changeset configuration with optional MCMS proposal settings.
@@ -31,7 +31,7 @@ type SeqInput struct {
 	ChainSelector  uint64                          `json:"chainSelector"`
 	Grants         []RoleGrant                     `json:"grants"`
 	MCMS           *cldf.MCMSTimelockProposalInput `json:"mcms,omitempty"`
-	GasBoostConfig *proposalutils.GasBoostConfig   `json:"gasBoostConfig,omitempty"`
+	GasBoostConfig *opscontract.GasBoostConfig     `json:"gasBoostConfig,omitempty"`
 }
 
 // Deps is the read-only dependency bundle available to every family sequence.

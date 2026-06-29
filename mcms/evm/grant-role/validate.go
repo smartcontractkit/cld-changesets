@@ -37,10 +37,19 @@ func validateMCMSRefs(env cldf.Environment, in grantrole.SeqInput) error {
 		return fmt.Errorf("no MCMS reader registered for family %q", chainselectors.FamilyEVM)
 	}
 
-	input := cldf.MCMSTimelockProposalInput{}
-	if in.MCMS != nil {
-		input = *in.MCMS
+	if in.MCMS == nil {
+		timelockRef, err := reader.GetTimelockRef(env, in.ChainSelector, cldf.MCMSTimelockProposalInput{})
+		if err != nil {
+			return fmt.Errorf("timelock not present on chain %d: %w", in.ChainSelector, err)
+		}
+		if _, err = parseTimelockAddress(timelockRef.Address); err != nil {
+			return fmt.Errorf("invalid timelock ref on chain %d: %w", in.ChainSelector, err)
+		}
+
+		return nil
 	}
+
+	input := *in.MCMS
 	timelockRef, err := reader.GetTimelockRef(env, in.ChainSelector, input)
 	if err != nil {
 		return fmt.Errorf("timelock not present on chain %d: %w", in.ChainSelector, err)
@@ -49,10 +58,7 @@ func validateMCMSRefs(env cldf.Environment, in grantrole.SeqInput) error {
 		return fmt.Errorf("invalid timelock ref on chain %d: %w", in.ChainSelector, err)
 	}
 
-	if in.MCMS == nil {
-		return nil
-	}
-	if _, err = reader.GetMCMSRef(env, in.ChainSelector, *in.MCMS); err != nil {
+	if _, err = reader.GetMCMSRef(env, in.ChainSelector, input); err != nil {
 		return fmt.Errorf("mcms not present on chain %d: %w", in.ChainSelector, err)
 	}
 
@@ -60,7 +66,7 @@ func validateMCMSRefs(env cldf.Environment, in grantrole.SeqInput) error {
 	if !ok {
 		return fmt.Errorf("validate call proxy ref for chain %d: reader for family %q does not support call proxy lookup", in.ChainSelector, chainselectors.FamilyEVM)
 	}
-	if _, err = evmReader.GetCallProxyRef(env, in.ChainSelector, in.MCMS.Qualifier); err != nil {
+	if _, err = evmReader.GetCallProxyRef(env, in.ChainSelector, input.Qualifier); err != nil {
 		return fmt.Errorf("validate call proxy ref for chain %d: %w", in.ChainSelector, err)
 	}
 
