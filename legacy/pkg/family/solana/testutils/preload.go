@@ -1,6 +1,7 @@
 package soltestutils
 
 import (
+	"maps"
 	"path/filepath"
 	"sync"
 	"testing"
@@ -67,16 +68,10 @@ func sharedMCMSPrograms(t *testing.T) (string, map[string]string) {
 		}
 	})
 
-	return mcmsProgramsPath, copyProgramIDs(mcmsProgramIDs)
-}
+	programIDs := make(map[string]string, len(mcmsProgramIDs))
+	maps.Copy(programIDs, mcmsProgramIDs)
 
-func copyProgramIDs(src map[string]string) map[string]string {
-	dst := make(map[string]string, len(src))
-	for name, id := range src {
-		dst[name] = id
-	}
-
-	return dst
+	return mcmsProgramsPath, programIDs
 }
 
 // PreloadMCMS provides a convenience function to preload the MCMS program artifacts and address
