@@ -43,6 +43,6 @@ func AddressesNeedingGrant(
 	if err != nil {
 		return nil, err
 	}
-	needed, _ := lo.Difference(addressesWithRole, grant.Addresses)
+	needed, _ := lo.Difference(grant.Addresses, addressesWithRole)
 	return needed, nil
 }
