@@ -14,6 +14,13 @@ import (
 	grantrole "github.com/smartcontractkit/cld-changesets/mcms/changesets/grant-role"
 )
 
+var roleAccessControllerContractTypes = map[mcmssdk.TimelockRole]cldf.ContractType{
+	mcmssdk.TimelockRoleProposer:  mcmscontracts.ProposerAccessControllerAccount,
+	mcmssdk.TimelockRoleExecutor:  mcmscontracts.ExecutorAccessControllerAccount,
+	mcmssdk.TimelockRoleCanceller: mcmscontracts.CancellerAccessControllerAccount,
+	mcmssdk.TimelockRoleBypasser:  mcmscontracts.BypasserAccessControllerAccount,
+}
+
 func validateMCMSIfPresent(e cldf.Environment, in grantrole.SeqInput) error {
 	if in.MCMS == nil {
 		return nil
@@ -83,20 +90,16 @@ func parseSolanaAddress(raw string) (solanago.PublicKey, error) {
 }
 
 func accessControllerContractType(role mcmssdk.TimelockRole) (cldf.ContractType, error) {
-	switch role {
-	case mcmssdk.TimelockRoleProposer:
-		return mcmscontracts.ProposerAccessControllerAccount, nil
-	case mcmssdk.TimelockRoleExecutor:
-		return mcmscontracts.ExecutorAccessControllerAccount, nil
-	case mcmssdk.TimelockRoleCanceller:
-		return mcmscontracts.CancellerAccessControllerAccount, nil
-	case mcmssdk.TimelockRoleBypasser:
-		return mcmscontracts.BypasserAccessControllerAccount, nil
-	case mcmssdk.TimelockRoleAdmin:
+	if role == mcmssdk.TimelockRoleAdmin {
 		return "", errors.New("admin role not supported on solana")
-	default:
+	}
+
+	contractType, ok := roleAccessControllerContractTypes[role]
+	if !ok {
 		return "", fmt.Errorf("unsupported timelock role %s", role.String())
 	}
+
+	return contractType, nil
 }
 
 func accessControllerRef(
