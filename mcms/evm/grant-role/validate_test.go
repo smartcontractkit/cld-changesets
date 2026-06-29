@@ -153,6 +153,7 @@ func TestValidateEVMChains(t *testing.T) {
 		{
 			name: "chain not in environment",
 			setupEnv: func(t *testing.T) cldf.Environment {
+				t.Helper()
 				return validateTestEnv(t, datastore.NewMemoryDataStore().Seal())
 			},
 			chains: []grantrole.SeqInput{{
@@ -167,6 +168,7 @@ func TestValidateEVMChains(t *testing.T) {
 		{
 			name: "unsupported role",
 			setupEnv: func(t *testing.T) cldf.Environment {
+				t.Helper()
 				return grantRoleValidateEnv(t, chainselectors.TEST_90000001.Selector, version, []validateRefSpec{
 					{mcmscontracts.RBACTimelock, testTimelockAddr, ""},
 				})
@@ -183,6 +185,7 @@ func TestValidateEVMChains(t *testing.T) {
 		{
 			name: "success",
 			setupEnv: func(t *testing.T) cldf.Environment {
+				t.Helper()
 				return grantRoleValidateEnv(t, chainselectors.TEST_90000001.Selector, version, []validateRefSpec{
 					{mcmscontracts.RBACTimelock, testTimelockAddr, ""},
 				})
