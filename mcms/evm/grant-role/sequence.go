@@ -181,5 +181,5 @@ func timelockAddress(env cldf.Environment, in grantrole.SeqInput) (common.Addres
 		return common.Address{}, fmt.Errorf("resolve timelock for chain %d: %w", in.ChainSelector, err)
 	}
 
-	return parseTimelockAddress(ref.Address)
+	return parseEVMAddress(ref.Address)
 }

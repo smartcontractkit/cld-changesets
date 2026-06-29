@@ -42,7 +42,7 @@ func validateMCMSRefs(env cldf.Environment, in grantrole.SeqInput) error {
 		if err != nil {
 			return fmt.Errorf("timelock not present on chain %d: %w", in.ChainSelector, err)
 		}
-		if _, err = parseTimelockAddress(timelockRef.Address); err != nil {
+		if _, err = parseEVMAddress(timelockRef.Address); err != nil {
 			return fmt.Errorf("invalid timelock ref on chain %d: %w", in.ChainSelector, err)
 		}
 
@@ -54,7 +54,7 @@ func validateMCMSRefs(env cldf.Environment, in grantrole.SeqInput) error {
 	if err != nil {
 		return fmt.Errorf("timelock not present on chain %d: %w", in.ChainSelector, err)
 	}
-	if _, err = parseTimelockAddress(timelockRef.Address); err != nil {
+	if _, err = parseEVMAddress(timelockRef.Address); err != nil {
 		return fmt.Errorf("invalid timelock ref on chain %d: %w", in.ChainSelector, err)
 	}
 
@@ -105,8 +105,4 @@ func parseEVMAddress(raw string) (common.Address, error) {
 	}
 
 	return addr, nil
-}
-
-func parseTimelockAddress(raw string) (common.Address, error) {
-	return parseEVMAddress(raw)
 }
