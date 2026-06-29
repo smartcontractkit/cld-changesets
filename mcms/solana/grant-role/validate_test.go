@@ -111,6 +111,38 @@ func TestValidateRoles(t *testing.T) {
 	require.EqualError(t, err, "grants[0]: admin role not supported on solana")
 }
 
+func TestAccessControllerContractType(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		role    mcmssdk.TimelockRole
+		want    cldf.ContractType
+		wantErr string
+	}{
+		{role: mcmssdk.TimelockRoleProposer, want: mcmscontracts.ProposerAccessControllerAccount},
+		{role: mcmssdk.TimelockRoleExecutor, want: mcmscontracts.ExecutorAccessControllerAccount},
+		{role: mcmssdk.TimelockRoleCanceller, want: mcmscontracts.CancellerAccessControllerAccount},
+		{role: mcmssdk.TimelockRoleBypasser, want: mcmscontracts.BypasserAccessControllerAccount},
+		{role: mcmssdk.TimelockRoleAdmin, wantErr: "admin role not supported on solana"},
+		{role: mcmssdk.TimelockRole(99), wantErr: "unsupported timelock role Unknown"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.role.String(), func(t *testing.T) {
+			t.Parallel()
+
+			got, err := accessControllerContractType(tt.role)
+			if tt.wantErr != "" {
+				require.EqualError(t, err, tt.wantErr)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
 func TestParseSolanaAddress(t *testing.T) {
 	t.Parallel()
 

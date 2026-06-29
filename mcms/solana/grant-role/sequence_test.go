@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Masterminds/semver/v3"
 	solanago "github.com/gagliardetto/solana-go"
 	"github.com/segmentio/ksuid"
 	"github.com/stretchr/testify/require"
@@ -15,6 +16,7 @@ import (
 	cldfsol "github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	mcmscontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/mcms"
 	cldfproposalutils "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
 	cldftesthelpers "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils/testhelpers"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/environment"
@@ -32,10 +34,11 @@ import (
 	grantrole "github.com/smartcontractkit/cld-changesets/mcms/changesets/grant-role"
 	_ "github.com/smartcontractkit/cld-changesets/mcms/solana/readers"
 	solreaders "github.com/smartcontractkit/cld-changesets/mcms/solana/readers"
+	familysolana "github.com/smartcontractkit/cld-changesets/pkg/family/solana"
 )
 
 //nolint:paralleltest // global mcm.SetProgramID state; serialized via soltestutils.PreloadMCMS lock
-func testRunSolanaGrantRole(t *testing.T) {
+func TestRunSolanaGrantRole(t *testing.T) {
 	tests := []struct {
 		name    string
 		useMCMS bool
@@ -100,6 +103,7 @@ func testRunSolanaGrantRole(t *testing.T) {
 }
 
 func TestRunSolanaGrantRole_idempotent(t *testing.T) {
+	//nolint:paralleltest // global mcm.SetProgramID state; serialized via soltestutils.PreloadMCMS lock
 	selector := chainselectors.TEST_22222222222222222222222222222222222222222222.Selector
 	rt := newSolanaGrantRoleRuntime(t, selector)
 	chain := rt.Environment().BlockChains.SolanaChains()[selector]
@@ -165,6 +169,111 @@ func TestRunSolanaGrantRole_errors(t *testing.T) {
 		"resolve timelock for chain %d: no address ref matched query: expected exactly 1 ref matching query {ChainSelector: %d, Type: RBACTimelock}, found 0",
 		selector, selector,
 	))
+}
+
+func TestProgramRef(t *testing.T) {
+	t.Parallel()
+
+	selector := chainselectors.TEST_22222222222222222222222222222222222222222222.Selector
+	programID := solanago.NewWallet().PublicKey().String()
+	version := semver.MustParse("1.0.0")
+
+	ds := datastore.NewMemoryDataStore()
+	addValidateRef(t, ds, selector, mcmscontracts.AccessControllerProgram, programID, version, "")
+	env := validateTestEnv(ds.Seal(), selector)
+
+	got, err := programRef(env, selector, mcmscontracts.AccessControllerProgram)
+	require.NoError(t, err)
+	require.Equal(t, programID, got)
+
+	_, err = programRef(cldf.Environment{}, selector, mcmscontracts.AccessControllerProgram)
+	require.EqualError(t, err, fmt.Sprintf("datastore not available for chain %d", selector))
+
+	_, err = programRef(env, selector, mcmscontracts.ManyChainMultisigProgram)
+	require.EqualError(t, err, fmt.Sprintf(
+		"resolve ManyChainMultiSigProgram for chain %d: no address ref matched query: expected exactly 1 ref matching query {ChainSelector: %d, Type: ManyChainMultiSigProgram}, found 0",
+		selector, selector,
+	))
+}
+
+func TestAccessControllerProgramAndAccount(t *testing.T) {
+	t.Parallel()
+
+	selector := chainselectors.TEST_22222222222222222222222222222222222222222222.Selector
+	programID := solanago.NewWallet().PublicKey()
+	accountID := solanago.NewWallet().PublicKey()
+	version := semver.MustParse("1.0.0")
+
+	ds := datastore.NewMemoryDataStore()
+	addValidateRef(t, ds, selector, mcmscontracts.AccessControllerProgram, programID.String(), version, "")
+	addValidateRef(t, ds, selector, mcmscontracts.ExecutorAccessControllerAccount, accountID.String(), version, "")
+	env := validateTestEnv(ds.Seal(), selector)
+
+	gotProgram, err := accessControllerProgram(env, selector)
+	require.NoError(t, err)
+	require.Equal(t, programID, gotProgram)
+
+	gotAccount, err := accessControllerAccount(env, selector, mcmssdk.TimelockRoleExecutor)
+	require.NoError(t, err)
+	require.Equal(t, accountID, gotAccount)
+}
+
+func TestTimelockContractAddress(t *testing.T) {
+	t.Parallel()
+
+	selector := chainselectors.TEST_22222222222222222222222222222222222222222222.Selector
+	timelockProgram := solanago.NewWallet().PublicKey()
+	timelockAddr := mcmssolana.ContractAddress(timelockProgram, testPDASeed(4))
+	version := semver.MustParse("1.0.0")
+
+	ds := datastore.NewMemoryDataStore()
+	addValidateRef(t, ds, selector, mcmscontracts.RBACTimelock, timelockAddr, version, "")
+	env := validateTestEnv(ds.Seal(), selector)
+
+	got, err := timelockContractAddress(env, grantrole.SeqInput{ChainSelector: selector})
+	require.NoError(t, err)
+	require.Equal(t, timelockAddr, got)
+
+	_, err = timelockContractAddress(validateTestEnv(datastore.NewMemoryDataStore().Seal(), selector), grantrole.SeqInput{ChainSelector: selector})
+	require.EqualError(t, err, fmt.Sprintf(
+		"resolve timelock for chain %d: no address ref matched query: expected exactly 1 ref matching query {ChainSelector: %d, Type: RBACTimelock}, found 0",
+		selector, selector,
+	))
+}
+
+func TestTimelockSignerPDA(t *testing.T) {
+	t.Parallel()
+
+	selector := chainselectors.TEST_22222222222222222222222222222222222222222222.Selector
+	timelockProgram := solanago.NewWallet().PublicKey()
+	timelockSeed := testPDASeed(4)
+	timelockAddr := mcmssolana.ContractAddress(timelockProgram, timelockSeed)
+	version := semver.MustParse("1.0.0")
+
+	ds := datastore.NewMemoryDataStore()
+	addValidateRef(t, ds, selector, mcmscontracts.RBACTimelock, timelockAddr, version, "")
+	env := validateTestEnv(ds.Seal(), selector)
+
+	mcmsInput := cldf.MCMSTimelockProposalInput{
+		TimelockAction: mcmstypes.TimelockActionSchedule,
+		ValidUntil:     1,
+		TimelockDelay:  mcmstypes.NewDuration(0),
+	}
+	got, err := timelockSignerPDA(env, grantrole.SeqInput{ChainSelector: selector, MCMS: &mcmsInput})
+	require.NoError(t, err)
+
+	parsedProgram, parsedSeed, err := mcmssolana.ParseContractAddress(timelockAddr)
+	require.NoError(t, err)
+	var legacySeed solstate.PDASeed
+	copy(legacySeed[:], parsedSeed[:])
+	require.Equal(t, familysolana.GetTimelockSignerPDA(parsedProgram, legacySeed), got)
+}
+
+func testPDASeed(v byte) mcmssolana.PDASeed {
+	var seed mcmssolana.PDASeed
+	seed[31] = v
+
+	return seed
 }
 
 func newSolanaGrantRoleRuntime(t *testing.T, selector uint64) *runtime.Runtime {
