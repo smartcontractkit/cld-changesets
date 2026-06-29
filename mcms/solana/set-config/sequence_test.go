@@ -41,12 +41,8 @@ import (
 )
 
 //nolint:paralleltest // global mcm.SetProgramID state; serialized via soltestutils.PreloadMCMS lock
-func testRunSolanaSetConfig(t *testing.T) {
-	selector := chainselectors.TEST_22222222222222222222222222222222222222222222.Selector
-	rt := newSolanaSetConfigRuntime(t, selector)
-	chain := rt.Environment().BlockChains.SolanaChains()[selector]
-	refs := solanaSetConfigRefs(t, rt.Environment(), selector)
-	fundSolanaSignerPDAs(t, chain, refs)
+func testRunSolanaSetConfigDirectSend(t *testing.T, rt *runtime.Runtime, chain cldfsol.Chain, refs solanaMCMSRefs, selector uint64) {
+	t.Helper()
 
 	proposerCfg := cldftesthelpers.SingleGroupMCMS(t)
 	proposerCfg.Signers = append(proposerCfg.Signers, common.HexToAddress("0x0000000000000000000000000000000000000101"))
@@ -56,75 +52,78 @@ func testRunSolanaSetConfig(t *testing.T) {
 	cancellerCfg.Signers = append(cancellerCfg.Signers, common.HexToAddress("0x0000000000000000000000000000000000000202"))
 	cancellerCfg.Quorum = 2
 
-	t.Run("direct send", func(t *testing.T) { //nolint:paralleltest // shared runtime state
-		targets := []setconfig.ContractSetConfig{
-			{
-				Ref:    refkey.New(selector, datastore.ContractType(mcmscontracts.ProposerManyChainMultisig), &semvers.V1_0_0, ""),
-				Config: proposerCfg,
-			},
-			{
-				Ref:    refkey.New(selector, datastore.ContractType(mcmscontracts.CancellerManyChainMultisig), &semvers.V1_0_0, ""),
-				Config: cancellerCfg,
-			},
-		}
+	targets := []setconfig.ContractSetConfig{
+		{
+			Ref:    refkey.New(selector, datastore.ContractType(mcmscontracts.ProposerManyChainMultisig), &semvers.V1_0_0, ""),
+			Config: proposerCfg,
+		},
+		{
+			Ref:    refkey.New(selector, datastore.ContractType(mcmscontracts.CancellerManyChainMultisig), &semvers.V1_0_0, ""),
+			Config: cancellerCfg,
+		},
+	}
 
-		out, err := runSolanaSetConfig(
-			rt.Environment().OperationsBundle,
-			setconfig.Deps{
-				BlockChains: rt.Environment().BlockChains,
-				DataStore:   rt.Environment().DataStore,
-			},
-			setconfig.ChainInput{
-				ChainSelector: selector,
-				Targets:       targets,
-			},
-		)
-		require.NoError(t, err)
-		require.Empty(t, out.BatchOps)
+	out, err := runSolanaSetConfig(
+		rt.Environment().OperationsBundle,
+		setconfig.Deps{
+			BlockChains: rt.Environment().BlockChains,
+			DataStore:   rt.Environment().DataStore,
+		},
+		setconfig.ChainInput{
+			ChainSelector: selector,
+			Targets:       targets,
+		},
+	)
+	require.NoError(t, err)
+	require.Empty(t, out.BatchOps)
 
-		inspector := mcmssolana.NewInspector(chain.Client)
-		assertSolanaConfigEquals(t, inspector, refs.Proposer, proposerCfg)
-		assertSolanaConfigEquals(t, inspector, refs.Canceller, cancellerCfg)
-	})
+	inspector := mcmssolana.NewInspector(chain.Client)
+	assertSolanaConfigEquals(t, inspector, refs.Proposer, proposerCfg)
+	assertSolanaConfigEquals(t, inspector, refs.Canceller, cancellerCfg)
+}
 
-	t.Run("MCMS proposal", func(t *testing.T) { //nolint:paralleltest // shared runtime state
-		transferSolanaMCMSToTimelock(t, rt, selector)
-		fundSolanaSignerPDAs(t, chain, refs)
+func testRunSolanaSetConfigMCMSProposal(t *testing.T, rt *runtime.Runtime, chain cldfsol.Chain, refs solanaMCMSRefs, selector uint64) {
+	t.Helper()
 
-		mcmsInput := &cldf.MCMSTimelockProposalInput{
-			TimelockAction: mcmstypes.TimelockActionSchedule,
-			ValidUntil:     uint32(time.Now().Add(2 * time.Hour).UTC().Unix()), //nolint:gosec // test timestamp
-			TimelockDelay:  mcmstypes.NewDuration(time.Second),
-		}
-		targets := []setconfig.ContractSetConfig{
-			{
-				Ref:    refkey.New(selector, datastore.ContractType(mcmscontracts.CancellerManyChainMultisig), &semvers.V1_0_0, ""),
-				Config: cancellerCfg,
-			},
-		}
+	fundSolanaSignerPDAs(t, chain, refs)
 
-		out, err := runSolanaSetConfig(
-			rt.Environment().OperationsBundle,
-			setconfig.Deps{
-				BlockChains: rt.Environment().BlockChains,
-				DataStore:   rt.Environment().DataStore,
-			},
-			setconfig.ChainInput{
-				ChainSelector: selector,
-				Targets:       targets,
-				MCMS:          mcmsInput,
-			},
-		)
-		require.NoError(t, err)
-		require.Len(t, out.BatchOps, 1)
-		require.NotEmpty(t, out.BatchOps[0].Transactions)
-		require.NoError(t, rt.Exec(
-			newTimelockProposalTask(out.BatchOps, "solana set config sequence test"),
-			runtime.SignAndExecuteProposalsTask([]*ecdsa.PrivateKey{cldftesthelpers.TestXXXMCMSSigner}),
-		))
+	cancellerCfg := cldftesthelpers.SingleGroupMCMS(t)
+	cancellerCfg.Signers = append(cancellerCfg.Signers, common.HexToAddress("0x0000000000000000000000000000000000000202"))
+	cancellerCfg.Quorum = 2
 
-		assertSolanaConfigEquals(t, mcmssolana.NewInspector(chain.Client), refs.Canceller, cancellerCfg)
-	})
+	mcmsInput := &cldf.MCMSTimelockProposalInput{
+		TimelockAction: mcmstypes.TimelockActionSchedule,
+		ValidUntil:     uint32(time.Now().Add(2 * time.Hour).UTC().Unix()), //nolint:gosec // test timestamp
+		TimelockDelay:  mcmstypes.NewDuration(time.Second),
+	}
+	targets := []setconfig.ContractSetConfig{
+		{
+			Ref:    refkey.New(selector, datastore.ContractType(mcmscontracts.CancellerManyChainMultisig), &semvers.V1_0_0, ""),
+			Config: cancellerCfg,
+		},
+	}
+
+	out, err := runSolanaSetConfig(
+		rt.Environment().OperationsBundle,
+		setconfig.Deps{
+			BlockChains: rt.Environment().BlockChains,
+			DataStore:   rt.Environment().DataStore,
+		},
+		setconfig.ChainInput{
+			ChainSelector: selector,
+			Targets:       targets,
+			MCMS:          mcmsInput,
+		},
+	)
+	require.NoError(t, err)
+	require.Len(t, out.BatchOps, 1)
+	require.NotEmpty(t, out.BatchOps[0].Transactions)
+	require.NoError(t, rt.Exec(
+		newTimelockProposalTask(out.BatchOps, "solana set config sequence test"),
+		runtime.SignAndExecuteProposalsTask([]*ecdsa.PrivateKey{cldftesthelpers.TestXXXMCMSSigner}),
+	))
+
+	assertSolanaConfigEquals(t, mcmssolana.NewInspector(chain.Client), refs.Canceller, cancellerCfg)
 }
 
 func newSolanaSetConfigRuntime(t *testing.T, selector uint64) *runtime.Runtime {

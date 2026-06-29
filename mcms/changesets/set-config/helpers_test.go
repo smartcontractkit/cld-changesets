@@ -13,7 +13,6 @@ import (
 	cldf_chain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	cldfsol "github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
-	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldfdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	mcmscontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/mcms"
@@ -156,7 +155,7 @@ func evmMCMSChainState(t *testing.T, rt *runtime.Runtime, selector uint64) (*evm
 func newSolanaVerifyPreconditionsEnv(t *testing.T, selector uint64) cldf.Environment {
 	t.Helper()
 
-	ds := datastore.NewMemoryDataStore()
+	ds := cldfdatastore.NewMemoryDataStore()
 	version := semver.MustParse("1.0.0")
 	for _, ref := range []struct {
 		contractType cldf.ContractType
@@ -167,10 +166,10 @@ func newSolanaVerifyPreconditionsEnv(t *testing.T, selector uint64) cldf.Environ
 		{mcmscontracts.CancellerManyChainMultisig, "canceller-address"},
 		{mcmscontracts.BypasserManyChainMultisig, "bypasser-address"},
 	} {
-		require.NoError(t, ds.Addresses().Add(datastore.AddressRef{
+		require.NoError(t, ds.Addresses().Add(cldfdatastore.AddressRef{
 			Address:       ref.address,
 			ChainSelector: selector,
-			Type:          datastore.ContractType(ref.contractType),
+			Type:          cldfdatastore.ContractType(ref.contractType),
 			Version:       version,
 		}))
 	}

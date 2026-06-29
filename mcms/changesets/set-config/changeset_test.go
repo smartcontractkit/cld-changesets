@@ -200,6 +200,7 @@ func TestChangeset_VerifyPreconditions_Solana(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			require.NoError(t, cs.VerifyPreconditions(env, tt.input))
 		})
 	}
