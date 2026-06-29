@@ -3,8 +3,8 @@ package grantrole
 import (
 	"context"
 	"fmt"
-	"slices"
 
+	"github.com/samber/lo"
 	mcmssdk "github.com/smartcontractkit/mcms/sdk"
 )
 
@@ -33,38 +33,16 @@ func AddressesForRole(
 }
 
 // AddressesNeedingGrant returns grant addresses that do not yet hold the role.
-// normalize canonicalizes addresses for comparison; pass nil to compare raw strings.
 func AddressesNeedingGrant(
 	ctx context.Context,
 	inspector mcmssdk.TimelockInspector,
 	timelockAddress string,
 	grant RoleGrant,
-	normalize func(string) string,
 ) ([]string, error) {
 	addressesWithRole, err := AddressesForRole(ctx, inspector, timelockAddress, grant.Role)
 	if err != nil {
 		return nil, err
 	}
-	if len(addressesWithRole) == 0 {
-		return grant.Addresses, nil
-	}
-
-	if normalize == nil {
-		normalize = func(address string) string { return address }
-	}
-
-	normalizedExisting := make([]string, len(addressesWithRole))
-	for i, address := range addressesWithRole {
-		normalizedExisting[i] = normalize(address)
-	}
-
-	out := make([]string, 0, len(grant.Addresses))
-	for _, address := range grant.Addresses {
-		if slices.Contains(normalizedExisting, normalize(address)) {
-			continue
-		}
-		out = append(out, address)
-	}
-
-	return out, nil
+	needed, _ := lo.Difference(addressesWithRole, grant.Addresses)
+	return needed, nil
 }

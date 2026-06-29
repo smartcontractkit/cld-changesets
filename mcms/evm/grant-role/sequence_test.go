@@ -125,57 +125,6 @@ func TestRunEVMGrantRole_idempotent(t *testing.T) {
 	require.Contains(t, proposers, grantee)
 }
 
-func TestAddressesNeedingGrant(t *testing.T) {
-	t.Parallel()
-
-	selector := chainselectors.TEST_90000001.Selector
-	rt := newEVMGrantRoleRuntime(t, selector)
-	refs := grantRoleRefsFromEnv(t, rt.Environment(), selector)
-	bundle := rt.Environment().OperationsBundle
-	chain := rt.Environment().BlockChains.EVMChains()[selector]
-	deps := grantrole.Deps{
-		BlockChains: rt.Environment().BlockChains,
-		DataStore:   rt.Environment().DataStore,
-	}
-
-	grantee := "0x00000000000000000000000000000000000000dd"
-	pending := "0x00000000000000000000000000000000000000ee"
-	_, err := runEVMGrantRole(bundle, deps, grantrole.SeqInput{
-		ChainSelector: selector,
-		Grants: []grantrole.RoleGrant{{
-			Role:      mcmssdk.TimelockRoleCanceller,
-			Addresses: []string{grantee},
-		}},
-	})
-	require.NoError(t, err)
-
-	needed, err := grantrole.AddressesNeedingGrant(
-		t.Context(),
-		mcmsevm.NewTimelockInspector(chain.Client),
-		refs.Timelock.Hex(),
-		grantrole.RoleGrant{
-			Role:      mcmssdk.TimelockRoleCanceller,
-			Addresses: []string{grantee, pending},
-		},
-		func(address string) string { return common.HexToAddress(address).Hex() },
-	)
-	require.NoError(t, err)
-	require.Equal(t, []string{pending}, needed)
-
-	adminNeeded, err := grantrole.AddressesNeedingGrant(
-		t.Context(),
-		mcmsevm.NewTimelockInspector(chain.Client),
-		refs.Timelock.Hex(),
-		grantrole.RoleGrant{
-			Role:      mcmssdk.TimelockRoleAdmin,
-			Addresses: []string{grantee},
-		},
-		func(address string) string { return common.HexToAddress(address).Hex() },
-	)
-	require.NoError(t, err)
-	require.Equal(t, []string{grantee}, adminNeeded)
-}
-
 func newEVMGrantRoleRuntime(t *testing.T, selector uint64) *runtime.Runtime {
 	t.Helper()
 

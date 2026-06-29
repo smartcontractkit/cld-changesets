@@ -42,26 +42,20 @@ func runEVMGrantRole(
 
 	useMCMS := in.MCMS != nil
 	var writes []opscontract.WriteOutput
-	var addresses []string
+	var grantees []common.Address
 
 	for _, grant := range in.Grants {
-		addresses, err = grantrole.AddressesNeedingGrant(
+		grantees, err = AddressesNeedingGrant(
 			b.GetContext(),
 			mcmsevm.NewTimelockInspector(chain.Client),
-			timelock.Hex(),
+			timelock,
 			grant,
-			func(address string) string { return common.HexToAddress(address).Hex() },
 		)
 		if err != nil {
 			return sequenceutils.OnChainOutput{}, err
 		}
 
-		for _, address := range addresses {
-			grantee, parseErr := parseEVMAddress(address)
-			if parseErr != nil {
-				return sequenceutils.OnChainOutput{}, fmt.Errorf("parse grantee address %q: %w", address, parseErr)
-			}
-
+		for _, grantee := range grantees {
 			target := GrantRoleTarget{
 				Timelock: timelock,
 				Role:     grant.Role,
@@ -82,7 +76,7 @@ func runEVMGrantRole(
 				},
 				retryGrantRoleWithGasBoost(in.GasBoostConfig),
 				operations.WithIdempotencyKey[OpEVMGrantRoleInput, cldf_evm.Chain](
-					strconv.FormatUint(chain.Selector, 10)+":"+timelock.Hex()+":"+grant.Role.String()+":"+address,
+					strconv.FormatUint(chain.Selector, 10)+":"+timelock.Hex()+":"+grant.Role.String()+":"+grantee.Hex(),
 				),
 			)
 			if err != nil {

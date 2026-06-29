@@ -33,3 +33,5 @@ go.work.sum
 .gocache/
 .golangci-cache/
 .gomodcache/
+.test-home/
+.testhome/

@@ -47,7 +47,6 @@ func TestAddressesNeedingGrant(t *testing.T) {
 			Role:      mcmssdk.TimelockRoleCanceller,
 			Addresses: []string{"alice", "carol"},
 		},
-		nil,
 	)
 	require.NoError(t, err)
 	require.Equal(t, []string{"carol"}, got)
@@ -61,7 +60,6 @@ func TestAddressesNeedingGrant(t *testing.T) {
 			Role:      mcmssdk.TimelockRoleAdmin,
 			Addresses: []string{"alice"},
 		},
-		nil,
 	)
 	require.NoError(t, err)
 	require.Equal(t, []string{"alice"}, all)

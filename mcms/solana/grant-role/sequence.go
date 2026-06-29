@@ -59,25 +59,24 @@ func runSolanaGrantRole(
 		batchOps = make([]mcmstypes.BatchOperation, 0)
 	}
 
-	var addresses []string
+	var grantees []solanago.PublicKey
 	for _, grant := range in.Grants {
-		addresses, err = grantrole.AddressesNeedingGrant(
+		grantees, err = AddressesNeedingGrant(
 			b.GetContext(),
 			mcmssolanasdk.NewTimelockInspector(chain.Client),
 			timelockAddress,
 			grant,
-			nil,
 		)
 		if err != nil {
 			return sequenceutils.OnChainOutput{}, err
 		}
 
-		for _, address := range addresses {
+		for _, grantee := range grantees {
 			opInput := OpSolanaGrantRoleInput{
 				Target: GrantRoleTarget{
 					Timelock: timelockAddress,
 					Role:     grant.Role,
-					Address:  address,
+					Address:  grantee.String(),
 				},
 				NoSend: useMCMS,
 			}
@@ -92,7 +91,7 @@ func runSolanaGrantRole(
 				chain,
 				opInput,
 				operations.WithIdempotencyKey[OpSolanaGrantRoleInput, cldfsol.Chain](
-					strconv.FormatUint(chain.Selector, 10)+":"+grant.Role.String()+":"+address,
+					strconv.FormatUint(chain.Selector, 10)+":"+grant.Role.String()+":"+grantee.String(),
 				),
 			)
 			if err != nil {
