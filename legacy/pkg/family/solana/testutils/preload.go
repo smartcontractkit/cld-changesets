@@ -1,9 +1,9 @@
 package soltestutils
 
 import (
-	"io"
-	"os"
+	"maps"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -13,17 +13,65 @@ import (
 	"github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana/solutils"
 )
 
-// LoadMCMSPrograms loads the MCMS program artifacts into the given directory.
-//
-// Returns the path to the temporary test directory and a map of program names to IDs.
-func LoadMCMSPrograms(t *testing.T, dir string) (string, map[string]string) {
+// solTestExclusive serializes top-level Solana integration tests that mutate global
+// gobinding program IDs via SetProgramID. solTestDepth allows nested subtests in
+// the same test to re-enter without deadlocking.
+var (
+	solTestExclusive sync.Mutex
+	solTestCountMu   sync.Mutex
+	solTestDepth     int
+)
+
+func acquireSolanaTestIsolation(t *testing.T) {
 	t.Helper()
 
-	progIDs := loadProgramArtifacts(t,
-		solutils.MCMSProgramNames, downloadChainlinkCCIPProgramArtifacts, dir,
-	)
+	solTestCountMu.Lock()
+	if solTestDepth == 0 {
+		solTestExclusive.Lock()
+	}
+	solTestDepth++
+	solTestCountMu.Unlock()
 
-	return dir, progIDs
+	t.Cleanup(func() {
+		solTestCountMu.Lock()
+		solTestDepth--
+		release := solTestDepth == 0
+		solTestCountMu.Unlock()
+		if release {
+			solTestExclusive.Unlock()
+		}
+	})
+}
+
+var (
+	mcmsProgramsOnce sync.Once
+	mcmsProgramsPath string
+	mcmsProgramIDs   map[string]string
+)
+
+// sharedMCMSPrograms downloads MCMS Solana program artifacts once per test process
+// and returns the shared cache directory plus program IDs.
+func sharedMCMSPrograms(t *testing.T) (string, map[string]string) {
+	t.Helper()
+
+	mcmsProgramsOnce.Do(func() {
+		mcmsProgramsPath = programsCacheDir()
+		err := solutils.DownloadChainlinkCCIPProgramArtifacts(t.Context(), mcmsProgramsPath, "", nil)
+		require.NoError(t, err)
+
+		mcmsProgramIDs = make(map[string]string, len(solutils.MCMSProgramNames))
+		for _, name := range solutils.MCMSProgramNames {
+			id := solutils.GetProgramID(name)
+			require.NotEmpty(t, id, "program id not found for program name: %s", name)
+			require.FileExists(t, filepath.Join(mcmsProgramsPath, name+".so"))
+			mcmsProgramIDs[name] = id
+		}
+	})
+
+	programIDs := make(map[string]string, len(mcmsProgramIDs))
+	maps.Copy(programIDs, mcmsProgramIDs)
+
+	return mcmsProgramsPath, programIDs
 }
 
 // PreloadMCMS provides a convenience function to preload the MCMS program artifacts and address
@@ -31,53 +79,10 @@ func LoadMCMSPrograms(t *testing.T, dir string) (string, map[string]string) {
 func PreloadMCMS(t *testing.T, selector uint64) (string, map[string]string, *cldf.AddressBookMap) {
 	t.Helper()
 
-	dir := t.TempDir()
+	acquireSolanaTestIsolation(t)
 
-	_, programIDs := LoadMCMSPrograms(t, dir)
-
+	programsPath, programIDs := sharedMCMSPrograms(t)
 	ab := PreloadAddressBookWithMCMSPrograms(t, selector)
 
-	return dir, programIDs, ab
-}
-
-// loadProgramArtifacts is a helper function that loads program artifacts into a temporary test directory.
-// It downloads artifacts using the provided download function and copies the specified programs.
-//
-// Returns the map of program names to IDs.
-func loadProgramArtifacts(t *testing.T, programNames []string, downloadFn downloadFunc, targetDir string) map[string]string {
-	t.Helper()
-
-	// Download the program artifacts using the provided download function
-	cachePath := downloadFn(t)
-
-	progIDs := make(map[string]string, len(programNames))
-
-	// Copy the specific artifacts to the target directory and add the program ID to the map
-	for _, name := range programNames {
-		id := solutils.GetProgramID(name)
-		require.NotEmpty(t, id, "program id not found for program name: %s", name)
-
-		src := filepath.Join(cachePath, name+".so")
-		dst := filepath.Join(targetDir, name+".so")
-
-		func() {
-			srcFile, err := os.Open(src)
-			require.NoError(t, err)
-			defer srcFile.Close()
-
-			dstFile, err := os.Create(dst)
-			require.NoError(t, err)
-			defer dstFile.Close()
-
-			_, err = io.Copy(dstFile, srcFile)
-			require.NoError(t, err)
-		}()
-
-		// Add the program ID to the map
-		progIDs[name] = id
-		t.Logf("copied solana program %s to %s", name, dst)
-	}
-
-	// Return the path to the cached artifacts and the map of program IDs
-	return progIDs
+	return programsPath, programIDs, ab
 }

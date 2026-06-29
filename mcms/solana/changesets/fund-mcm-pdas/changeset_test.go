@@ -33,7 +33,7 @@ func TestChangeset(t *testing.T) {
 	selector2 := chainselectors.TEST_33333333333333333333333333333333333333333333.Selector
 
 	rt1 := testRuntime(t, selector1)
-	env1 := configureFundMCMSignersEnv(t, rt1.Environment(), selector1, rpcWithBalance(t, 1_000), true)
+	env1 := configureFundMCMSignersEnv(t, rt1.Environment(), selector1, rpcWithBalance(t, 1_000))
 	cs := Changeset{}
 
 	t.Run("VerifyPreconditions", func(t *testing.T) {
@@ -92,7 +92,7 @@ func TestChangeset(t *testing.T) {
 			},
 			{
 				name: "insufficient deployer balance",
-				env:  configureFundMCMSignersEnv(t, rt1.Environment(), selector1, rpcWithBalance(t, 1), true),
+				env:  configureFundMCMSignersEnv(t, rt1.Environment(), selector1, rpcWithBalance(t, 1)),
 				config: Config{
 					FundingPerChain: map[uint64]FundingConfig{selector1: {
 						ProposeMCM:   100,
@@ -106,7 +106,7 @@ func TestChangeset(t *testing.T) {
 			{
 				name: "missing deployer key",
 				env: func() cldf.Environment {
-					env := configureFundMCMSignersEnv(t, rt1.Environment(), selector1, rpcWithBalance(t, 1_000), true)
+					env := configureFundMCMSignersEnv(t, rt1.Environment(), selector1, rpcWithBalance(t, 1_000))
 					chain := env.BlockChains.SolanaChains()[selector1]
 					chain.DeployerKey = nil
 					env.BlockChains = cldf_chain.NewBlockChains(map[uint64]cldf_chain.BlockChain{selector1: chain})
@@ -138,8 +138,11 @@ func TestChangeset(t *testing.T) {
 		}
 
 		t.Run("mcms contracts not deployed", func(t *testing.T) {
-			rt2 := testRuntime(t, selector2)
-			env := configureFundMCMSignersEnv(t, rt2.Environment(), selector2, rpcWithBalance(t, 1_000), false)
+			chain := rt1.Environment().BlockChains.SolanaChains()[selector1]
+			chain.Client = rpcWithBalance(t, 1_000)
+			env := cldf.Environment{DataStore: newMCMSDataStore(t, selector2, false)}
+			env.BlockChains = cldf_chain.NewBlockChains(map[uint64]cldf_chain.BlockChain{selector2: chain})
+
 			err := cs.VerifyPreconditions(env, Config{
 				FundingPerChain: map[uint64]FundingConfig{selector2: {
 					ProposeMCM:   100,
@@ -155,7 +158,7 @@ func TestChangeset(t *testing.T) {
 	t.Run("Apply", func(t *testing.T) {
 		var confirmed [][]solana.Instruction
 
-		env := configureFundMCMSignersEnv(t, rt1.Environment(), selector1, nil, true)
+		env := configureFundMCMSignersEnv(t, rt1.Environment(), selector1, nil)
 		chain := env.BlockChains.SolanaChains()[selector1]
 		require.NotNil(t, chain.DeployerKey)
 		deployerKey := *chain.DeployerKey
@@ -246,12 +249,11 @@ func configureFundMCMSignersEnv(
 	base cldf.Environment,
 	selector uint64,
 	client *rpc.Client,
-	completeState bool,
 ) cldf.Environment {
 	t.Helper()
 
 	env := base
-	env.DataStore = newMCMSDataStore(t, selector, completeState)
+	env.DataStore = newMCMSDataStore(t, selector, true)
 
 	chain := env.BlockChains.SolanaChains()[selector]
 	if client != nil {
