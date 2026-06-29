@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/samber/lo"
 	mcmssdk "github.com/smartcontractkit/mcms/sdk"
 )
 
@@ -30,19 +29,4 @@ func AddressesForRole(
 	default:
 		return nil, fmt.Errorf("unsupported timelock role %s", role.String())
 	}
-}
-
-// AddressesNeedingGrant returns grant addresses that do not yet hold the role.
-func AddressesNeedingGrant(
-	ctx context.Context,
-	inspector mcmssdk.TimelockInspector,
-	timelockAddress string,
-	grant RoleGrant,
-) ([]string, error) {
-	addressesWithRole, err := AddressesForRole(ctx, inspector, timelockAddress, grant.Role)
-	if err != nil {
-		return nil, err
-	}
-	needed, _ := lo.Difference(grant.Addresses, addressesWithRole)
-	return needed, nil
 }
