@@ -3,6 +3,7 @@ package grantrole
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 
 	"github.com/smartcontractkit/chainlink-deployments-framework/changeset/sequenceutils"
@@ -38,10 +39,7 @@ func (Changeset) VerifyPreconditions(env cldf.Environment, input Input) error {
 		return err
 	}
 
-	families := make([]string, 0, len(byFamily))
-	for family := range byFamily {
-		families = append(families, family)
-	}
+	families := slices.Collect(maps.Keys(byFamily))
 	slices.Sort(families)
 
 	for _, family := range families {

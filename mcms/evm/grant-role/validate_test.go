@@ -1,7 +1,6 @@
 package evmgrantrole
 
 import (
-	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -123,7 +122,7 @@ func TestValidateMCMSRefs(t *testing.T) {
 			}
 
 			err := validateMCMSRefs(
-				validateTestEnv(ds.Seal()),
+				validateTestEnv(t, ds.Seal()),
 				grantrole.SeqInput{
 					ChainSelector: chainselectors.TEST_90000001.Selector,
 					MCMS:          tt.mcms,
@@ -146,14 +145,17 @@ func TestValidateEVMChains(t *testing.T) {
 	grantee := "0x00000000000000000000000000000000000000aa"
 
 	tests := []struct {
-		name    string
-		env     cldf.Environment
-		chains  []grantrole.SeqInput
-		wantErr string
+		name     string
+		setupEnv func(t *testing.T) cldf.Environment
+		chains   []grantrole.SeqInput
+		wantErr  string
 	}{
 		{
 			name: "chain not in environment",
-			env:  validateTestEnv(datastore.NewMemoryDataStore().Seal()),
+			setupEnv: func(t *testing.T) cldf.Environment {
+				t.Helper()
+				return validateTestEnv(t, datastore.NewMemoryDataStore().Seal())
+			},
 			chains: []grantrole.SeqInput{{
 				ChainSelector: chainselectors.TEST_90000001.Selector,
 				Grants: []grantrole.RoleGrant{{
@@ -165,9 +167,12 @@ func TestValidateEVMChains(t *testing.T) {
 		},
 		{
 			name: "unsupported role",
-			env: grantRoleValidateEnv(t, chainselectors.TEST_90000001.Selector, version, []validateRefSpec{
-				{mcmscontracts.RBACTimelock, testTimelockAddr, ""},
-			}),
+			setupEnv: func(t *testing.T) cldf.Environment {
+				t.Helper()
+				return grantRoleValidateEnv(t, chainselectors.TEST_90000001.Selector, version, []validateRefSpec{
+					{mcmscontracts.RBACTimelock, testTimelockAddr, ""},
+				})
+			},
 			chains: []grantrole.SeqInput{{
 				ChainSelector: chainselectors.TEST_90000001.Selector,
 				Grants: []grantrole.RoleGrant{{
@@ -179,9 +184,12 @@ func TestValidateEVMChains(t *testing.T) {
 		},
 		{
 			name: "success",
-			env: grantRoleValidateEnv(t, chainselectors.TEST_90000001.Selector, version, []validateRefSpec{
-				{mcmscontracts.RBACTimelock, testTimelockAddr, ""},
-			}),
+			setupEnv: func(t *testing.T) cldf.Environment {
+				t.Helper()
+				return grantRoleValidateEnv(t, chainselectors.TEST_90000001.Selector, version, []validateRefSpec{
+					{mcmscontracts.RBACTimelock, testTimelockAddr, ""},
+				})
+			},
 			chains: []grantrole.SeqInput{{
 				ChainSelector: chainselectors.TEST_90000001.Selector,
 				Grants: []grantrole.RoleGrant{{
@@ -196,7 +204,7 @@ func TestValidateEVMChains(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			err := validateEVMChains(tt.env, tt.chains)
+			err := validateEVMChains(tt.setupEnv(t), tt.chains)
 			if tt.wantErr == "" {
 				require.NoError(t, err)
 				return
@@ -221,14 +229,6 @@ func TestParseEVMAddress(t *testing.T) {
 	require.EqualError(t, err, "address must not be zero")
 }
 
-func TestParseTimelockAddress(t *testing.T) {
-	t.Parallel()
-
-	addr, err := parseTimelockAddress(testTimelockAddr)
-	require.NoError(t, err)
-	require.Equal(t, testTimelockAddr, addr.Hex())
-}
-
 func TestTimelockAddress(t *testing.T) {
 	t.Parallel()
 
@@ -238,7 +238,7 @@ func TestTimelockAddress(t *testing.T) {
 		t.Parallel()
 
 		_, err := timelockAddress(
-			validateTestEnv(datastore.NewMemoryDataStore().Seal()),
+			validateTestEnv(t, datastore.NewMemoryDataStore().Seal()),
 			grantrole.SeqInput{ChainSelector: chainselectors.TEST_90000001.Selector},
 		)
 		require.EqualError(t, err, fmt.Sprintf(
@@ -254,7 +254,7 @@ func TestTimelockAddress(t *testing.T) {
 		addValidateRef(t, ds, chainselectors.TEST_90000001.Selector, mcmscontracts.RBACTimelock, "not-an-address", version, "")
 
 		_, err := timelockAddress(
-			validateTestEnv(ds.Seal()),
+			validateTestEnv(t, ds.Seal()),
 			grantrole.SeqInput{ChainSelector: chainselectors.TEST_90000001.Selector},
 		)
 		require.EqualError(t, err, `address "not-an-address" is not a valid EVM address`)
@@ -267,7 +267,7 @@ func TestTimelockAddress(t *testing.T) {
 		addValidateRef(t, ds, chainselectors.TEST_90000001.Selector, mcmscontracts.RBACTimelock, testTimelockAddr, version, "")
 
 		addr, err := timelockAddress(
-			validateTestEnv(ds.Seal()),
+			validateTestEnv(t, ds.Seal()),
 			grantrole.SeqInput{ChainSelector: chainselectors.TEST_90000001.Selector},
 		)
 		require.NoError(t, err)
@@ -295,11 +295,13 @@ func addValidateRef(
 	}))
 }
 
-func validateTestEnv(ds datastore.DataStore) cldf.Environment {
+func validateTestEnv(t *testing.T, ds datastore.DataStore) cldf.Environment {
+	t.Helper()
+
 	return cldf.Environment{
 		Logger:     logger.Nop(),
 		DataStore:  ds,
-		GetContext: context.Background,
+		GetContext: t.Context,
 	}
 }
 
@@ -317,6 +319,6 @@ func grantRoleValidateEnv(t *testing.T, selector uint64, version *semver.Version
 			selector: cldfevm.Chain{Selector: selector},
 		}),
 		DataStore:  ds.Seal(),
-		GetContext: context.Background,
+		GetContext: t.Context,
 	}
 }

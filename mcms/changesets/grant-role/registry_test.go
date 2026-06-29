@@ -6,9 +6,9 @@ import (
 
 	chainselectors "github.com/smartcontractkit/chain-selectors"
 	cldfchain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
+	opscontract "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/operations2/contract"
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
-	"github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
 	mcmssdk "github.com/smartcontractkit/mcms/sdk"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 	"github.com/stretchr/testify/require"
@@ -18,7 +18,7 @@ func TestGroupByFamily(t *testing.T) {
 	t.Parallel()
 
 	selector := chainselectors.TEST_90000001.Selector
-	gasBoost := &proposalutils.GasBoostConfig{}
+	gasBoost := &opscontract.GasBoostConfig{}
 	mcmsInput := &cldf.MCMSTimelockProposalInput{
 		TimelockAction: mcmstypes.TimelockActionSchedule,
 		ValidUntil:     uint32(time.Now().Add(2 * time.Hour).UTC().Unix()), //nolint:gosec // test timestamp

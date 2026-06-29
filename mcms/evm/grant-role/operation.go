@@ -13,7 +13,6 @@ import (
 	opscontract "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/operations2/contract"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	mcmscontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/mcms"
-	cldfproposalutils "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 	mcmssdk "github.com/smartcontractkit/mcms/sdk"
 	mcmsevm "github.com/smartcontractkit/mcms/sdk/evm"
@@ -116,12 +115,12 @@ func rawTransaction(raw any) (*types.Transaction, error) {
 	}
 }
 
-func retryGrantRoleWithGasBoost(cfg *cldfproposalutils.GasBoostConfig) operations.ExecuteOption[OpEVMGrantRoleInput, cldf_evm.Chain] {
+func retryGrantRoleWithGasBoost(cfg *opscontract.GasBoostConfig) operations.ExecuteOption[OpEVMGrantRoleInput, cldf_evm.Chain] {
 	if cfg == nil {
 		return operations.WithRetry[OpEVMGrantRoleInput, cldf_evm.Chain]()
 	}
 
-	return gasboost.RetryWithGasBoost[OpEVMGrantRoleInput](cfg)
+	return opscontract.RetryWithGasBoost[OpEVMGrantRoleInput](cfg)
 }
 
 func validateGrantRoleTarget(target GrantRoleTarget) error {
