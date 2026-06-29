@@ -138,8 +138,11 @@ func TestChangeset(t *testing.T) {
 		}
 
 		t.Run("mcms contracts not deployed", func(t *testing.T) {
-			rt2 := testRuntime(t, selector2)
-			env := configureFundMCMSignersEnv(t, rt2.Environment(), selector2, rpcWithBalance(t, 1_000), false)
+			chain := rt1.Environment().BlockChains.SolanaChains()[selector1]
+			chain.Client = rpcWithBalance(t, 1_000)
+			env := cldf.Environment{DataStore: newMCMSDataStore(t, selector2, false)}
+			env.BlockChains = cldf_chain.NewBlockChains(map[uint64]cldf_chain.BlockChain{selector2: chain})
+
 			err := cs.VerifyPreconditions(env, Config{
 				FundingPerChain: map[uint64]FundingConfig{selector2: {
 					ProposeMCM:   100,
