@@ -180,7 +180,7 @@ func TestProgramRef(t *testing.T) {
 
 	ds := datastore.NewMemoryDataStore()
 	addValidateRef(t, ds, selector, mcmscontracts.AccessControllerProgram, programID, version)
-	env := validateTestEnv(ds.Seal(), selector)
+	env := validateTestEnv(t, ds.Seal(), selector)
 
 	got, err := programRef(env, selector, mcmscontracts.AccessControllerProgram)
 	require.NoError(t, err)
@@ -207,7 +207,7 @@ func TestAccessControllerProgramAndAccount(t *testing.T) {
 	ds := datastore.NewMemoryDataStore()
 	addValidateRef(t, ds, selector, mcmscontracts.AccessControllerProgram, programID.String(), version)
 	addValidateRef(t, ds, selector, mcmscontracts.ExecutorAccessControllerAccount, accountID.String(), version)
-	env := validateTestEnv(ds.Seal(), selector)
+	env := validateTestEnv(t, ds.Seal(), selector)
 
 	gotProgram, err := accessControllerProgram(env, selector)
 	require.NoError(t, err)
@@ -228,13 +228,13 @@ func TestTimelockContractAddress(t *testing.T) {
 
 	ds := datastore.NewMemoryDataStore()
 	addValidateRef(t, ds, selector, mcmscontracts.RBACTimelock, timelockAddr, version)
-	env := validateTestEnv(ds.Seal(), selector)
+	env := validateTestEnv(t, ds.Seal(), selector)
 
 	got, err := timelockContractAddress(env, grantrole.SeqInput{ChainSelector: selector})
 	require.NoError(t, err)
 	require.Equal(t, timelockAddr, got)
 
-	_, err = timelockContractAddress(validateTestEnv(datastore.NewMemoryDataStore().Seal(), selector), grantrole.SeqInput{ChainSelector: selector})
+	_, err = timelockContractAddress(validateTestEnv(t, datastore.NewMemoryDataStore().Seal(), selector), grantrole.SeqInput{ChainSelector: selector})
 	require.EqualError(t, err, fmt.Sprintf(
 		"resolve timelock for chain %d: no address ref matched query: expected exactly 1 ref matching query {ChainSelector: %d, Type: RBACTimelock}, found 0",
 		selector, selector,
@@ -252,7 +252,7 @@ func TestTimelockSignerPDA(t *testing.T) {
 
 	ds := datastore.NewMemoryDataStore()
 	addValidateRef(t, ds, selector, mcmscontracts.RBACTimelock, timelockAddr, version)
-	env := validateTestEnv(ds.Seal(), selector)
+	env := validateTestEnv(t, ds.Seal(), selector)
 
 	mcmsInput := cldf.MCMSTimelockProposalInput{
 		TimelockAction: mcmstypes.TimelockActionSchedule,

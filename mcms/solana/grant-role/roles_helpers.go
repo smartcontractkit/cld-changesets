@@ -9,6 +9,7 @@ import (
 	mcmssdk "github.com/smartcontractkit/mcms/sdk"
 
 	grantrole "github.com/smartcontractkit/cld-changesets/mcms/changesets/grant-role"
+	grantroleinternal "github.com/smartcontractkit/cld-changesets/mcms/internal/grantrole"
 )
 
 // AddressesNeedingGrant returns grant addresses that do not yet hold the role.
@@ -18,7 +19,7 @@ func AddressesNeedingGrant(
 	timelockAddress string,
 	grant grantrole.RoleGrant,
 ) ([]solanago.PublicKey, error) {
-	addressesWithRole, err := grantrole.AddressesForRole(ctx, inspector, timelockAddress, grant.Role)
+	addressesWithRole, err := grantroleinternal.AddressesForRole(ctx, inspector, timelockAddress, grant.Role)
 	if err != nil {
 		return nil, err
 	}

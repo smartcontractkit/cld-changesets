@@ -47,15 +47,12 @@ func runSolanaGrantRole(
 
 	useMCMS := in.MCMS != nil
 	var authorityAccount solanago.PublicKey
+	var batchOps []mcmstypes.BatchOperation
 	if useMCMS {
 		authorityAccount, err = timelockSignerPDA(env, in)
 		if err != nil {
 			return sequenceutils.OnChainOutput{}, err
 		}
-	}
-
-	var batchOps []mcmstypes.BatchOperation
-	if useMCMS {
 		batchOps = make([]mcmstypes.BatchOperation, 0)
 	}
 

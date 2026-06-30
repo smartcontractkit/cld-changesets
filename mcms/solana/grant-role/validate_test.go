@@ -1,7 +1,6 @@
 package solgrantrole
 
 import (
-	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -84,7 +83,7 @@ func TestValidateMCMSIfPresent(t *testing.T) {
 			}
 
 			err := validateMCMSIfPresent(
-				validateTestEnv(ds.Seal(), selector),
+				validateTestEnv(t, ds.Seal(), selector),
 				grantrole.SeqInput{ChainSelector: selector, MCMS: tt.mcms},
 			)
 			if tt.wantErr == "" {
@@ -166,7 +165,7 @@ func TestValidateGrantAddresses(t *testing.T) {
 		t.Parallel()
 
 		err := validateGrantAddresses(
-			validateTestEnv(datastore.NewMemoryDataStore().Seal(), selector),
+			validateTestEnv(t, datastore.NewMemoryDataStore().Seal(), selector),
 			grantrole.SeqInput{
 				ChainSelector: selector,
 				Grants: []grantrole.RoleGrant{{
@@ -188,7 +187,7 @@ func TestValidateGrantAddresses(t *testing.T) {
 		addValidateRef(t, ds, selector, mcmscontracts.ExecutorAccessControllerAccount, "executor-ac", version)
 
 		err := validateGrantAddresses(
-			validateTestEnv(ds.Seal(), selector),
+			validateTestEnv(t, ds.Seal(), selector),
 			grantrole.SeqInput{
 				ChainSelector: selector,
 				Grants: []grantrole.RoleGrant{{
@@ -220,11 +219,13 @@ func addValidateRef(
 	}))
 }
 
-func validateTestEnv(ds datastore.DataStore, selector uint64) cldf.Environment {
+func validateTestEnv(t *testing.T, ds datastore.DataStore, selector uint64) cldf.Environment {
+	t.Helper()
+
 	return cldf.Environment{
 		Logger:     logger.Nop(),
 		DataStore:  ds,
-		GetContext: context.Background,
+		GetContext: t.Context,
 		BlockChains: chain.NewBlockChains(map[uint64]chain.BlockChain{
 			selector: cldfsol.Chain{Selector: selector},
 		}),
