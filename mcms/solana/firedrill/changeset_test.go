@@ -15,10 +15,12 @@ import (
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 	"github.com/stretchr/testify/require"
 
-	legacymcms "github.com/smartcontractkit/cld-changesets/legacy/mcms/changesets"
+	"github.com/smartcontractkit/cld-changesets/internal/testutil/solanatest"
 	soltestutils "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana/testutils"
+	"github.com/smartcontractkit/cld-changesets/mcms/changesets/deploy"
 	firedrill "github.com/smartcontractkit/cld-changesets/mcms/changesets/firedrill"
 
+	_ "github.com/smartcontractkit/cld-changesets/mcms/solana/deploy"
 	_ "github.com/smartcontractkit/cld-changesets/mcms/solana/firedrill"
 	_ "github.com/smartcontractkit/cld-changesets/mcms/solana/readers"
 )
@@ -59,18 +61,20 @@ func TestChangeset_Apply_solanaProposal(t *testing.T) {
 func newSolanaFireDrillRuntime(t *testing.T, selector uint64) *runtime.Runtime {
 	t.Helper()
 
-	programsPath, programIDs, ab := soltestutils.PreloadMCMS(t, selector)
+	programsPath, programIDs := soltestutils.LoadMCMSPrograms(t)
 	rt, err := runtime.New(t.Context(), runtime.WithEnvOpts(
 		environment.WithSolanaContainer(t, []uint64{selector}, programsPath, programIDs),
-		environment.WithAddressBook(ab),
+		environment.WithDatastore(solanatest.PreloadDatastoreWithMCMSPrograms(t, selector)),
 		environment.WithLogger(logger.Test(t)),
 	))
 	require.NoError(t, err)
 	require.Contains(t, rt.Environment().BlockChains.SolanaChains(), selector)
 
 	err = rt.Exec(
-		runtime.ChangesetTask(cldf.CreateLegacyChangeSet(legacymcms.DeployMCMSWithTimelockV2), map[uint64]cldfproposalutils.MCMSWithTimelockConfig{
-			selector: cldftesthelpers.SingleGroupTimelockConfig(t),
+		runtime.ChangesetTask(deploy.Changeset{}, deploy.Input{
+			ConfigByChain: map[uint64]cldfproposalutils.MCMSWithTimelockConfig{
+				selector: cldftesthelpers.SingleGroupTimelockConfig(t),
+			},
 		}),
 	)
 	require.NoError(t, err)

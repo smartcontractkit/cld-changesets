@@ -30,12 +30,13 @@ import (
 	"github.com/smartcontractkit/cld-changesets/datastore/refkey"
 	"github.com/smartcontractkit/cld-changesets/internal/semvers"
 
-	// TODO: remove legacymcms import once remaining MCMS changesets are migrated out of legacy/mcms/changesets.
-	legacymcms "github.com/smartcontractkit/cld-changesets/legacy/mcms/changesets"
+	"github.com/smartcontractkit/cld-changesets/internal/testutil/solanatest"
 	solchangesets "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana/changesets"
 	"github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana/solutils"
 	soltestutils "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana/testutils"
+	"github.com/smartcontractkit/cld-changesets/mcms/changesets/deploy"
 	setconfig "github.com/smartcontractkit/cld-changesets/mcms/changesets/set-config"
+	_ "github.com/smartcontractkit/cld-changesets/mcms/solana/deploy"
 	_ "github.com/smartcontractkit/cld-changesets/mcms/solana/readers"
 	solreaders "github.com/smartcontractkit/cld-changesets/mcms/solana/readers"
 )
@@ -85,6 +86,7 @@ func testRunSolanaSetConfigDirectSend(t *testing.T, rt *runtime.Runtime, chain c
 func testRunSolanaSetConfigMCMSProposal(t *testing.T, rt *runtime.Runtime, chain cldfsol.Chain, refs solanaMCMSRefs, selector uint64) {
 	t.Helper()
 
+	transferSolanaMCMSToTimelock(t, rt, selector)
 	fundSolanaSignerPDAs(t, chain, refs)
 
 	cancellerCfg := cldftesthelpers.SingleGroupMCMS(t)
@@ -129,18 +131,20 @@ func testRunSolanaSetConfigMCMSProposal(t *testing.T, rt *runtime.Runtime, chain
 func newSolanaSetConfigRuntime(t *testing.T, selector uint64) *runtime.Runtime {
 	t.Helper()
 
-	programsPath, programIDs, ab := soltestutils.PreloadMCMS(t, selector)
+	programsPath, programIDs := soltestutils.LoadMCMSPrograms(t)
 	rt, err := runtime.New(t.Context(), runtime.WithEnvOpts(
 		environment.WithSolanaContainer(t, []uint64{selector}, programsPath, programIDs),
-		environment.WithAddressBook(ab),
+		environment.WithDatastore(solanatest.PreloadDatastoreWithMCMSPrograms(t, selector)),
 		environment.WithLogger(logger.Test(t)),
 	))
 	require.NoError(t, err)
 	require.Contains(t, rt.Environment().BlockChains.SolanaChains(), selector)
 
 	err = rt.Exec(
-		runtime.ChangesetTask(cldf.CreateLegacyChangeSet(legacymcms.DeployMCMSWithTimelockV2), map[uint64]cldfproposalutils.MCMSWithTimelockConfig{
-			selector: cldftesthelpers.SingleGroupTimelockConfig(t),
+		runtime.ChangesetTask(deploy.Changeset{}, deploy.Input{
+			ConfigByChain: map[uint64]cldfproposalutils.MCMSWithTimelockConfig{
+				selector: cldftesthelpers.SingleGroupTimelockConfig(t),
+			},
 		}),
 	)
 	require.NoError(t, err)

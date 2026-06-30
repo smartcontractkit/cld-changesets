@@ -192,27 +192,13 @@ type MCMSWithTimelockState struct {
 	*MCMSWithTimelockPrograms
 }
 
-// MaybeLoadMCMSWithTimelockState loads MCMSWithTimelockState for each provided chain selector from the environment's
-// Solana chains and ExistingAddresses (address book).
+// MaybeLoadMCMSWithTimelockState loads MCMSWithTimelockState for each provided chain selector from the environment.
 func MaybeLoadMCMSWithTimelockState(env cldf.Environment, chainSelectors []uint64) (map[uint64]*MCMSWithTimelockState, error) {
 	result := map[uint64]*MCMSWithTimelockState{}
-	solChains := env.BlockChains.SolanaChains()
 	for _, chainSelector := range chainSelectors {
-		chain, ok := solChains[chainSelector]
-		if !ok {
-			return nil, fmt.Errorf("chain %d not found", chainSelector)
-		}
-		addressesChain, err := env.ExistingAddresses.AddressesForChain(chainSelector) //nolint:staticcheck // SA1019: AddressBook deprecated; Solana MCMS load merges with address book until full DataStore migration.
+		state, err := GetState(env, chainSelector)
 		if err != nil {
-			if !errors.Is(err, cldf.ErrChainNotFound) {
-				return nil, fmt.Errorf("unable to get addresses for chain %v: %w", chainSelector, err)
-			}
-			// chain not found in address book, initialize empty
-			addressesChain = make(map[string]cldf.TypeAndVersion)
-		}
-		state, err := MaybeLoadMCMSWithTimelockChainState(chain, addressesChain)
-		if err != nil {
-			return nil, fmt.Errorf("unable to load mcms and timelock solana chain state: %w", err)
+			return nil, fmt.Errorf("unable to load mcms and timelock solana chain state for chain %d: %w", chainSelector, err)
 		}
 		result[chainSelector] = state
 	}

@@ -1,4 +1,4 @@
-package evmsetconfig
+package evmsetconfig_test
 
 import (
 	"context"
@@ -9,6 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	chainselectors "github.com/smartcontractkit/chain-selectors"
+	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
+	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	mcmscontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/mcms"
@@ -16,6 +18,7 @@ import (
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 
 	setconfig "github.com/smartcontractkit/cld-changesets/mcms/changesets/set-config"
+	evmsetconfig "github.com/smartcontractkit/cld-changesets/mcms/evm/set-config"
 
 	_ "github.com/smartcontractkit/cld-changesets/mcms/evm/readers"
 )
@@ -35,6 +38,7 @@ func TestValidateMCMSIfPresent(t *testing.T) {
 		ValidUntil:     uint32(time.Now().Add(2 * time.Hour).UTC().Unix()), //nolint:gosec // test timestamp
 		TimelockDelay:  mcmstypes.NewDuration(time.Second),
 	}
+	reg := evmsetconfig.Registration()
 
 	tests := []struct {
 		name    string
@@ -80,12 +84,12 @@ func TestValidateMCMSIfPresent(t *testing.T) {
 				addValidateRef(t, ds, selector, ref.contractType, ref.address, version, "")
 			}
 
-			err := validateMCMSIfPresent(
-				validateTestEnv(ds.Seal()),
-				setconfig.ChainInput{
+			err := reg.Verify(
+				validateTestEnv(ds.Seal(), selector),
+				[]setconfig.ChainInput{{
 					ChainSelector: selector,
 					MCMS:          tt.mcms,
-				},
+				}},
 			)
 			if tt.wantErr == "" {
 				require.NoError(t, err)
@@ -117,10 +121,13 @@ func addValidateRef(
 	}))
 }
 
-func validateTestEnv(ds datastore.DataStore) cldf.Environment {
+func validateTestEnv(ds datastore.DataStore, selector uint64) cldf.Environment {
 	return cldf.Environment{
-		Logger:     logger.Nop(),
-		DataStore:  ds,
+		Logger:    logger.Nop(),
+		DataStore: ds,
+		BlockChains: chain.NewBlockChains(map[uint64]chain.BlockChain{
+			selector: cldf_evm.Chain{Selector: selector},
+		}),
 		GetContext: context.Background,
 	}
 }

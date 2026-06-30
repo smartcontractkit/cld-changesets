@@ -377,14 +377,7 @@ func (t TransferMCMSToTimelockSolana) VerifyPreconditions(
 	env cldf.Environment, config TransferMCMSToTimelockSolanaConfig,
 ) error {
 	for _, chainSelector := range config.Chains {
-		addressBook := env.ExistingAddresses //nolint:staticcheck // SA1019: legacy AddressBook until DataStore migration
-		err := addressBookContains(addressBook, chainSelector,
-			mcmscontracts.RBACTimelockProgram,
-			mcmscontracts.RBACTimelock,
-			mcmscontracts.ManyChainMultisigProgram,
-			mcmscontracts.ProposerManyChainMultisig,
-		)
-		if err != nil {
+		if err := envContainsMCMSBundle(env, chainSelector); err != nil {
 			return err
 		}
 	}
@@ -545,6 +538,38 @@ func addressBookContains(addressBook cldf.AddressBook, chainSelector uint64, cty
 		if err != nil {
 			return fmt.Errorf("address book does not contain a %s contract for chain %d", ctype, chainSelector)
 		}
+	}
+
+	return nil
+}
+
+func envContainsMCMSBundle(env cldf.Environment, chainSelector uint64) error {
+	return envContainsContractTypes(env, chainSelector,
+		mcmscontracts.RBACTimelockProgram,
+		mcmscontracts.RBACTimelock,
+		mcmscontracts.ManyChainMultisigProgram,
+		mcmscontracts.ProposerManyChainMultisig,
+	)
+}
+
+func envContainsContractTypes(env cldf.Environment, chainSelector uint64, ctypes ...cldf.ContractType) error {
+	for _, ctype := range ctypes {
+		if env.ExistingAddresses != nil { //nolint:staticcheck // SA1019: legacy AddressBook until DataStore migration
+			if _, err := cldf.SearchAddressBook(env.ExistingAddresses, chainSelector, ctype); err == nil {
+				continue
+			}
+		}
+		if env.DataStore != nil {
+			refs := env.DataStore.Addresses().Filter(
+				datastore.AddressRefByChainSelector(chainSelector),
+				datastore.AddressRefByType(datastore.ContractType(ctype)),
+			)
+			if len(refs) > 0 {
+				continue
+			}
+		}
+
+		return fmt.Errorf("environment does not contain a %s contract for chain %d", ctype, chainSelector)
 	}
 
 	return nil

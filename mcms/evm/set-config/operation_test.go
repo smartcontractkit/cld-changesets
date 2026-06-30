@@ -1,4 +1,4 @@
-package evmsetconfig
+package evmsetconfig_test
 
 import (
 	"crypto/ecdsa"
@@ -17,6 +17,8 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations/optest"
 	mcmsevm "github.com/smartcontractkit/mcms/sdk/evm"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
+
+	evmsetconfig "github.com/smartcontractkit/cld-changesets/mcms/evm/set-config"
 )
 
 func TestOpEVMSetConfigMCM_missingDeployerKey(t *testing.T) {
@@ -24,12 +26,13 @@ func TestOpEVMSetConfigMCM_missingDeployerKey(t *testing.T) {
 
 	_, err := operations.ExecuteOperation(
 		optest.NewBundle(t),
-		OpEVMSetConfigMCM,
+		evmsetconfig.OpEVMSetConfigMCM,
 		cldf_evm.Chain{Selector: chainselectors.TEST_90000001.Selector},
-		OpEVMSetConfigInput{
+		evmsetconfig.OpEVMSetConfigInput{
 			NoSend: false,
-			Target: MCMSetConfigTarget{
-				Address: common.Address{1},
+			Target: evmsetconfig.MCMSetConfigTarget{
+				Address:      common.Address{1},
+				ContractType: mcmscontracts.ProposerManyChainMultisig,
 			},
 		},
 	)
@@ -39,7 +42,7 @@ func TestOpEVMSetConfigMCM_missingDeployerKey(t *testing.T) {
 func TestOpEVMSetConfigInputGasOverridable(t *testing.T) {
 	t.Parallel()
 
-	in := OpEVMSetConfigInput{GasLimit: 100, GasPrice: 200}
+	in := evmsetconfig.OpEVMSetConfigInput{GasLimit: 100, GasPrice: 200}
 	gotLimit, gotPrice := in.GasBoostValues()
 	require.Equal(t, uint64(100), gotLimit)
 	require.Equal(t, uint64(200), gotPrice)
@@ -79,10 +82,10 @@ func TestOpEVMSetConfigMCM(t *testing.T) {
 
 			report, err := operations.ExecuteOperation(
 				rt.Environment().OperationsBundle,
-				OpEVMSetConfigMCM,
+				evmsetconfig.OpEVMSetConfigMCM,
 				chain,
-				OpEVMSetConfigInput{
-					Target: MCMSetConfigTarget{
+				evmsetconfig.OpEVMSetConfigInput{
+					Target: evmsetconfig.MCMSetConfigTarget{
 						Address:      refs.Canceller,
 						Config:       cfg,
 						ContractType: mcmscontracts.CancellerManyChainMultisig,

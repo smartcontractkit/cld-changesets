@@ -18,6 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/cld-changesets/internal/semvers"
+	"github.com/smartcontractkit/cld-changesets/internal/testutil/solanatest"
 	legacysolana "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana"
 	solutils "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana/solutils"
 	soltestutils "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana/testutils"
@@ -36,34 +37,6 @@ type solanaMCMSTimelockRefs struct {
 	Canceller string
 	Proposer  string
 	Timelock  string
-}
-
-// datastoreWithMCMSPrograms seeds the datastore with canonical MCMS program IDs.
-// The test validator preloads the same programs via WithSolanaContainer; program
-// deploy is skipped because artifacts lack -keypair.json files required by
-// solana program deploy for fixed program IDs.
-func datastoreWithMCMSPrograms(t *testing.T, selector uint64) datastore.DataStore {
-	t.Helper()
-
-	v := semvers.V1_0_0
-	ds := datastore.NewMemoryDataStore()
-	for _, entry := range []struct {
-		addr string
-		ct   datastore.ContractType
-	}{
-		{solutils.GetProgramID(solutils.ProgAccessController), datastore.ContractType(mcmscontracts.AccessControllerProgram)},
-		{solutils.GetProgramID(solutils.ProgMCM), datastore.ContractType(mcmscontracts.ManyChainMultisigProgram)},
-		{solutils.GetProgramID(solutils.ProgTimelock), datastore.ContractType(mcmscontracts.RBACTimelockProgram)},
-	} {
-		require.NoError(t, ds.Addresses().Add(datastore.AddressRef{
-			ChainSelector: selector,
-			Address:       entry.addr,
-			Type:          entry.ct,
-			Version:       &v,
-		}))
-	}
-
-	return ds.Seal()
 }
 
 func newSolanaDeployRuntime(t *testing.T, selector uint64, ds datastore.DataStore) *runtime.Runtime {
@@ -234,7 +207,7 @@ func TestDeployMCMSWithTimelock_Solana_FreshDeploy(t *testing.T) {
 	selector := chainselectors.TEST_22222222222222222222222222222222222222222222.Selector
 	cfg := cldftesthelpers.SingleGroupTimelockConfig(t)
 
-	rt := newSolanaDeployRuntime(t, selector, datastoreWithMCMSPrograms(t, selector))
+	rt := newSolanaDeployRuntime(t, selector, solanatest.PreloadDatastoreWithMCMSPrograms(t, selector))
 	execSolanaDeployChangeset(t, rt, selector, cfg)
 
 	assertSolanaDeployDatastoreRefs(t, rt, selector)
@@ -246,7 +219,7 @@ func TestDeployMCMSWithTimelock_Solana_PartialDeploy(t *testing.T) {
 	selector := chainselectors.TEST_22222222222222222222222222222222222222222222.Selector
 	cfg := cldftesthelpers.SingleGroupTimelockConfig(t)
 
-	rt := newSolanaDeployRuntime(t, selector, datastoreWithMCMSPrograms(t, selector))
+	rt := newSolanaDeployRuntime(t, selector, solanatest.PreloadDatastoreWithMCMSPrograms(t, selector))
 	execSolanaDeployChangeset(t, rt, selector, cfg)
 
 	byType := assertSolanaDeployDatastoreRefs(t, rt, selector)
@@ -267,7 +240,7 @@ func TestDeployMCMSWithTimelock_Solana_IdempotentReRun(t *testing.T) {
 	selector := chainselectors.TEST_22222222222222222222222222222222222222222222.Selector
 	cfg := cldftesthelpers.SingleGroupTimelockConfig(t)
 
-	rt := newSolanaDeployRuntime(t, selector, datastoreWithMCMSPrograms(t, selector))
+	rt := newSolanaDeployRuntime(t, selector, solanatest.PreloadDatastoreWithMCMSPrograms(t, selector))
 
 	execSolanaDeployChangeset(t, rt, selector, cfg)
 	afterFirst := assertSolanaDeployDatastoreRefs(t, rt, selector)

@@ -25,13 +25,18 @@ import (
 
 	"github.com/smartcontractkit/cld-changesets/datastore/refkey"
 	"github.com/smartcontractkit/cld-changesets/internal/semvers"
+	"github.com/smartcontractkit/cld-changesets/internal/testutil/solanatest"
 
-	// TODO: remove legacymcms import once remaining MCMS changesets are migrated out of legacy/mcms/changesets.
-	legacymcms "github.com/smartcontractkit/cld-changesets/legacy/mcms/changesets"
-	evmstate "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/evm"
 	soltestutils "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana/testutils"
+	"github.com/smartcontractkit/cld-changesets/mcms/changesets/deploy"
 	setconfig "github.com/smartcontractkit/cld-changesets/mcms/changesets/set-config"
 	_ "github.com/smartcontractkit/cld-changesets/mcms/changesets/set-config/all"
+	transfertotimelock "github.com/smartcontractkit/cld-changesets/mcms/changesets/transfer-to-timelock"
+	_ "github.com/smartcontractkit/cld-changesets/mcms/evm/deploy"
+	_ "github.com/smartcontractkit/cld-changesets/mcms/evm/readers"
+	evmreaders "github.com/smartcontractkit/cld-changesets/mcms/evm/readers"
+	_ "github.com/smartcontractkit/cld-changesets/mcms/evm/transfer-to-timelock"
+	_ "github.com/smartcontractkit/cld-changesets/mcms/solana/deploy"
 )
 
 func contractRef(chainSelector uint64, contractType cldf.ContractType, qualifier string) refkey.RefKey {
@@ -92,10 +97,9 @@ func deployEVMMCMSWithTimelock(t *testing.T, rt *runtime.Runtime, selectors ...u
 		configByChain[selector] = cfg
 	}
 
-	err := rt.Exec(
-		// TODO: replace with new deploy changeset when available
-		runtime.ChangesetTask(cldf.CreateLegacyChangeSet(legacymcms.DeployMCMSWithTimelockV2), configByChain),
-	)
+	err := rt.Exec(runtime.ChangesetTask(deploy.Changeset{}, deploy.Input{
+		ConfigByChain: configByChain,
+	}))
 	require.NoError(t, err)
 }
 
@@ -111,16 +115,24 @@ func newEVMRuntimeWithDeploy(t *testing.T, selectors ...uint64) *runtime.Runtime
 func transferEVMMCMSToTimelock(t *testing.T, rt *runtime.Runtime, selector uint64) {
 	t.Helper()
 
-	mcmsState, _ := evmMCMSChainState(t, rt, selector)
+	mcmsRefs, _ := loadEVMMCMSRefs(t, rt, selector)
 
 	err := rt.Exec(
-		runtime.ChangesetTask(cldf.CreateLegacyChangeSet(legacymcms.TransferToMCMSWithTimelockV2), legacymcms.TransferToMCMSWithTimelockConfig{
-			ContractsByChain: map[uint64][]common.Address{
-				selector: {
-					mcmsState.ProposerMcm.Address(),
-					mcmsState.BypasserMcm.Address(),
-					mcmsState.CancellerMcm.Address(),
+		runtime.ChangesetTask(transfertotimelock.Changeset{}, transfertotimelock.Input{
+			Cfg: transfertotimelock.Config{
+				ContractsByChain: map[uint64][]common.Address{
+					selector: {
+						mcmsRefs.Proposer,
+						mcmsRefs.Bypasser,
+						mcmsRefs.Canceller,
+					},
 				},
+			},
+			MCMS: &cldf.MCMSTimelockProposalInput{
+				TimelockAction: mcmstypes.TimelockActionBypass,
+				ValidUntil:     uint32(time.Now().Add(2 * time.Hour).UTC().Unix()), //nolint:gosec // test timestamp
+				TimelockDelay:  mcmstypes.NewDuration(0),
+				Description:    "transfer MCM to timelock",
 			},
 		}),
 		runtime.SignAndExecuteProposalsTask([]*ecdsa.PrivateKey{cldftesthelpers.TestXXXMCMSSigner}),
@@ -137,17 +149,41 @@ func newEVMRuntimeWithDeployAndTransfer(t *testing.T, selector uint64) *runtime.
 	return rt
 }
 
-func evmMCMSChainState(t *testing.T, rt *runtime.Runtime, selector uint64) (*evmstate.MCMSWithTimelockState, cldf_evm.Chain) {
+type evmMCMSRefs struct {
+	Timelock  common.Address
+	Proposer  common.Address
+	Canceller common.Address
+	Bypasser  common.Address
+}
+
+func loadEVMMCMSRefs(t *testing.T, rt *runtime.Runtime, selector uint64) (evmMCMSRefs, cldf_evm.Chain) {
 	t.Helper()
 
-	chain := rt.Environment().BlockChains.EVMChains()[selector]
-	addrs, err := rt.State().AddressBook.AddressesForChain(selector)
+	env := rt.Environment()
+	chain := env.BlockChains.EVMChains()[selector]
+
+	reader := evmreaders.Reader{}
+	timelock, err := reader.GetTimelockRef(env, selector, cldf.MCMSTimelockProposalInput{})
+	require.NoError(t, err)
+	proposer, err := reader.GetMCMSRef(env, selector, cldf.MCMSTimelockProposalInput{
+		TimelockAction: mcmstypes.TimelockActionSchedule,
+	})
+	require.NoError(t, err)
+	canceller, err := reader.GetMCMSRef(env, selector, cldf.MCMSTimelockProposalInput{
+		TimelockAction: mcmstypes.TimelockActionCancel,
+	})
+	require.NoError(t, err)
+	bypasser, err := reader.GetMCMSRef(env, selector, cldf.MCMSTimelockProposalInput{
+		TimelockAction: mcmstypes.TimelockActionBypass,
+	})
 	require.NoError(t, err)
 
-	mcmsState, err := evmstate.MaybeLoadMCMSWithTimelockChainState(chain, addrs)
-	require.NoError(t, err)
-
-	return mcmsState, chain
+	return evmMCMSRefs{
+		Timelock:  common.HexToAddress(timelock.Address),
+		Proposer:  common.HexToAddress(proposer.Address),
+		Canceller: common.HexToAddress(canceller.Address),
+		Bypasser:  common.HexToAddress(bypasser.Address),
+	}, chain
 }
 
 // newSolanaVerifyPreconditionsEnv builds a mock Solana environment for VerifyPreconditions
@@ -189,18 +225,20 @@ func newSolanaVerifyPreconditionsEnv(t *testing.T, selector uint64) cldf.Environ
 func newSolanaRuntimeWithDeploy(t *testing.T, selector uint64) *runtime.Runtime {
 	t.Helper()
 
-	programsPath, programIDs, ab := soltestutils.PreloadMCMS(t, selector)
+	programsPath, programIDs := soltestutils.LoadMCMSPrograms(t)
 	rt, err := runtime.New(t.Context(), runtime.WithEnvOpts(
 		environment.WithSolanaContainer(t, []uint64{selector}, programsPath, programIDs),
-		environment.WithAddressBook(ab),
+		environment.WithDatastore(solanatest.PreloadDatastoreWithMCMSPrograms(t, selector)),
 		environment.WithLogger(logger.Test(t)),
 	))
 	require.NoError(t, err)
 	require.Contains(t, rt.Environment().BlockChains.SolanaChains(), selector)
 
 	err = rt.Exec(
-		runtime.ChangesetTask(cldf.CreateLegacyChangeSet(legacymcms.DeployMCMSWithTimelockV2), map[uint64]cldfproposalutils.MCMSWithTimelockConfig{
-			selector: cldftesthelpers.SingleGroupTimelockConfig(t),
+		runtime.ChangesetTask(deploy.Changeset{}, deploy.Input{
+			ConfigByChain: map[uint64]cldfproposalutils.MCMSWithTimelockConfig{
+				selector: cldftesthelpers.SingleGroupTimelockConfig(t),
+			},
 		}),
 	)
 	require.NoError(t, err)

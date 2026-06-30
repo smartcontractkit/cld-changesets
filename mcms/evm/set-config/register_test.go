@@ -1,4 +1,4 @@
-package evmsetconfig
+package evmsetconfig_test
 
 import (
 	"fmt"
@@ -12,15 +12,20 @@ import (
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 
 	setconfig "github.com/smartcontractkit/cld-changesets/mcms/changesets/set-config"
+	evmsetconfig "github.com/smartcontractkit/cld-changesets/mcms/evm/set-config"
 )
 
 func TestRegistration(t *testing.T) {
 	t.Parallel()
 
-	reg := Registration()
+	reg := evmsetconfig.Registration()
 	require.Equal(t, chainselectors.FamilyEVM, reg.Family)
-	require.Equal(t, seqSetConfig, reg.Sequence)
+	require.NotNil(t, reg.Sequence)
 	require.NotNil(t, reg.Verify)
+
+	registered, err := setconfig.Registry.SequenceForFamily(chainselectors.FamilyEVM)
+	require.NoError(t, err)
+	require.Equal(t, reg.Sequence, registered)
 }
 
 func TestInitRegistersEVM(t *testing.T) {
@@ -36,7 +41,7 @@ func TestInitRegistersEVM(t *testing.T) {
 				t.Helper()
 				seq, err := setconfig.Registry.SequenceForFamily(chainselectors.FamilyEVM)
 				require.NoError(t, err)
-				require.Equal(t, seqSetConfig, seq)
+				require.NotNil(t, seq)
 			},
 		},
 		{
@@ -45,7 +50,7 @@ func TestInitRegistersEVM(t *testing.T) {
 				t.Helper()
 				got, err := setconfig.Registry.SequenceForChainSelector(chainselectors.TEST_90000001.Selector)
 				require.NoError(t, err)
-				require.Equal(t, seqSetConfig, got)
+				require.NotNil(t, got)
 			},
 		},
 	}
@@ -62,7 +67,7 @@ func TestVerifyEVMChains(t *testing.T) {
 	t.Parallel()
 
 	selector := chainselectors.TEST_90000001.Selector
-	reg := Registration()
+	reg := evmsetconfig.Registration()
 
 	tests := []struct {
 		name    string

@@ -1,7 +1,6 @@
-package evmsetconfig
+package evmsetconfig_test
 
 import (
-	"context"
 	"crypto/ecdsa"
 	"testing"
 	"time"
@@ -14,6 +13,7 @@ import (
 	chainselectors "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
+	"github.com/smartcontractkit/chainlink-deployments-framework/changeset/sequenceutils"
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	mcmscontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/mcms"
@@ -21,6 +21,7 @@ import (
 	cldftesthelpers "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils/testhelpers"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/environment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/runtime"
+	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations/optest"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 	mcmsevm "github.com/smartcontractkit/mcms/sdk/evm"
@@ -29,11 +30,16 @@ import (
 	"github.com/smartcontractkit/cld-changesets/datastore/refkey"
 	"github.com/smartcontractkit/cld-changesets/internal/semvers"
 
-	// TODO: remove legacymcms import once remaining MCMS changesets are migrated out of legacy/mcms/changesets.
-	legacymcms "github.com/smartcontractkit/cld-changesets/legacy/mcms/changesets"
+	"github.com/smartcontractkit/cld-changesets/mcms/changesets/deploy"
 	setconfig "github.com/smartcontractkit/cld-changesets/mcms/changesets/set-config"
+	transfertotimelock "github.com/smartcontractkit/cld-changesets/mcms/changesets/transfer-to-timelock"
 	_ "github.com/smartcontractkit/cld-changesets/mcms/evm/readers"
 	evmreaders "github.com/smartcontractkit/cld-changesets/mcms/evm/readers"
+
+	_ "github.com/smartcontractkit/cld-changesets/mcms/changesets/set-config/all"
+	_ "github.com/smartcontractkit/cld-changesets/mcms/evm/deploy"
+	_ "github.com/smartcontractkit/cld-changesets/mcms/evm/set-config"
+	_ "github.com/smartcontractkit/cld-changesets/mcms/evm/transfer-to-timelock"
 )
 
 func TestRunEVMSetConfig(t *testing.T) {
@@ -142,11 +148,11 @@ func newEVMSetConfigRuntime(t *testing.T, selector uint64) *runtime.Runtime {
 	))
 	require.NoError(t, err)
 
-	err = rt.Exec(
-		runtime.ChangesetTask(cldf.CreateLegacyChangeSet(legacymcms.DeployMCMSWithTimelockV2), map[uint64]cldfproposalutils.MCMSWithTimelockConfig{
+	err = rt.Exec(runtime.ChangesetTask(deploy.Changeset{}, deploy.Input{
+		ConfigByChain: map[uint64]cldfproposalutils.MCMSWithTimelockConfig{
 			selector: cldftesthelpers.SingleGroupTimelockConfig(t),
-		}),
-	)
+		},
+	}))
 	require.NoError(t, err)
 
 	return rt
@@ -190,13 +196,21 @@ func transferEVMMCMSToTimelock(t *testing.T, rt *runtime.Runtime, selector uint6
 	t.Helper()
 
 	err := rt.Exec(
-		runtime.ChangesetTask(cldf.CreateLegacyChangeSet(legacymcms.TransferToMCMSWithTimelockV2), legacymcms.TransferToMCMSWithTimelockConfig{
-			ContractsByChain: map[uint64][]common.Address{
-				selector: {
-					refs.Proposer,
-					refs.Bypasser,
-					refs.Canceller,
+		runtime.ChangesetTask(transfertotimelock.Changeset{}, transfertotimelock.Input{
+			Cfg: transfertotimelock.Config{
+				ContractsByChain: map[uint64][]common.Address{
+					selector: {
+						refs.Proposer,
+						refs.Bypasser,
+						refs.Canceller,
+					},
 				},
+			},
+			MCMS: &cldf.MCMSTimelockProposalInput{
+				TimelockAction: mcmstypes.TimelockActionBypass,
+				ValidUntil:     uint32(time.Now().Add(2 * time.Hour).UTC().Unix()), //nolint:gosec // test timestamp
+				TimelockDelay:  mcmstypes.NewDuration(0),
+				Description:    "transfer MCM to timelock",
 			},
 		}),
 		runtime.SignAndExecuteProposalsTask([]*ecdsa.PrivateKey{cldftesthelpers.TestXXXMCMSSigner}),
@@ -247,7 +261,25 @@ func assertEVMConfigEquals(t *testing.T, inspector *mcmsevm.Inspector, address c
 	require.Equal(t, want.Quorum, got.Quorum)
 }
 
-func TestSetConfigTargets(t *testing.T) {
+func runEVMSetConfig(
+	b operations.Bundle,
+	deps setconfig.Deps,
+	in setconfig.ChainInput,
+) (sequenceutils.OnChainOutput, error) {
+	seq, err := setconfig.Registry.SequenceForFamily(chainselectors.FamilyEVM)
+	if err != nil {
+		return sequenceutils.OnChainOutput{}, err
+	}
+
+	report, err := operations.ExecuteSequence(b, seq, deps, in)
+	if err != nil {
+		return sequenceutils.OnChainOutput{}, err
+	}
+
+	return report.Output, nil
+}
+
+func TestSetConfigTargets_errors(t *testing.T) {
 	t.Parallel()
 
 	const selector uint64 = 90000001
@@ -261,23 +293,28 @@ func TestSetConfigTargets(t *testing.T) {
 		Type:          datastore.ContractType(mcmscontracts.ProposerManyChainMultisig),
 		Version:       semver.MustParse("1.0.0"),
 	}))
-	env := cldf.Environment{
-		DataStore:  ds.Seal(),
-		GetContext: context.Background,
+	deps := setconfig.Deps{
+		BlockChains: chain.NewBlockChains(map[uint64]chain.BlockChain{
+			selector: cldf_evm.Chain{Selector: selector},
+		}),
+		DataStore: ds.Seal(),
 	}
 
-	got, err := setConfigTargets(env, []setconfig.ContractSetConfig{
-		{Ref: validRef, Config: cfg},
-	})
-	require.NoError(t, err)
-	require.Len(t, got, 1)
-	require.Equal(t, "0x0000000000000000000000000000000000000100", got[0].Address.Hex())
-	require.Equal(t, cfg, got[0].Config)
-
-	_, err = setConfigTargets(env, []setconfig.ContractSetConfig{
-		{Ref: refkey.New(selector, datastore.ContractType(mcmscontracts.CancellerManyChainMultisig), &semvers.V1_0_0, ""), Config: cfg},
-	})
-	require.ErrorContains(t, err, "targets[0]:")
+	_, err := runEVMSetConfig(
+		optest.NewBundle(t),
+		deps,
+		setconfig.ChainInput{
+			ChainSelector: selector,
+			Targets: []setconfig.ContractSetConfig{
+				{Ref: validRef, Config: cfg},
+				{
+					Ref:    refkey.New(selector, datastore.ContractType(mcmscontracts.CancellerManyChainMultisig), &semvers.V1_0_0, ""),
+					Config: cfg,
+				},
+			},
+		},
+	)
+	require.ErrorContains(t, err, "targets[1]:")
 
 	invalidDS := datastore.NewMemoryDataStore()
 	require.NoError(t, invalidDS.Addresses().Add(datastore.AddressRef{
@@ -286,9 +323,17 @@ func TestSetConfigTargets(t *testing.T) {
 		Type:          datastore.ContractType(mcmscontracts.ProposerManyChainMultisig),
 		Version:       semver.MustParse("1.0.0"),
 	}))
-	_, err = setConfigTargets(cldf.Environment{DataStore: invalidDS.Seal(), GetContext: context.Background}, []setconfig.ContractSetConfig{
-		{Ref: validRef, Config: cfg},
-	})
+	_, err = runEVMSetConfig(
+		optest.NewBundle(t),
+		setconfig.Deps{
+			BlockChains: deps.BlockChains,
+			DataStore:   invalidDS.Seal(),
+		},
+		setconfig.ChainInput{
+			ChainSelector: selector,
+			Targets:       []setconfig.ContractSetConfig{{Ref: validRef, Config: cfg}},
+		},
+	)
 	require.ErrorContains(t, err, `invalid EVM address "not-an-address"`)
 }
 

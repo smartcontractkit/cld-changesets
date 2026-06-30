@@ -86,3 +86,13 @@ func PreloadMCMS(t *testing.T, selector uint64) (string, map[string]string, *cld
 
 	return programsPath, programIDs, ab
 }
+
+// LoadMCMSPrograms downloads MCMS Solana program artifacts once per test process
+// and returns the shared cache directory plus program IDs.
+func LoadMCMSPrograms(t *testing.T) (string, map[string]string) {
+	t.Helper()
+
+	acquireSolanaTestIsolation(t)
+
+	return sharedMCMSPrograms(t)
+}
