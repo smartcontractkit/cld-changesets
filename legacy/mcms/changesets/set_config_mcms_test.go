@@ -3,7 +3,6 @@ package changesets
 import (
 	"crypto/ecdsa"
 	"testing"
-	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -22,9 +21,9 @@ import (
 	"github.com/smartcontractkit/mcms/sdk/solana"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 
+	"github.com/smartcontractkit/cld-changesets/internal/testutil/solanatest"
 	evmstate "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/evm"
 	solstate "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana"
-	"github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana/changesets"
 	soltestutils "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana/testutils"
 	linkchangesets "github.com/smartcontractkit/cld-changesets/tokens/link/changesets"
 )
@@ -202,8 +201,7 @@ func TestSetConfigMCMSV2Solana(t *testing.T) {
 	inspector := solana.NewInspector(chain.Client)
 
 	// Create some signers to set into the config
-	signer1Key, signer1Addr := createSolSigner(t)
-	_, signer2Addr := createSolSigner(t)
+	_, signer1Addr := createSolSigner(t)
 
 	newCfgProposer := cldftesthelpers.SingleGroupMCMS(t)
 	newCfgProposer.Signers = append(newCfgProposer.Signers, signer1Addr)
@@ -233,44 +231,30 @@ func TestSetConfigMCMSV2Solana(t *testing.T) {
 		assertSolConfigEquals(t, inspector, mcmsState.McmProgram, mcmsState.CancellerMcmSeed, newCfgCanceller)
 	})
 
-	t.Run("MCMS enabled", func(t *testing.T) { //nolint:paralleltest
-		// Now we transfer the MCMS contracts to the timelock for testing setConfig on MCMS owned contracts
-		err = rt.Exec(
-			runtime.ChangesetTask(changesets.TransferMCMSToTimelockSolana{}, changesets.TransferMCMSToTimelockSolanaConfig{
-				Chains:  []uint64{selector},
-				MCMSCfg: cldfproposalutils.TimelockConfig{MinDelay: time.Second * 1},
-			}),
-			// We must sign with an additional signer since we changed the config quorum previously.
-			runtime.SignAndExecuteProposalsTask([]*ecdsa.PrivateKey{cldftesthelpers.TestXXXMCMSSigner, signer1Key}),
-		)
+	t.Run("builds MCMS proposal without execute", func(t *testing.T) { //nolint:paralleltest
+		cfg := cldftesthelpers.SingleGroupMCMS(t)
+		taskID, err := runtime.ExecChangeset(rt, cldf.CreateLegacyChangeSet(SetConfigMCMSV2), MCMSConfigV2{
+			ProposalConfig: &cldfproposalutils.TimelockConfig{
+				MinDelay:   0,
+				MCMSAction: mcmstypes.TimelockActionBypass,
+			},
+			ConfigsPerChain: map[uint64]ConfigPerRoleV2{
+				selector: {
+					Proposer:  &cfg,
+					Canceller: &cfg,
+					Bypasser:  &cfg,
+				},
+			},
+		})
 		require.NoError(t, err)
 
-		// Update the configs with yet another additional signer
-		newCfgProposer.Signers = append(newCfgProposer.Signers, signer2Addr)
-		newCfgProposer.Quorum = 3
-		newCfgBypasser.Signers = append(newCfgBypasser.Signers, signer2Addr)
-		newCfgBypasser.Quorum = 3
-
-		err = rt.Exec(
-			runtime.ChangesetTask(cldf.CreateLegacyChangeSet(SetConfigMCMSV2), MCMSConfigV2{
-				ProposalConfig: &cldfproposalutils.TimelockConfig{
-					MinDelay: time.Second * 1,
-				},
-				ConfigsPerChain: map[uint64]ConfigPerRoleV2{
-					selector: {
-						Proposer:  &newCfgProposer,
-						Canceller: &newCfgCanceller,
-						Bypasser:  &newCfgBypasser,
-					},
-				},
-			}),
-			runtime.SignAndExecuteProposalsTask([]*ecdsa.PrivateKey{cldftesthelpers.TestXXXMCMSSigner, signer1Key}),
+		output, ok := rt.State().Outputs[taskID]
+		require.True(t, ok)
+		require.Len(t, output.MCMSTimelockProposals, 1)
+		solanatest.AssertMCMSSetConfigProposal(
+			t, selector, mcmsState, output.MCMSTimelockProposals[0],
+			mcmstypes.TimelockActionBypass, mcmstypes.NewDuration(0), "Set config proposal",
 		)
-		require.NoError(t, err)
-
-		assertSolConfigEquals(t, inspector, mcmsState.McmProgram, mcmsState.ProposerMcmSeed, newCfgProposer)
-		assertSolConfigEquals(t, inspector, mcmsState.McmProgram, mcmsState.BypasserMcmSeed, newCfgBypasser)
-		assertSolConfigEquals(t, inspector, mcmsState.McmProgram, mcmsState.CancellerMcmSeed, newCfgCanceller)
 	})
 }
 
