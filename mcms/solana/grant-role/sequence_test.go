@@ -102,8 +102,8 @@ func TestRunSolanaGrantRole(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // global mcm.SetProgramID state; serialized via soltestutils.PreloadMCMS lock
 func TestRunSolanaGrantRole_idempotent(t *testing.T) {
-	//nolint:paralleltest // global mcm.SetProgramID state; serialized via soltestutils.PreloadMCMS lock
 	selector := chainselectors.TEST_22222222222222222222222222222222222222222222.Selector
 	rt := newSolanaGrantRoleRuntime(t, selector)
 	chain := rt.Environment().BlockChains.SolanaChains()[selector]
@@ -179,7 +179,7 @@ func TestProgramRef(t *testing.T) {
 	version := semver.MustParse("1.0.0")
 
 	ds := datastore.NewMemoryDataStore()
-	addValidateRef(t, ds, selector, mcmscontracts.AccessControllerProgram, programID, version, "")
+	addValidateRef(t, ds, selector, mcmscontracts.AccessControllerProgram, programID, version)
 	env := validateTestEnv(ds.Seal(), selector)
 
 	got, err := programRef(env, selector, mcmscontracts.AccessControllerProgram)
@@ -205,8 +205,8 @@ func TestAccessControllerProgramAndAccount(t *testing.T) {
 	version := semver.MustParse("1.0.0")
 
 	ds := datastore.NewMemoryDataStore()
-	addValidateRef(t, ds, selector, mcmscontracts.AccessControllerProgram, programID.String(), version, "")
-	addValidateRef(t, ds, selector, mcmscontracts.ExecutorAccessControllerAccount, accountID.String(), version, "")
+	addValidateRef(t, ds, selector, mcmscontracts.AccessControllerProgram, programID.String(), version)
+	addValidateRef(t, ds, selector, mcmscontracts.ExecutorAccessControllerAccount, accountID.String(), version)
 	env := validateTestEnv(ds.Seal(), selector)
 
 	gotProgram, err := accessControllerProgram(env, selector)
@@ -227,7 +227,7 @@ func TestTimelockContractAddress(t *testing.T) {
 	version := semver.MustParse("1.0.0")
 
 	ds := datastore.NewMemoryDataStore()
-	addValidateRef(t, ds, selector, mcmscontracts.RBACTimelock, timelockAddr, version, "")
+	addValidateRef(t, ds, selector, mcmscontracts.RBACTimelock, timelockAddr, version)
 	env := validateTestEnv(ds.Seal(), selector)
 
 	got, err := timelockContractAddress(env, grantrole.SeqInput{ChainSelector: selector})
@@ -251,7 +251,7 @@ func TestTimelockSignerPDA(t *testing.T) {
 	version := semver.MustParse("1.0.0")
 
 	ds := datastore.NewMemoryDataStore()
-	addValidateRef(t, ds, selector, mcmscontracts.RBACTimelock, timelockAddr, version, "")
+	addValidateRef(t, ds, selector, mcmscontracts.RBACTimelock, timelockAddr, version)
 	env := validateTestEnv(ds.Seal(), selector)
 
 	mcmsInput := cldf.MCMSTimelockProposalInput{

@@ -37,5 +37,6 @@ func AddressesNeedingGrant(
 	}
 
 	needed, _ := lo.Difference(grantees, existing)
+
 	return needed, nil
 }

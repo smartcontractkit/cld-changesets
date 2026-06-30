@@ -80,7 +80,7 @@ func TestValidateMCMSIfPresent(t *testing.T) {
 
 			ds := datastore.NewMemoryDataStore()
 			for _, ref := range tt.refs {
-				addValidateRef(t, ds, selector, ref.contractType, ref.address, version, "")
+				addValidateRef(t, ds, selector, ref.contractType, ref.address, version)
 			}
 
 			err := validateMCMSIfPresent(
@@ -185,7 +185,7 @@ func TestValidateGrantAddresses(t *testing.T) {
 		t.Parallel()
 
 		ds := datastore.NewMemoryDataStore()
-		addValidateRef(t, ds, selector, mcmscontracts.ExecutorAccessControllerAccount, "executor-ac", version, "")
+		addValidateRef(t, ds, selector, mcmscontracts.ExecutorAccessControllerAccount, "executor-ac", version)
 
 		err := validateGrantAddresses(
 			validateTestEnv(ds.Seal(), selector),
@@ -208,7 +208,6 @@ func addValidateRef(
 	contractType cldf.ContractType,
 	address string,
 	version *semver.Version,
-	qualifier string,
 ) {
 	t.Helper()
 
@@ -217,7 +216,7 @@ func addValidateRef(
 		ChainSelector: selector,
 		Type:          datastore.ContractType(contractType),
 		Version:       version,
-		Qualifier:     qualifier,
+		Qualifier:     "",
 	}))
 }
 
