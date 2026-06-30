@@ -54,11 +54,13 @@ func deployMCMSWithTimelock(
 
 	qualifier := qualifierFromConfig(in.Config.Qualifier)
 
-	existing := loadDeployedAddresses(deps.DataStore, in.ChainSelector, qualifier)
+	existing, err := loadDeployedAddresses(deps.DataStore, in.ChainSelector, qualifier)
+	if err != nil {
+		return sequenceutils.OnChainOutput{}, fmt.Errorf("load deployed addresses: %w", err)
+	}
 
 	d := &deployer{b: b, chain: chain, config: in.Config, qualifier: qualifier}
 
-	var err error
 	if existing.Bypasser, err = d.deployMCMIfNeeded(mcmscontracts.BypasserManyChainMultisig, in.Config.Bypasser, existing.Bypasser); err != nil {
 		return d.out, err
 	}
