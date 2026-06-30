@@ -1,14 +1,18 @@
 package setconfig_test
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"testing"
 	"time"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 
+	cldf_chain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
+	cldfsol "github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
 	cldfdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	mcmscontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/mcms"
@@ -144,6 +148,42 @@ func evmMCMSChainState(t *testing.T, rt *runtime.Runtime, selector uint64) (*evm
 	require.NoError(t, err)
 
 	return mcmsState, chain
+}
+
+// newSolanaVerifyPreconditionsEnv builds a mock Solana environment for VerifyPreconditions
+// only — no CTF container or on-chain deploy.
+func newSolanaVerifyPreconditionsEnv(t *testing.T, selector uint64) cldf.Environment {
+	t.Helper()
+
+	ds := cldfdatastore.NewMemoryDataStore()
+	version := semver.MustParse("1.0.0")
+	for _, ref := range []struct {
+		contractType cldf.ContractType
+		address      string
+	}{
+		{mcmscontracts.RBACTimelock, "timelock-address"},
+		{mcmscontracts.ProposerManyChainMultisig, "proposer-address"},
+		{mcmscontracts.CancellerManyChainMultisig, "canceller-address"},
+		{mcmscontracts.BypasserManyChainMultisig, "bypasser-address"},
+	} {
+		require.NoError(t, ds.Addresses().Add(cldfdatastore.AddressRef{
+			Address:       ref.address,
+			ChainSelector: selector,
+			Type:          cldfdatastore.ContractType(ref.contractType),
+			Version:       version,
+		}))
+	}
+
+	return cldf.Environment{
+		Logger:    logger.Test(t),
+		DataStore: ds.Seal(),
+		GetContext: func() context.Context {
+			return t.Context()
+		},
+		BlockChains: cldf_chain.NewBlockChains(map[uint64]cldf_chain.BlockChain{
+			selector: cldfsol.Chain{Selector: selector},
+		}),
+	}
 }
 
 func newSolanaRuntimeWithDeploy(t *testing.T, selector uint64) *runtime.Runtime {

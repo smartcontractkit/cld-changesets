@@ -100,7 +100,7 @@ func TestRunEVMGrantRole_idempotent(t *testing.T) {
 	rt := newEVMGrantRoleRuntime(t, selector)
 	refs := grantRoleRefsFromEnv(t, rt.Environment(), selector)
 	chain := rt.Environment().BlockChains.EVMChains()[selector]
-	grantee := "0x00000000000000000000000000000000000000bb"
+	grantee := common.HexToAddress("0x00000000000000000000000000000000000000bb").Hex()
 	deps := grantrole.Deps{
 		BlockChains: rt.Environment().BlockChains,
 		DataStore:   rt.Environment().DataStore,
@@ -123,6 +123,48 @@ func TestRunEVMGrantRole_idempotent(t *testing.T) {
 	proposers, err := mcmsevm.NewTimelockInspector(chain.Client).GetProposers(t.Context(), refs.Timelock.Hex())
 	require.NoError(t, err)
 	require.Contains(t, proposers, grantee)
+}
+
+func TestAddressesNeedingGrant(t *testing.T) {
+	t.Parallel()
+
+	selector := chainselectors.TEST_90000001.Selector
+	rt := newEVMGrantRoleRuntime(t, selector)
+	refs := grantRoleRefsFromEnv(t, rt.Environment(), selector)
+	bundle := rt.Environment().OperationsBundle
+	chain := rt.Environment().BlockChains.EVMChains()[selector]
+	deps := grantrole.Deps{
+		BlockChains: rt.Environment().BlockChains,
+		DataStore:   rt.Environment().DataStore,
+	}
+
+	grantee := common.HexToAddress("0x00000000000000000000000000000000000000dd").Hex()
+	pending := common.HexToAddress("0x00000000000000000000000000000000000000ee").Hex()
+	_, err := runEVMGrantRole(bundle, deps, grantrole.SeqInput{
+		ChainSelector: selector,
+		Grants: []grantrole.RoleGrant{{
+			Role:      mcmssdk.TimelockRoleCanceller,
+			Addresses: []string{grantee},
+		}},
+	})
+	require.NoError(t, err)
+
+	needed, err := addressesNeedingGrant(bundle, chain, refs.Timelock, grantrole.RoleGrant{
+		Role:      mcmssdk.TimelockRoleCanceller,
+		Addresses: []string{grantee, pending},
+	})
+	require.NoError(t, err)
+	require.Equal(t, []string{pending}, needed)
+
+	adminNeeded, err := addressesNeedingGrant(bundle, chain, refs.Timelock, grantrole.RoleGrant{
+		Role:      mcmssdk.TimelockRoleAdmin,
+		Addresses: []string{grantee},
+	})
+	require.NoError(t, err)
+	require.Equal(t, []string{grantee}, adminNeeded)
+
+	_, err = addressesForRole(bundle, chain, refs.Timelock, mcmssdk.TimelockRole(99))
+	require.EqualError(t, err, "unsupported timelock role Unknown")
 }
 
 func newEVMGrantRoleRuntime(t *testing.T, selector uint64) *runtime.Runtime {

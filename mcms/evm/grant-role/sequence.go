@@ -2,6 +2,7 @@ package evmgrantrole
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 
 	"github.com/Masterminds/semver/v3"
@@ -12,6 +13,7 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/changeset/sequenceutils"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
+	mcmssdk "github.com/smartcontractkit/mcms/sdk"
 	mcmsevm "github.com/smartcontractkit/mcms/sdk/evm"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 
@@ -42,20 +44,20 @@ func runEVMGrantRole(
 
 	useMCMS := in.MCMS != nil
 	var writes []opscontract.WriteOutput
-	var grantees []common.Address
+	var addresses []string
 
 	for _, grant := range in.Grants {
-		grantees, err = AddressesNeedingGrant(
-			b.GetContext(),
-			mcmsevm.NewTimelockInspector(chain.Client),
-			timelock,
-			grant,
-		)
+		addresses, err = addressesNeedingGrant(b, chain, timelock, grant)
 		if err != nil {
 			return sequenceutils.OnChainOutput{}, err
 		}
 
-		for _, grantee := range grantees {
+		for _, address := range addresses {
+			grantee, parseErr := parseEVMAddress(address)
+			if parseErr != nil {
+				return sequenceutils.OnChainOutput{}, fmt.Errorf("parse grantee address %q: %w", address, parseErr)
+			}
+
 			target := GrantRoleTarget{
 				Timelock: timelock,
 				Role:     grant.Role,
@@ -76,7 +78,7 @@ func runEVMGrantRole(
 				},
 				retryGrantRoleWithGasBoost(in.GasBoostConfig),
 				operations.WithIdempotencyKey[OpEVMGrantRoleInput, cldf_evm.Chain](
-					strconv.FormatUint(chain.Selector, 10)+":"+timelock.Hex()+":"+grant.Role.String()+":"+grantee.Hex(),
+					strconv.FormatUint(chain.Selector, 10)+":"+timelock.Hex()+":"+grant.Role.String()+":"+address,
 				),
 			)
 			if err != nil {
@@ -113,6 +115,55 @@ func runEVMGrantRole(
 	}
 
 	return sequenceutils.OnChainOutput{BatchOps: []mcmstypes.BatchOperation{batch}}, nil
+}
+
+// addressesNeedingGrant returns the set of addresses that don't yet have the provided role.
+func addressesNeedingGrant(
+	b operations.Bundle,
+	chain cldf_evm.Chain,
+	timelock common.Address,
+	grant grantrole.RoleGrant,
+) ([]string, error) {
+	addressesWithRole, err := addressesForRole(b, chain, timelock, grant.Role)
+	if err != nil {
+		return nil, err
+	}
+	if len(addressesWithRole) == 0 {
+		return grant.Addresses, nil
+	}
+
+	out := make([]string, 0, len(grant.Addresses))
+	for _, address := range grant.Addresses {
+		if slices.Contains(addressesWithRole, common.HexToAddress(address).Hex()) {
+			continue
+		}
+		out = append(out, address)
+	}
+
+	return out, nil
+}
+
+func addressesForRole(
+	b operations.Bundle,
+	chain cldf_evm.Chain,
+	timelock common.Address,
+	role mcmssdk.TimelockRole,
+) ([]string, error) {
+	inspector := mcmsevm.NewTimelockInspector(chain.Client)
+	switch role {
+	case mcmssdk.TimelockRoleProposer:
+		return inspector.GetProposers(b.GetContext(), timelock.Hex())
+	case mcmssdk.TimelockRoleCanceller:
+		return inspector.GetCancellers(b.GetContext(), timelock.Hex())
+	case mcmssdk.TimelockRoleBypasser:
+		return inspector.GetBypassers(b.GetContext(), timelock.Hex())
+	case mcmssdk.TimelockRoleExecutor:
+		return inspector.GetExecutors(b.GetContext(), timelock.Hex())
+	case mcmssdk.TimelockRoleAdmin:
+		return nil, nil
+	default:
+		return nil, fmt.Errorf("unsupported timelock role %s", role.String())
+	}
 }
 
 func timelockAddress(env cldf.Environment, in grantrole.SeqInput) (common.Address, error) {

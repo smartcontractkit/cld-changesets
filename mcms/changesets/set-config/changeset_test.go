@@ -176,11 +176,11 @@ func TestChangeset_VerifyPreconditions(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // global mcm.SetProgramID state and shared Solana CTF container setup
 func TestChangeset_VerifyPreconditions_Solana(t *testing.T) {
+	t.Parallel()
+
 	selector := chain_selectors.TEST_22222222222222222222222222222222222222222222.Selector
-	rt := newSolanaRuntimeWithDeploy(t, selector)
-	env := rt.Environment()
+	env := newSolanaVerifyPreconditionsEnv(t, selector)
 
 	validCfg := cldftesthelpers.SingleGroupMCMS(t)
 	validTargets := mcmsTargets(selector, validCfg, validCfg, validCfg)
@@ -200,6 +200,7 @@ func TestChangeset_VerifyPreconditions_Solana(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			require.NoError(t, cs.VerifyPreconditions(env, tt.input))
 		})
 	}
