@@ -1,0 +1,108 @@
+package evmgrantrole
+
+import (
+	"errors"
+	"fmt"
+
+	"github.com/ethereum/go-ethereum/common"
+	chainselectors "github.com/smartcontractkit/chain-selectors"
+	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+
+	grantrole "github.com/smartcontractkit/cld-changesets/mcms/changesets/grant-role"
+	evmreaders "github.com/smartcontractkit/cld-changesets/mcms/evm/readers"
+)
+
+func validateEVMChains(env cldf.Environment, chains []grantrole.SeqInput) error {
+	for _, in := range chains {
+		if _, ok := env.BlockChains.EVMChains()[in.ChainSelector]; !ok {
+			return fmt.Errorf("EVM chain %d not found in environment", in.ChainSelector)
+		}
+		if err := validateMCMSRefs(env, in); err != nil {
+			return err
+		}
+		if err := validateRoles(in); err != nil {
+			return fmt.Errorf("chain %d: %w", in.ChainSelector, err)
+		}
+		if err := validateGrantAddresses(in); err != nil {
+			return fmt.Errorf("chain %d: %w", in.ChainSelector, err)
+		}
+	}
+
+	return nil
+}
+
+func validateMCMSRefs(env cldf.Environment, in grantrole.SeqInput) error {
+	reader, ok := cldf.GetMCMSReaderRegistry().Get(chainselectors.FamilyEVM)
+	if !ok {
+		return fmt.Errorf("no MCMS reader registered for family %q", chainselectors.FamilyEVM)
+	}
+
+	if in.MCMS == nil {
+		timelockRef, err := reader.GetTimelockRef(env, in.ChainSelector, cldf.MCMSTimelockProposalInput{})
+		if err != nil {
+			return fmt.Errorf("timelock not present on chain %d: %w", in.ChainSelector, err)
+		}
+		if _, err = parseEVMAddress(timelockRef.Address); err != nil {
+			return fmt.Errorf("invalid timelock ref on chain %d: %w", in.ChainSelector, err)
+		}
+
+		return nil
+	}
+
+	input := *in.MCMS
+	timelockRef, err := reader.GetTimelockRef(env, in.ChainSelector, input)
+	if err != nil {
+		return fmt.Errorf("timelock not present on chain %d: %w", in.ChainSelector, err)
+	}
+	if _, err = parseEVMAddress(timelockRef.Address); err != nil {
+		return fmt.Errorf("invalid timelock ref on chain %d: %w", in.ChainSelector, err)
+	}
+
+	if _, err = reader.GetMCMSRef(env, in.ChainSelector, input); err != nil {
+		return fmt.Errorf("mcms not present on chain %d: %w", in.ChainSelector, err)
+	}
+
+	evmReader, ok := reader.(evmreaders.CallProxyReader)
+	if !ok {
+		return fmt.Errorf("validate call proxy ref for chain %d: reader for family %q does not support call proxy lookup", in.ChainSelector, chainselectors.FamilyEVM)
+	}
+	if _, err = evmReader.GetCallProxyRef(env, in.ChainSelector, input.Qualifier); err != nil {
+		return fmt.Errorf("validate call proxy ref for chain %d: %w", in.ChainSelector, err)
+	}
+
+	return nil
+}
+
+func validateRoles(in grantrole.SeqInput) error {
+	for i, grant := range in.Grants {
+		if !grant.Role.Valid() {
+			return fmt.Errorf("grants[%d]: unsupported timelock role %s", i, grant.Role.String())
+		}
+	}
+
+	return nil
+}
+
+func validateGrantAddresses(in grantrole.SeqInput) error {
+	for i, grant := range in.Grants {
+		for j, addr := range grant.Addresses {
+			if _, err := parseEVMAddress(addr); err != nil {
+				return fmt.Errorf("grants[%d].addresses[%d]: %w", i, j, err)
+			}
+		}
+	}
+
+	return nil
+}
+
+func parseEVMAddress(raw string) (common.Address, error) {
+	if !common.IsHexAddress(raw) {
+		return common.Address{}, fmt.Errorf("address %q is not a valid EVM address", raw)
+	}
+	addr := common.HexToAddress(raw)
+	if addr == (common.Address{}) {
+		return common.Address{}, errors.New("address must not be zero")
+	}
+
+	return addr, nil
+}
