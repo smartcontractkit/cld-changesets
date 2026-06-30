@@ -13,16 +13,28 @@ import (
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/runtime"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
 	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
+	mcmssdk "github.com/smartcontractkit/mcms/sdk"
 	mcmsevmsdk "github.com/smartcontractkit/mcms/sdk/evm"
 
-	"github.com/smartcontractkit/cld-changesets/internal/mcmsrole"
-	evmops "github.com/smartcontractkit/cld-changesets/legacy/mcms/oputils"
 	timelockops "github.com/smartcontractkit/cld-changesets/mcms/evm/deploy/v1_0_0/operations/rbac_timelock"
 	evmgrantrole "github.com/smartcontractkit/cld-changesets/mcms/evm/grant-role"
 )
 
+func TestOpEVMGrantRoleInputGasOverridable(t *testing.T) {
+	t.Parallel()
+
+	in := evmgrantrole.OpEVMGrantRoleInput{GasLimit: 100, GasPrice: 200}
+	gotLimit, gotPrice := in.GasBoostValues()
+	require.Equal(t, uint64(100), gotLimit)
+	require.Equal(t, uint64(200), gotPrice)
+
+	boosted := in.WithGasBoost(500, 600)
+	require.Equal(t, uint64(500), boosted.GasLimit)
+	require.Equal(t, uint64(600), boosted.GasPrice)
+}
+
 // TestOpGrantRole deploys a timelock with the deployer as admin and grants the
-// executor role to a fresh address, asserting it shows up in the inspector.
+// executor role to a fresh address via the MCMS SDK timelock configurer.
 func TestOpGrantRole(t *testing.T) {
 	t.Parallel()
 
@@ -53,16 +65,16 @@ func TestOpGrantRole(t *testing.T) {
 	timelockAddr := common.HexToAddress(tlReport.Output.Address)
 
 	grantee := common.HexToAddress("0x00000000000000000000000000000000000000aa")
-	_, err = operations.ExecuteOperation(bundle, evmgrantrole.OpGrantRole, chain,
-		evmops.EVMCallInput[evmgrantrole.OpGrantRoleInput]{
-			ChainSelector: sel,
-			Address:       timelockAddr,
-			CallInput: evmgrantrole.OpGrantRoleInput{
-				Account: grantee,
-				RoleID:  [32]byte(mcmsrole.ExecutorRole.ID),
+	report, err := operations.ExecuteOperation(bundle, evmgrantrole.OpEVMGrantRole, chain,
+		evmgrantrole.OpEVMGrantRoleInput{
+			Target: evmgrantrole.GrantRoleTarget{
+				Timelock: timelockAddr,
+				Role:     mcmssdk.TimelockRoleExecutor,
+				Address:  grantee,
 			},
 		})
 	require.NoError(t, err)
+	require.True(t, report.Output.Executed())
 
 	executors, err := mcmsevmsdk.NewTimelockInspector(chain.Client).GetExecutors(t.Context(), timelockAddr.Hex())
 	require.NoError(t, err)
