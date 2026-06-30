@@ -47,7 +47,12 @@ func runEVMTransferToTimelock(
 	}
 
 	var transactions []mcmstypes.Transaction
-	for _, contract := range in.Contracts {
+	for i, ref := range in.Contracts {
+		contract, err := resolveEVMAddress(env, in.ChainSelector, ref)
+		if err != nil {
+			return sequenceutils.OnChainOutput{}, fmt.Errorf("contracts[%d]: %w", i, err)
+		}
+
 		txs, err := transferContractToTimelock(b, chain, timelock, contract, in)
 		if err != nil {
 			return sequenceutils.OnChainOutput{}, fmt.Errorf("contract %s: %w", contract.Hex(), err)

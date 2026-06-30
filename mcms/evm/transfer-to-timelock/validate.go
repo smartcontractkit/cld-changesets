@@ -6,7 +6,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	chainselectors "github.com/smartcontractkit/chain-selectors"
-	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 
 	transfertotimelock "github.com/smartcontractkit/cld-changesets/mcms/changesets/transfer-to-timelock"
@@ -41,6 +40,10 @@ func validateMCMS(env cldf.Environment, in transfertotimelock.ChainInput) error 
 }
 
 func validateContracts(env cldf.Environment, in transfertotimelock.ChainInput) error {
+	if len(in.Contracts) == 0 {
+		return errors.New("no contracts provided")
+	}
+
 	chain, ok := env.BlockChains.EVMChains()[in.ChainSelector]
 	if !ok {
 		return fmt.Errorf("EVM chain %d not found in environment", in.ChainSelector)
@@ -49,15 +52,17 @@ func validateContracts(env cldf.Environment, in transfertotimelock.ChainInput) e
 		return fmt.Errorf("missing deployer key for chain %d", in.ChainSelector)
 	}
 
-	seen := make(map[common.Address]struct{}, len(in.Contracts))
-	for _, contract := range in.Contracts {
-		if (contract == common.Address{}) {
-			return errors.New("contract address must not be zero")
+	seen := make(map[string]struct{}, len(in.Contracts))
+	for i, ref := range in.Contracts {
+		key, err := ref.Key()
+		if err != nil {
+			return fmt.Errorf("contracts[%d]: %w", i, err)
 		}
-		if _, dup := seen[contract]; dup {
-			return fmt.Errorf("duplicate contract address %s", contract.Hex())
+		keyStr := fmt.Sprintf("%v", key)
+		if _, dup := seen[keyStr]; dup {
+			return fmt.Errorf("duplicate contract ref %v", key)
 		}
-		seen[contract] = struct{}{}
+		seen[keyStr] = struct{}{}
 	}
 
 	timelock, err := timelockAddress(env, in)
@@ -65,11 +70,21 @@ func validateContracts(env cldf.Environment, in transfertotimelock.ChainInput) e
 		return err
 	}
 
-	for _, contract := range in.Contracts {
-		if err := contractInDatastore(env, in.ChainSelector, contract); err != nil {
-			return fmt.Errorf("contract %s: %w", contract.Hex(), err)
+	contracts := make([]common.Address, len(in.Contracts))
+	seenAddresses := make(map[common.Address]struct{}, len(in.Contracts))
+	for i, ref := range in.Contracts {
+		contract, err := resolveEVMAddress(env, in.ChainSelector, ref)
+		if err != nil {
+			return fmt.Errorf("contracts[%d]: %w", i, err)
 		}
+		if _, dup := seenAddresses[contract]; dup {
+			return fmt.Errorf("duplicate contract address %s", contract.Hex())
+		}
+		seenAddresses[contract] = struct{}{}
+		contracts[i] = contract
+	}
 
+	for _, contract := range contracts {
 		binding, err := bindOwnableContract(contract, chain.Client)
 		if err != nil {
 			return fmt.Errorf("contract %s: %w", contract.Hex(), err)
@@ -102,21 +117,6 @@ func timelockAddress(env cldf.Environment, in transfertotimelock.ChainInput) (co
 	}
 
 	return parseEVMAddress(timelockRef.Address, "timelock")
-}
-
-func contractInDatastore(env cldf.Environment, chainSelector uint64, contract common.Address) error {
-	if env.DataStore == nil {
-		return errors.New("datastore is required")
-	}
-
-	refs := env.DataStore.Addresses().Filter(datastore.AddressRefByChainSelector(chainSelector))
-	for _, ref := range refs {
-		if common.HexToAddress(ref.Address) == contract {
-			return nil
-		}
-	}
-
-	return errors.New("not found in datastore")
 }
 
 // validateContractOwner enforces ownership preconditions for transfer-to-timelock.

@@ -1,17 +1,19 @@
 package transfertotimelock
 
 import (
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/changeset/sequenceutils"
 	cldfdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
+
+	"github.com/smartcontractkit/cld-changesets/datastore/refkey"
 )
 
 // Config selects ownable contracts to transfer to the MCMS timelock per chain.
 type Config struct {
-	ContractsByChain map[uint64][]common.Address `json:"contractsByChain"`
+	// ContractsByChain lists contracts as datastore refs for every supported chain family.
+	ContractsByChain map[uint64][]refkey.RefKey `json:"contractsByChain,omitempty"`
 	// OnlyAcceptOwnership skips the on-chain transferOwnership step and only
 	// builds accept-ownership operations for the MCMS proposal.
 	OnlyAcceptOwnership bool `json:"onlyAcceptOwnership,omitempty"`
@@ -23,7 +25,7 @@ type Input = sequenceutils.WithMCMS[Config]
 // ChainInput is the per-chain request passed to a family sequence.
 type ChainInput struct {
 	ChainSelector       uint64                          `json:"chainSelector"`
-	Contracts           []common.Address                `json:"contracts"`
+	Contracts           []refkey.RefKey                 `json:"contracts,omitempty"`
 	OnlyAcceptOwnership bool                            `json:"onlyAcceptOwnership,omitempty"`
 	MCMS                *cldf.MCMSTimelockProposalInput `json:"mcms,omitempty"`
 }
