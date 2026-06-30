@@ -18,6 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/cld-changesets/internal/semvers"
+	"github.com/smartcontractkit/cld-changesets/internal/testutil/solanatest"
 	legacysolana "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana"
 	solutils "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana/solutils"
 	soltestutils "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/solana/testutils"
@@ -36,34 +37,6 @@ type solanaMCMSTimelockRefs struct {
 	Canceller string
 	Proposer  string
 	Timelock  string
-}
-
-// datastoreWithMCMSPrograms seeds the datastore with canonical MCMS program IDs.
-// The test validator preloads the same programs via WithSolanaContainer; program
-// deploy is skipped because artifacts lack -keypair.json files required by
-// solana program deploy for fixed program IDs.
-func datastoreWithMCMSPrograms(t *testing.T, selector uint64) datastore.DataStore {
-	t.Helper()
-
-	v := semvers.V1_0_0
-	ds := datastore.NewMemoryDataStore()
-	for _, entry := range []struct {
-		addr string
-		ct   datastore.ContractType
-	}{
-		{solutils.GetProgramID(solutils.ProgAccessController), datastore.ContractType(mcmscontracts.AccessControllerProgram)},
-		{solutils.GetProgramID(solutils.ProgMCM), datastore.ContractType(mcmscontracts.ManyChainMultisigProgram)},
-		{solutils.GetProgramID(solutils.ProgTimelock), datastore.ContractType(mcmscontracts.RBACTimelockProgram)},
-	} {
-		require.NoError(t, ds.Addresses().Add(datastore.AddressRef{
-			ChainSelector: selector,
-			Address:       entry.addr,
-			Type:          entry.ct,
-			Version:       &v,
-		}))
-	}
-
-	return ds.Seal()
 }
 
 func newSolanaDeployRuntime(t *testing.T, selector uint64, ds datastore.DataStore) *runtime.Runtime {
@@ -229,54 +202,44 @@ func assertSolanaDeployOnChain(
 	require.Equal(t, uint64(0), minDelay)
 }
 
-//nolint:paralleltest // global SetProgramID binding state is shared in-process
-func TestDeployMCMSWithTimelock_Solana_FreshDeploy(t *testing.T) {
+// TestDeployMCMSWithTimelock_Solana shares one Solana container across all subtests to
+// avoid paying the ~30 s container-startup cost multiple times. The initial deploy runs
+// in the parent so each subtest can be run in isolation via -run without depending on
+// subtest execution order.
+//
+//nolint:paralleltest // global SetProgramID binding state is shared in-process; subtests run sequentially
+func TestDeployMCMSWithTimelock_Solana(t *testing.T) {
 	selector := chainselectors.TEST_22222222222222222222222222222222222222222222.Selector
 	cfg := cldftesthelpers.SingleGroupTimelockConfig(t)
-
-	rt := newSolanaDeployRuntime(t, selector, datastoreWithMCMSPrograms(t, selector))
-	execSolanaDeployChangeset(t, rt, selector, cfg)
-
-	assertSolanaDeployDatastoreRefs(t, rt, selector)
-	assertSolanaDeployOnChain(t, rt, selector, cfg)
-}
-
-//nolint:paralleltest // global SetProgramID binding state is shared in-process
-func TestDeployMCMSWithTimelock_Solana_PartialDeploy(t *testing.T) {
-	selector := chainselectors.TEST_22222222222222222222222222222222222222222222.Selector
-	cfg := cldftesthelpers.SingleGroupTimelockConfig(t)
-
-	rt := newSolanaDeployRuntime(t, selector, datastoreWithMCMSPrograms(t, selector))
-	execSolanaDeployChangeset(t, rt, selector, cfg)
-
-	byType := assertSolanaDeployDatastoreRefs(t, rt, selector)
-
-	// Pre-existing programs must retain their canonical IDs (not be re-deployed).
-	require.Equal(t, solutils.GetProgramID(solutils.ProgAccessController),
-		byType[datastore.ContractType(mcmscontracts.AccessControllerProgram)].Address)
-	require.Equal(t, solutils.GetProgramID(solutils.ProgMCM),
-		byType[datastore.ContractType(mcmscontracts.ManyChainMultisigProgram)].Address)
-	require.Equal(t, solutils.GetProgramID(solutils.ProgTimelock),
-		byType[datastore.ContractType(mcmscontracts.RBACTimelockProgram)].Address)
-
-	assertSolanaDeployOnChain(t, rt, selector, cfg)
-}
-
-//nolint:paralleltest // global SetProgramID binding state is shared in-process
-func TestDeployMCMSWithTimelock_Solana_IdempotentReRun(t *testing.T) {
-	selector := chainselectors.TEST_22222222222222222222222222222222222222222222.Selector
-	cfg := cldftesthelpers.SingleGroupTimelockConfig(t)
-
-	rt := newSolanaDeployRuntime(t, selector, datastoreWithMCMSPrograms(t, selector))
+	rt := newSolanaDeployRuntime(t, selector, solanatest.NewDataStoreWithMCMSPrograms(t, selector))
 
 	execSolanaDeployChangeset(t, rt, selector, cfg)
-	afterFirst := assertSolanaDeployDatastoreRefs(t, rt, selector)
-	assertSolanaDeployOnChain(t, rt, selector, cfg)
 
-	execSolanaDeployChangeset(t, rt, selector, cfg)
-	afterSecond := assertSolanaDeployDatastoreRefs(t, rt, selector)
+	// FreshDeploy: starting from programs-only datastore, all 11 contract refs are
+	// created and the on-chain state matches the config. Pre-existing programs must
+	// retain their canonical IDs (not be re-deployed).
+	t.Run("FreshDeploy", func(t *testing.T) { //nolint:paralleltest
+		byType := assertSolanaDeployDatastoreRefs(t, rt, selector)
+		assertSolanaDeployOnChain(t, rt, selector, cfg)
 
-	for ct, ref := range afterFirst {
-		require.Equal(t, ref.Address, afterSecond[ct].Address, "address changed for %s on re-run", ct)
-	}
+		require.Equal(t, solutils.GetProgramID(solutils.ProgAccessController),
+			byType[datastore.ContractType(mcmscontracts.AccessControllerProgram)].Address)
+		require.Equal(t, solutils.GetProgramID(solutils.ProgMCM),
+			byType[datastore.ContractType(mcmscontracts.ManyChainMultisigProgram)].Address)
+		require.Equal(t, solutils.GetProgramID(solutils.ProgTimelock),
+			byType[datastore.ContractType(mcmscontracts.RBACTimelockProgram)].Address)
+	})
+
+	// IdempotentReRun: a second deploy against the same runtime must produce identical
+	// addresses — nothing is re-deployed and the datastore is not mutated.
+	t.Run("IdempotentReRun", func(t *testing.T) { //nolint:paralleltest
+		afterFirst := assertSolanaDeployDatastoreRefs(t, rt, selector)
+
+		execSolanaDeployChangeset(t, rt, selector, cfg)
+		afterSecond := assertSolanaDeployDatastoreRefs(t, rt, selector)
+
+		for ct, ref := range afterFirst {
+			require.Equal(t, ref.Address, afterSecond[ct].Address, "address changed for %s on re-run", ct)
+		}
+	})
 }
