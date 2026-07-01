@@ -15,9 +15,10 @@ import (
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 	"github.com/stretchr/testify/require"
 
-	legacymcms "github.com/smartcontractkit/cld-changesets/legacy/mcms/changesets"
+	deploy "github.com/smartcontractkit/cld-changesets/mcms/changesets/deploy"
 	firedrill "github.com/smartcontractkit/cld-changesets/mcms/changesets/firedrill"
 
+	_ "github.com/smartcontractkit/cld-changesets/mcms/evm/deploy"
 	_ "github.com/smartcontractkit/cld-changesets/mcms/evm/firedrill"
 	_ "github.com/smartcontractkit/cld-changesets/mcms/evm/readers"
 )
@@ -66,8 +67,10 @@ func newEVMFireDrillRuntime(t *testing.T, selector uint64) *runtime.Runtime {
 	require.NoError(t, err)
 
 	err = rt.Exec(
-		runtime.ChangesetTask(cldf.CreateLegacyChangeSet(legacymcms.DeployMCMSWithTimelockV2), map[uint64]cldfproposalutils.MCMSWithTimelockConfig{
-			selector: cldftesthelpers.SingleGroupTimelockConfig(t),
+		runtime.ChangesetTask(deploy.Changeset{}, deploy.Input{
+			ConfigByChain: map[uint64]cldfproposalutils.MCMSWithTimelockConfig{
+				selector: cldftesthelpers.SingleGroupTimelockConfig(t),
+			},
 		}),
 	)
 	require.NoError(t, err)
