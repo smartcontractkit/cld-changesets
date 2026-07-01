@@ -1,5 +1,36 @@
 # Changelog
 
+## [0.8.0](https://github.com/smartcontractkit/cld-changesets/compare/v0.7.1...v0.8.0) (2026-07-01)
+
+
+### ⚠ BREAKING CHANGES
+
+* `DeleteChainMetadataChangesetInput.ChainMetadataKeys`, `DeleteContractMetadataChangesetInput.ContractMetadataKeys`, and `DeleteAddressRefChangesetInput.AddressRefKeys` — plus the matching operation Input fields — now hold concrete key structs instead of the framework interface. The `DeleteAddressRefKey` type previously exported from `datastore/changesets/` is removed. In-Go callers should switch to JSON construction (no in-tree callers in chainlink-deployments today).
+
+### Features
+
+* add DeleteResourcesSeq and DeleteResourcesChangeset ([#78](https://github.com/smartcontractkit/cld-changesets/issues/78)) ([f33c8f4](https://github.com/smartcontractkit/cld-changesets/commit/f33c8f4be7b09028676b9e5d33ccd02e5779bd2c))
+* add refactored set config changeset,sequences and ops ([#90](https://github.com/smartcontractkit/cld-changesets/issues/90)) ([f5dde6f](https://github.com/smartcontractkit/cld-changesets/commit/f5dde6f57b8e9e506417e02b0b3fb20d4afc5759))
+* deploy  custom topology mcms [CLD-2766] ([#100](https://github.com/smartcontractkit/cld-changesets/issues/100)) ([b9638bc](https://github.com/smartcontractkit/cld-changesets/commit/b9638bc9bca1cf5afa29eaa1fc98f834ba2c9624))
+* fund mcms pdas [CLD-2765] ([#101](https://github.com/smartcontractkit/cld-changesets/issues/101)) ([c71b37c](https://github.com/smartcontractkit/cld-changesets/commit/c71b37ca087000d38f5d30c6fbe72dc2e559cfcf))
+* grant role timelock - changesets and EVM sequence ([#104](https://github.com/smartcontractkit/cld-changesets/issues/104)) ([3d6a235](https://github.com/smartcontractkit/cld-changesets/commit/3d6a23509e3e1939d98759ef5c0506ec7b4772d0))
+* grant role timelock solana ([#109](https://github.com/smartcontractkit/cld-changesets/issues/109)) ([5fe27c1](https://github.com/smartcontractkit/cld-changesets/commit/5fe27c1e7b2185c925451ddeac637f5f9fe404b8))
+* jd changesets ([#103](https://github.com/smartcontractkit/cld-changesets/issues/103)) ([628cfb7](https://github.com/smartcontractkit/cld-changesets/commit/628cfb75b7a91ba9f4280b42f0632264a9671132))
+* JD changesets and operations ([628cfb7](https://github.com/smartcontractkit/cld-changesets/commit/628cfb75b7a91ba9f4280b42f0632264a9671132))
+* **mcms:** add MCMS fire drill changeset [CLD-2764] ([#97](https://github.com/smartcontractkit/cld-changesets/issues/97)) ([2530e9e](https://github.com/smartcontractkit/cld-changesets/commit/2530e9ebd4da5cb0652564e19cc479209bcda1a6))
+* **mcms:** add Solana deploy changeset for MCMS with timelock [CLD-2719] ([#108](https://github.com/smartcontractkit/cld-changesets/issues/108)) ([06e4c39](https://github.com/smartcontractkit/cld-changesets/commit/06e4c39abc3d57a933577d9edf4bc3419057156a))
+* **mcms:** add solana support for transfer changeset ([#114](https://github.com/smartcontractkit/cld-changesets/issues/114)) ([2695394](https://github.com/smartcontractkit/cld-changesets/commit/269539440b64c1a3eb430c1a4becfbf80fb3127b))
+* **mcms:** add transfer-to-timelock changeset [CLD-2762] ([#99](https://github.com/smartcontractkit/cld-changesets/issues/99)) ([0d52620](https://github.com/smartcontractkit/cld-changesets/commit/0d526204ffaca0853bfd8f2c81ad761dc52fa929))
+* new mcms deploy changeset ([#89](https://github.com/smartcontractkit/cld-changesets/issues/89)) ([a0317ae](https://github.com/smartcontractkit/cld-changesets/commit/a0317ae70d9d16cdb8520c1399d70a4a603b0fce))
+
+
+### Bug Fixes
+
+* improve solana speed tests ([#111](https://github.com/smartcontractkit/cld-changesets/issues/111)) ([d52089d](https://github.com/smartcontractkit/cld-changesets/commit/d52089dfab97bccc1af0258fc7c5c4cf648b560f))
+* make datastore delete inputs JSON-deserializable ([#87](https://github.com/smartcontractkit/cld-changesets/issues/87)) ([68d4cda](https://github.com/smartcontractkit/cld-changesets/commit/68d4cda422b7853b6543a63563ee0c743eb3deaf))
+* **mcms/transfer:** change to datastore ref type ([#113](https://github.com/smartcontractkit/cld-changesets/issues/113)) ([f75c78b](https://github.com/smartcontractkit/cld-changesets/commit/f75c78be322cb75b77246b6299f6a87ac41633c2))
+* use opscontract.WriteOutput in set-config ([#107](https://github.com/smartcontractkit/cld-changesets/issues/107)) ([e1a60bb](https://github.com/smartcontractkit/cld-changesets/commit/e1a60bbd5e5391c4e39e8ba55e034cdb5ba5febf))
+
 ## [0.7.1](https://github.com/smartcontractkit/cld-changesets/compare/v0.7.0...v0.7.1) (2026-06-10)
 
 
