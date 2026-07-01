@@ -68,7 +68,17 @@ func (Changeset) Apply(env cldf.Environment, input Input) (cldf.ChangesetOutput,
 	var agg sequenceutils.OnChainOutput
 
 	for _, chainSelector := range maputil.SortedMapKeys(input.Cfg.ContractsByChain) {
-		contracts := input.Cfg.ContractsByChain[chainSelector]
+		contracts, normErr := normalizeContractRefs(chainSelector, input.Cfg.ContractsByChain[chainSelector])
+		if normErr != nil {
+			return buildOutput(env, input.MCMS, agg, fmt.Errorf("chain selector %d: %w", chainSelector, normErr))
+		}
+
+		chainInput := ChainInput{
+			ChainSelector:       chainSelector,
+			Contracts:           contracts,
+			OnlyAcceptOwnership: input.Cfg.OnlyAcceptOwnership,
+			MCMS:                input.MCMS,
+		}
 
 		seq, seqErr := Registry.SequenceForChainSelector(chainSelector)
 		if seqErr != nil {
@@ -80,12 +90,7 @@ func (Changeset) Apply(env cldf.Environment, input Input) (cldf.ChangesetOutput,
 			env.OperationsBundle,
 			deps,
 			seq,
-			ChainInput{
-				ChainSelector:       chainSelector,
-				Contracts:           contracts,
-				OnlyAcceptOwnership: input.Cfg.OnlyAcceptOwnership,
-				MCMS:                input.MCMS,
-			},
+			chainInput,
 			agg,
 		)
 		if mergeErr != nil {
@@ -134,13 +139,20 @@ func groupByFamily(input Input) (map[string][]ChainInput, error) {
 		if len(contracts) == 0 {
 			return nil, fmt.Errorf("chain %d: no contracts provided", chainSelector)
 		}
+
+		normalized, err := normalizeContractRefs(chainSelector, contracts)
+		if err != nil {
+			return nil, fmt.Errorf("chain %d: %w", chainSelector, err)
+		}
+
 		family, err := chainselectors.GetSelectorFamily(chainSelector)
 		if err != nil {
 			return nil, fmt.Errorf("chain selector %d: %w", chainSelector, err)
 		}
+
 		byFamily[family] = append(byFamily[family], ChainInput{
 			ChainSelector:       chainSelector,
-			Contracts:           contracts,
+			Contracts:           normalized,
 			OnlyAcceptOwnership: input.Cfg.OnlyAcceptOwnership,
 			MCMS:                input.MCMS,
 		})

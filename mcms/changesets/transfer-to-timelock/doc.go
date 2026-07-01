@@ -7,17 +7,18 @@
 // sequence (plus MCMS readers when building timelock proposals):
 //
 //	import (
-//		"github.com/ethereum/go-ethereum/common"
-//
 //		transfertotimelock "github.com/smartcontractkit/cld-changesets/mcms/changesets/transfer-to-timelock"
+//		"github.com/smartcontractkit/cld-changesets/datastore/refkey"
 //		_ "github.com/smartcontractkit/cld-changesets/mcms/evm/readers"
 //		_ "github.com/smartcontractkit/cld-changesets/mcms/evm/transfer-to-timelock"
 //	)
 //
 //	rt.Exec(runtime.ChangesetTask(transfertotimelock.Changeset{}, transfertotimelock.Input{
 //		Cfg: transfertotimelock.Config{
-//			ContractsByChain: map[uint64][]common.Address{
-//				chainSelector: {common.HexToAddress("0x...")},
+//			ContractsByChain: map[uint64][]refkey.RefKey{
+//				chainSelector: {
+//					refkey.New(chainSelector, contractType, version, qualifier),
+//				},
 //			},
 //		},
 //		MCMS: mcmsInput,

@@ -2,6 +2,7 @@ package evmtransfertotimelock
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -20,6 +21,8 @@ import (
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 
 	transfertotimelock "github.com/smartcontractkit/cld-changesets/mcms/changesets/transfer-to-timelock"
+
+	"github.com/smartcontractkit/cld-changesets/datastore/refkey"
 
 	_ "github.com/smartcontractkit/cld-changesets/mcms/evm/readers"
 )
@@ -93,7 +96,7 @@ func TestValidateMCMS(t *testing.T) {
 
 			ds := datastore.NewMemoryDataStore()
 			for _, ref := range tt.refs {
-				addValidateRef(t, ds, selector, ref.contractType, ref.address, version, "")
+				addValidateRef(t, ds, selector, ref.contractType, ref.address, version)
 			}
 
 			err := validateMCMS(
@@ -135,7 +138,7 @@ func TestTimelockAddress_invalidAddress(t *testing.T) {
 	}
 
 	ds := datastore.NewMemoryDataStore()
-	addValidateRef(t, ds, selector, mcmscontracts.RBACTimelock, "not-an-address", version, "")
+	addValidateRef(t, ds, selector, mcmscontracts.RBACTimelock, "not-an-address", version)
 
 	_, err := timelockAddress(
 		validateTestEnv(ds.Seal()),
@@ -151,6 +154,8 @@ func TestValidateContracts_nilDeployerKey(t *testing.T) {
 	t.Parallel()
 
 	selector := chainselectors.TEST_90000001.Selector
+	version := semver.MustParse("1.0.0")
+	ref := refkey.New(selector, "LinkToken", version, "")
 	env := cldf.Environment{
 		Logger: logger.Nop(),
 		BlockChains: cldfchain.NewBlockChains(map[uint64]cldfchain.BlockChain{
@@ -160,6 +165,7 @@ func TestValidateContracts_nilDeployerKey(t *testing.T) {
 
 	err := validateContracts(env, transfertotimelock.ChainInput{
 		ChainSelector: selector,
+		Contracts:     []refkey.RefKey{ref},
 		MCMS:          &cldf.MCMSTimelockProposalInput{},
 	})
 	require.ErrorContains(t, err, "missing deployer key")
@@ -169,31 +175,70 @@ func TestValidateContracts_duplicateContract(t *testing.T) {
 	t.Parallel()
 
 	selector := chainselectors.TEST_90000001.Selector
+	version := semver.MustParse("1.0.0")
 	contract := common.HexToAddress("0x0000000000000000000000000000000000000abc")
-	env := cldf.Environment{
-		Logger: logger.Nop(),
-		BlockChains: cldfchain.NewBlockChains(map[uint64]cldfchain.BlockChain{
-			selector: cldfevm.Chain{
-				Selector:    selector,
-				DeployerKey: &bind.TransactOpts{From: common.HexToAddress("0x1")},
-			},
-		}),
-	}
+	ref := refkey.New(selector, "LinkToken", version, "")
+
+	ds := datastore.NewMemoryDataStore()
+	addValidateRef(t, ds, selector, "LinkToken", contract.Hex(), version)
+	addValidateRef(t, ds, selector, mcmscontracts.RBACTimelock, testTimelockAddr, version)
+	addValidateRef(t, ds, selector, mcmscontracts.ProposerManyChainMultisig, testMCMSAddr, version)
+
+	env := validateTestEnv(ds.Seal())
+	env.BlockChains = cldfchain.NewBlockChains(map[uint64]cldfchain.BlockChain{
+		selector: cldfevm.Chain{
+			Selector:    selector,
+			DeployerKey: &bind.TransactOpts{From: common.HexToAddress("0x1")},
+		},
+	})
 
 	err := validateContracts(env, transfertotimelock.ChainInput{
 		ChainSelector: selector,
-		Contracts:     []common.Address{contract, contract},
+		Contracts:     []refkey.RefKey{ref, ref},
+		MCMS:          &cldf.MCMSTimelockProposalInput{},
+	})
+	require.ErrorContains(t, err, "duplicate contract ref")
+}
+
+func TestValidateContracts_duplicateResolvedAddress(t *testing.T) {
+	t.Parallel()
+
+	selector := chainselectors.TEST_90000001.Selector
+	version1 := semver.MustParse("1.0.0")
+	version2 := semver.MustParse("1.1.0")
+	contract := common.HexToAddress("0x0000000000000000000000000000000000000abc")
+	ref1 := refkey.New(selector, "LinkToken", version1, "")
+	ref2 := refkey.New(selector, "LinkTokenAlias", version2, "")
+
+	ds := datastore.NewMemoryDataStore()
+	addValidateRef(t, ds, selector, "LinkToken", contract.Hex(), version1)
+	addValidateRef(t, ds, selector, "LinkTokenAlias", contract.Hex(), version2)
+	addValidateRef(t, ds, selector, mcmscontracts.RBACTimelock, testTimelockAddr, version1)
+	addValidateRef(t, ds, selector, mcmscontracts.ProposerManyChainMultisig, testMCMSAddr, version1)
+
+	env := validateTestEnv(ds.Seal())
+	env.BlockChains = cldfchain.NewBlockChains(map[uint64]cldfchain.BlockChain{
+		selector: cldfevm.Chain{
+			Selector:    selector,
+			DeployerKey: &bind.TransactOpts{From: common.HexToAddress("0x1")},
+		},
+	})
+
+	err := validateContracts(env, transfertotimelock.ChainInput{
+		ChainSelector: selector,
+		Contracts:     []refkey.RefKey{ref1, ref2},
 		MCMS:          &cldf.MCMSTimelockProposalInput{},
 	})
 	require.ErrorContains(t, err, "duplicate contract address")
 }
 
-func TestContractInDatastore(t *testing.T) {
+func TestResolveEVMAddress(t *testing.T) {
 	t.Parallel()
 
 	selector := chainselectors.TEST_90000001.Selector
 	version := semver.MustParse("1.0.0")
 	contract := common.HexToAddress("0x0000000000000000000000000000000000000abc")
+	ref := refkey.New(selector, "LinkToken", version, "")
 
 	ds := datastore.NewMemoryDataStore()
 	require.NoError(t, ds.Addresses().Add(datastore.AddressRef{
@@ -205,33 +250,26 @@ func TestContractInDatastore(t *testing.T) {
 
 	env := validateTestEnv(ds.Seal())
 
-	err := contractInDatastore(env, selector, contract)
+	got, err := resolveEVMAddress(env, selector, ref)
 	require.NoError(t, err)
+	require.Equal(t, contract, got)
 
-	err = contractInDatastore(env, selector, common.HexToAddress("0xdef"))
-	require.ErrorContains(t, err, "not found in datastore")
-
-	err = contractInDatastore(cldf.Environment{}, selector, contract)
-	require.ErrorContains(t, err, "datastore is required")
-}
-
-func TestContractInDatastore_shortHex(t *testing.T) {
-	t.Parallel()
-
-	selector := chainselectors.TEST_90000001.Selector
-	version := semver.MustParse("1.0.0")
-	contract := common.HexToAddress("0x0000000000000000000000000000000000000abc")
-
-	ds := datastore.NewMemoryDataStore()
-	require.NoError(t, ds.Addresses().Add(datastore.AddressRef{
-		Address:       "0xabc",
-		ChainSelector: selector,
-		Type:          datastore.ContractType("LinkToken"),
-		Version:       version,
-	}))
-
-	err := contractInDatastore(validateTestEnv(ds.Seal()), selector, contract)
+	refWithoutSelector := refkey.RefKey{
+		Type:    "LinkToken",
+		Version: version,
+	}
+	got, err = resolveEVMAddress(env, selector, refWithoutSelector)
 	require.NoError(t, err)
+	require.Equal(t, contract, got)
+
+	_, err = resolveEVMAddress(cldf.Environment{}, selector, ref)
+	require.ErrorContains(t, err, "missing datastore")
+
+	missingRef := refkey.New(selector, "MissingToken", version, "")
+	key, keyErr := missingRef.Key()
+	require.NoError(t, keyErr)
+	_, err = resolveEVMAddress(env, selector, missingRef)
+	require.EqualError(t, err, fmt.Sprintf("address ref %v: %v", key, datastore.ErrAddressRefNotFound))
 }
 
 func TestValidateContractOwner(t *testing.T) {
@@ -302,7 +340,6 @@ func addValidateRef(
 	contractType cldf.ContractType,
 	address string,
 	version *semver.Version,
-	qualifier string,
 ) {
 	t.Helper()
 
@@ -311,7 +348,7 @@ func addValidateRef(
 		ChainSelector: selector,
 		Type:          datastore.ContractType(contractType),
 		Version:       version,
-		Qualifier:     qualifier,
+		Qualifier:     "",
 	}))
 }
 

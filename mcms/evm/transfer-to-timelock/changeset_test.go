@@ -20,6 +20,7 @@ import (
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 	"github.com/stretchr/testify/require"
 
+	"github.com/smartcontractkit/cld-changesets/datastore/refkey"
 	"github.com/smartcontractkit/cld-changesets/internal/semvers"
 	"github.com/smartcontractkit/cld-changesets/mcms/changesets/deploy"
 	transfertotimelock "github.com/smartcontractkit/cld-changesets/mcms/changesets/transfer-to-timelock"
@@ -39,8 +40,8 @@ func TestChangeset_TransferOwnershipToTimelock(t *testing.T) {
 	err := rt.Exec(
 		runtime.ChangesetTask(transfertotimelock.Changeset{}, transfertotimelock.Input{
 			Cfg: transfertotimelock.Config{
-				ContractsByChain: map[uint64][]common.Address{
-					selector: {linkToken.Address()},
+				ContractsByChain: map[uint64][]refkey.RefKey{
+					selector: {linkTokenRef(selector)},
 				},
 			},
 			MCMS: &cldf.MCMSTimelockProposalInput{
@@ -80,8 +81,8 @@ func TestChangeset_OnlyAcceptOwnership(t *testing.T) {
 		runtime.ChangesetTask(transfertotimelock.Changeset{}, transfertotimelock.Input{
 			Cfg: transfertotimelock.Config{
 				OnlyAcceptOwnership: true,
-				ContractsByChain: map[uint64][]common.Address{
-					selector: {linkToken.Address()},
+				ContractsByChain: map[uint64][]refkey.RefKey{
+					selector: {linkTokenRef(selector)},
 				},
 			},
 			MCMS: &cldf.MCMSTimelockProposalInput{
@@ -152,6 +153,12 @@ func newTransferToTimelockTestEnv(
 	linkToken := loadLinkTokenFromDataStore(t, chain, rt.State().DataStore)
 
 	return rt, chain, timelockAddr, linkToken
+}
+
+func linkTokenRef(selector uint64) refkey.RefKey {
+	tv := cldf.NewTypeAndVersion(linkcontracts.LinkToken, semvers.V1_0_0)
+
+	return refkey.New(selector, datastore.ContractType(tv.Type.String()), &semvers.V1_0_0, "")
 }
 
 func loadLinkTokenFromDataStore(t *testing.T, chain cldfevm.Chain, ds datastore.DataStore) *link_token.LinkToken {

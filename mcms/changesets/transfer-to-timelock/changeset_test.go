@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
 	chainselectors "github.com/smartcontractkit/chain-selectors"
 	cldf_chain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
@@ -15,6 +14,8 @@ import (
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 	"github.com/stretchr/testify/require"
 
+	"github.com/smartcontractkit/cld-changesets/datastore/refkey"
+	"github.com/smartcontractkit/cld-changesets/internal/semvers"
 	transfertotimelock "github.com/smartcontractkit/cld-changesets/mcms/changesets/transfer-to-timelock"
 )
 
@@ -43,6 +44,10 @@ func testMCMSInput() *cldf.MCMSTimelockProposalInput {
 	}
 }
 
+func testContractRef(selector uint64) refkey.RefKey {
+	return refkey.New(selector, "LinkToken", &semvers.V1_0_0, "")
+}
+
 func TestChangeset_VerifyPreconditions_NoDatastore(t *testing.T) {
 	t.Parallel()
 
@@ -50,8 +55,8 @@ func TestChangeset_VerifyPreconditions_NoDatastore(t *testing.T) {
 	input := transfertotimelock.Input{
 		MCMS: testMCMSInput(),
 		Cfg: transfertotimelock.Config{
-			ContractsByChain: map[uint64][]common.Address{
-				chainselectors.TEST_90000001.Selector: {common.HexToAddress("0x1")},
+			ContractsByChain: map[uint64][]refkey.RefKey{
+				chainselectors.TEST_90000001.Selector: {testContractRef(chainselectors.TEST_90000001.Selector)},
 			},
 		},
 	}
@@ -66,8 +71,8 @@ func TestChangeset_VerifyPreconditions_NoMCMSInput(t *testing.T) {
 	env := testEnvironment(t, datastore.NewMemoryDataStore().Seal())
 	input := transfertotimelock.Input{
 		Cfg: transfertotimelock.Config{
-			ContractsByChain: map[uint64][]common.Address{
-				chainselectors.TEST_90000001.Selector: {common.HexToAddress("0x1")},
+			ContractsByChain: map[uint64][]refkey.RefKey{
+				chainselectors.TEST_90000001.Selector: {testContractRef(chainselectors.TEST_90000001.Selector)},
 			},
 		},
 	}
@@ -96,7 +101,7 @@ func TestChangeset_VerifyPreconditions_EmptyContractsForChain(t *testing.T) {
 	input := transfertotimelock.Input{
 		MCMS: testMCMSInput(),
 		Cfg: transfertotimelock.Config{
-			ContractsByChain: map[uint64][]common.Address{
+			ContractsByChain: map[uint64][]refkey.RefKey{
 				selector: {},
 			},
 		},
@@ -114,8 +119,8 @@ func TestChangeset_VerifyPreconditions_UnsupportedChainFamily(t *testing.T) {
 	input := transfertotimelock.Input{
 		MCMS: testMCMSInput(),
 		Cfg: transfertotimelock.Config{
-			ContractsByChain: map[uint64][]common.Address{
-				selector: {common.HexToAddress("0x1")},
+			ContractsByChain: map[uint64][]refkey.RefKey{
+				selector: {testContractRef(selector)},
 			},
 		},
 	}
@@ -130,8 +135,8 @@ func TestChangeset_Apply_NoMCMSInput(t *testing.T) {
 	env := testEnvironment(t, datastore.NewMemoryDataStore().Seal())
 	input := transfertotimelock.Input{
 		Cfg: transfertotimelock.Config{
-			ContractsByChain: map[uint64][]common.Address{
-				chainselectors.TEST_90000001.Selector: {common.HexToAddress("0x1")},
+			ContractsByChain: map[uint64][]refkey.RefKey{
+				chainselectors.TEST_90000001.Selector: {testContractRef(chainselectors.TEST_90000001.Selector)},
 			},
 		},
 	}
