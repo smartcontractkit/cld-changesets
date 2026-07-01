@@ -4,4 +4,6 @@ package all
 import (
 	_ "github.com/smartcontractkit/cld-changesets/mcms/evm/readers"
 	_ "github.com/smartcontractkit/cld-changesets/mcms/evm/transfer-to-timelock"
+	_ "github.com/smartcontractkit/cld-changesets/mcms/solana/readers"
+	_ "github.com/smartcontractkit/cld-changesets/mcms/solana/transfer-to-timelock"
 )
