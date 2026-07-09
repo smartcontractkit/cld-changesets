@@ -26,10 +26,12 @@ import (
 	"github.com/smartcontractkit/cld-changesets/datastore/refkey"
 	"github.com/smartcontractkit/cld-changesets/internal/semvers"
 
-	// TODO: remove legacymcms import once remaining MCMS changesets are migrated out of legacy/mcms/changesets.
-	legacymcms "github.com/smartcontractkit/cld-changesets/legacy/mcms/changesets"
 	evmstate "github.com/smartcontractkit/cld-changesets/legacy/pkg/family/evm"
+	deploy "github.com/smartcontractkit/cld-changesets/mcms/changesets/deploy"
 	setconfig "github.com/smartcontractkit/cld-changesets/mcms/changesets/set-config"
+	transfertotimelock "github.com/smartcontractkit/cld-changesets/mcms/changesets/transfer-to-timelock"
+
+	_ "github.com/smartcontractkit/cld-changesets/mcms/evm/transfer-to-timelock"
 )
 
 func TestChangeset_VerifyPreconditions(t *testing.T) {
@@ -176,7 +178,7 @@ func TestChangeset_EVM(t *testing.T) {
 			var mcmsInput *cldf.MCMSTimelockProposalInput
 			if tt.useMCMS {
 				cfgCanceller := cldftesthelpers.SingleGroupMCMS(t)
-				cfgCanceller.Signers = append(cfgCanceller.Signers, mcmsState.BypasserMcm.Address())
+				cfgCanceller.Signers = append(cfgCanceller.Signers, mcmsState.Bypasser)
 				cfgCanceller.Quorum = 2
 				targets = []setconfig.ContractSetConfig{
 					{
@@ -186,7 +188,7 @@ func TestChangeset_EVM(t *testing.T) {
 				}
 				mcmsInput = newMCMSInput(mcmstypes.TimelockActionBypass, "Set config proposal", "")
 			} else {
-				timelockAddress := mcmsState.Timelock.Address()
+				timelockAddress := mcmsState.Timelock
 
 				cfgProposer := cldftesthelpers.SingleGroupMCMS(t)
 				cfgProposer.Signers = append(cfgProposer.Signers, timelockAddress)
@@ -194,7 +196,7 @@ func TestChangeset_EVM(t *testing.T) {
 				cfgCanceller := cldftesthelpers.SingleGroupMCMS(t)
 				cfgBypasser := cldftesthelpers.SingleGroupMCMS(t)
 				cfgBypasser.Signers = append(cfgBypasser.Signers, timelockAddress)
-				cfgBypasser.Signers = append(cfgBypasser.Signers, mcmsState.ProposerMcm.Address())
+				cfgBypasser.Signers = append(cfgBypasser.Signers, mcmsState.Proposer)
 				cfgBypasser.Quorum = 3
 
 				targets = mcmsTargets(tt.selector, cfgProposer, cfgCanceller, cfgBypasser)
@@ -211,17 +213,17 @@ func TestChangeset_EVM(t *testing.T) {
 
 			if tt.useMCMS {
 				cfgCanceller := targets[0].Config
-				newConf, err := inspector.GetConfig(t.Context(), mcmsState.CancellerMcm.Address().Hex())
+				newConf, err := inspector.GetConfig(t.Context(), mcmsState.Canceller.Hex())
 				require.NoError(t, err)
 				require.ElementsMatch(t, cfgCanceller.Signers, newConf.Signers)
 				require.Equal(t, cfgCanceller.Quorum, newConf.Quorum)
 
-				proposerConf, err := inspector.GetConfig(t.Context(), mcmsState.ProposerMcm.Address().Hex())
+				proposerConf, err := inspector.GetConfig(t.Context(), mcmsState.Proposer.Hex())
 				require.NoError(t, err)
 				require.ElementsMatch(t, originalCfg.Signers, proposerConf.Signers)
 				require.Equal(t, originalCfg.Quorum, proposerConf.Quorum)
 
-				bypasserConf, err := inspector.GetConfig(t.Context(), mcmsState.BypasserMcm.Address().Hex())
+				bypasserConf, err := inspector.GetConfig(t.Context(), mcmsState.Bypasser.Hex())
 				require.NoError(t, err)
 				require.ElementsMatch(t, originalCfg.Signers, bypasserConf.Signers)
 				require.Equal(t, originalCfg.Quorum, bypasserConf.Quorum)
@@ -233,17 +235,17 @@ func TestChangeset_EVM(t *testing.T) {
 			cfgCanceller := targets[1].Config
 			cfgBypasser := targets[2].Config
 
-			newConf, err := inspector.GetConfig(t.Context(), mcmsState.ProposerMcm.Address().Hex())
+			newConf, err := inspector.GetConfig(t.Context(), mcmsState.Proposer.Hex())
 			require.NoError(t, err)
 			require.ElementsMatch(t, cfgProposer.Signers, newConf.Signers)
 			require.Equal(t, cfgProposer.Quorum, newConf.Quorum)
 
-			newConf, err = inspector.GetConfig(t.Context(), mcmsState.BypasserMcm.Address().Hex())
+			newConf, err = inspector.GetConfig(t.Context(), mcmsState.Bypasser.Hex())
 			require.NoError(t, err)
 			require.ElementsMatch(t, cfgBypasser.Signers, newConf.Signers)
 			require.Equal(t, cfgBypasser.Quorum, newConf.Quorum)
 
-			newConf, err = inspector.GetConfig(t.Context(), mcmsState.CancellerMcm.Address().Hex())
+			newConf, err = inspector.GetConfig(t.Context(), mcmsState.Canceller.Hex())
 			require.NoError(t, err)
 			require.ElementsMatch(t, cfgCanceller.Signers, newConf.Signers)
 			require.Equal(t, cfgCanceller.Quorum, newConf.Quorum)
@@ -260,7 +262,7 @@ func TestChangeset_EVM_PartialTargets(t *testing.T) {
 	mcmsState, chain := evmMCMSChainState(t, rt, selector)
 
 	cfgProposer := cldftesthelpers.SingleGroupMCMS(t)
-	cfgProposer.Signers = append(cfgProposer.Signers, mcmsState.Timelock.Address())
+	cfgProposer.Signers = append(cfgProposer.Signers, mcmsState.Timelock)
 	cfgProposer.Quorum = 2
 
 	err := rt.Exec(
@@ -279,17 +281,17 @@ func TestChangeset_EVM_PartialTargets(t *testing.T) {
 	inspector := evm.NewInspector(chain.Client)
 	originalCfg := cldftesthelpers.SingleGroupMCMS(t)
 
-	proposerConf, err := inspector.GetConfig(t.Context(), mcmsState.ProposerMcm.Address().Hex())
+	proposerConf, err := inspector.GetConfig(t.Context(), mcmsState.Proposer.Hex())
 	require.NoError(t, err)
 	require.ElementsMatch(t, cfgProposer.Signers, proposerConf.Signers)
 	require.Equal(t, cfgProposer.Quorum, proposerConf.Quorum)
 
-	cancellerConf, err := inspector.GetConfig(t.Context(), mcmsState.CancellerMcm.Address().Hex())
+	cancellerConf, err := inspector.GetConfig(t.Context(), mcmsState.Canceller.Hex())
 	require.NoError(t, err)
 	require.ElementsMatch(t, originalCfg.Signers, cancellerConf.Signers)
 	require.Equal(t, originalCfg.Quorum, cancellerConf.Quorum)
 
-	bypasserConf, err := inspector.GetConfig(t.Context(), mcmsState.BypasserMcm.Address().Hex())
+	bypasserConf, err := inspector.GetConfig(t.Context(), mcmsState.Bypasser.Hex())
 	require.NoError(t, err)
 	require.ElementsMatch(t, originalCfg.Signers, bypasserConf.Signers)
 	require.Equal(t, originalCfg.Quorum, bypasserConf.Quorum)
@@ -311,11 +313,11 @@ func TestChangeset_EVM_Qualifier(t *testing.T) {
 	rmnmcmsConfig.Qualifier = &rmnmcmsQualifier
 
 	err := rt.Exec(
-		runtime.ChangesetTask(cldf.CreateLegacyChangeSet(legacymcms.DeployMCMSWithTimelockV2), map[uint64]cldfproposalutils.MCMSWithTimelockConfig{
-			selector: cllccipConfig,
+		runtime.ChangesetTask(deploy.Changeset{}, deploy.Input{
+			ConfigByChain: map[uint64]cldfproposalutils.MCMSWithTimelockConfig{selector: cllccipConfig},
 		}),
-		runtime.ChangesetTask(cldf.CreateLegacyChangeSet(legacymcms.DeployMCMSWithTimelockV2), map[uint64]cldfproposalutils.MCMSWithTimelockConfig{
-			selector: rmnmcmsConfig,
+		runtime.ChangesetTask(deploy.Changeset{}, deploy.Input{
+			ConfigByChain: map[uint64]cldfproposalutils.MCMSWithTimelockConfig{selector: rmnmcmsConfig},
 		}),
 	)
 	require.NoError(t, err)
@@ -457,7 +459,7 @@ func newEVMRuntimeWithDeploy(t *testing.T, selectors ...uint64) *runtime.Runtime
 	for _, selector := range selectors {
 		configByChain[selector] = cfg
 	}
-	err := rt.Exec(runtime.ChangesetTask(cldf.CreateLegacyChangeSet(legacymcms.DeployMCMSWithTimelockV2), configByChain))
+	err := rt.Exec(runtime.ChangesetTask(deploy.Changeset{}, deploy.Input{ConfigByChain: configByChain}))
 	require.NoError(t, err)
 
 	return rt
@@ -466,15 +468,22 @@ func newEVMRuntimeWithDeploy(t *testing.T, selectors ...uint64) *runtime.Runtime
 func transferEVMMCMSToTimelock(t *testing.T, rt *runtime.Runtime, selector uint64) {
 	t.Helper()
 
-	mcmsState, _ := evmMCMSChainState(t, rt, selector)
 	err := rt.Exec(
-		runtime.ChangesetTask(cldf.CreateLegacyChangeSet(legacymcms.TransferToMCMSWithTimelockV2), legacymcms.TransferToMCMSWithTimelockConfig{
-			ContractsByChain: map[uint64][]common.Address{
-				selector: {
-					mcmsState.ProposerMcm.Address(),
-					mcmsState.BypasserMcm.Address(),
-					mcmsState.CancellerMcm.Address(),
+		runtime.ChangesetTask(transfertotimelock.Changeset{}, transfertotimelock.Input{
+			Cfg: transfertotimelock.Config{
+				ContractsByChain: map[uint64][]refkey.RefKey{
+					selector: {
+						contractRef(selector, mcmscontracts.ProposerManyChainMultisig, ""),
+						contractRef(selector, mcmscontracts.BypasserManyChainMultisig, ""),
+						contractRef(selector, mcmscontracts.CancellerManyChainMultisig, ""),
+					},
 				},
+			},
+			MCMS: &cldf.MCMSTimelockProposalInput{
+				TimelockAction: mcmstypes.TimelockActionBypass,
+				ValidUntil:     uint32(time.Now().Add(2 * time.Hour).UTC().Unix()), //nolint:gosec // test timestamp
+				TimelockDelay:  mcmstypes.NewDuration(0),
+				Description:    "Transfer MCMS ownership to timelock",
 			},
 		}),
 		runtime.SignAndExecuteProposalsTask([]*ecdsa.PrivateKey{cldftesthelpers.TestXXXMCMSSigner}),
@@ -491,15 +500,30 @@ func newEVMRuntimeWithDeployAndTransfer(t *testing.T, selector uint64) *runtime.
 	return rt
 }
 
-func evmMCMSChainState(t *testing.T, rt *runtime.Runtime, selector uint64) (*evmstate.MCMSWithTimelockState, cldf_evm.Chain) {
+type evmMCMSChainRefs struct {
+	Timelock  common.Address
+	Proposer  common.Address
+	Canceller common.Address
+	Bypasser  common.Address
+}
+
+func evmMCMSChainState(t *testing.T, rt *runtime.Runtime, selector uint64) (evmMCMSChainRefs, cldf_evm.Chain) {
 	t.Helper()
 
 	chain := rt.Environment().BlockChains.EVMChains()[selector]
-	addrs, err := rt.State().AddressBook.AddressesForChain(selector)
-	require.NoError(t, err)
+	env := rt.Environment()
 
-	mcmsState, err := evmstate.MaybeLoadMCMSWithTimelockChainState(chain, addrs)
-	require.NoError(t, err)
+	resolve := func(contractType cldf.ContractType) common.Address {
+		resolved, err := contractRef(selector, contractType, "").Resolve(env)
+		require.NoError(t, err)
 
-	return mcmsState, chain
+		return common.HexToAddress(resolved.Address)
+	}
+
+	return evmMCMSChainRefs{
+		Timelock:  resolve(mcmscontracts.RBACTimelock),
+		Proposer:  resolve(mcmscontracts.ProposerManyChainMultisig),
+		Canceller: resolve(mcmscontracts.CancellerManyChainMultisig),
+		Bypasser:  resolve(mcmscontracts.BypasserManyChainMultisig),
+	}, chain
 }

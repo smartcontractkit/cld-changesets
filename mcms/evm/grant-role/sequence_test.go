@@ -21,11 +21,11 @@ import (
 	mcmsevm "github.com/smartcontractkit/mcms/sdk/evm"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 
-	legacymcms "github.com/smartcontractkit/cld-changesets/legacy/mcms/changesets"
+	deploy "github.com/smartcontractkit/cld-changesets/mcms/changesets/deploy"
 	grantrole "github.com/smartcontractkit/cld-changesets/mcms/changesets/grant-role"
 	evmreaders "github.com/smartcontractkit/cld-changesets/mcms/evm/readers"
 
-	_ "github.com/smartcontractkit/cld-changesets/mcms/evm/readers"
+	_ "github.com/smartcontractkit/cld-changesets/mcms/evm/deploy"
 )
 
 func TestRunEVMGrantRole(t *testing.T) {
@@ -135,8 +135,10 @@ func newEVMGrantRoleRuntime(t *testing.T, selector uint64) *runtime.Runtime {
 	require.NoError(t, err)
 
 	err = rt.Exec(
-		runtime.ChangesetTask(cldf.CreateLegacyChangeSet(legacymcms.DeployMCMSWithTimelockV2), map[uint64]cldfproposalutils.MCMSWithTimelockConfig{
-			selector: cldftesthelpers.SingleGroupTimelockConfig(t),
+		runtime.ChangesetTask(deploy.Changeset{}, deploy.Input{
+			ConfigByChain: map[uint64]cldfproposalutils.MCMSWithTimelockConfig{
+				selector: cldftesthelpers.SingleGroupTimelockConfig(t),
+			},
 		}),
 	)
 	require.NoError(t, err)

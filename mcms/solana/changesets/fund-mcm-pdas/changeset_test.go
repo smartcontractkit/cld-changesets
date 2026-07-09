@@ -311,10 +311,9 @@ func newMCMSDataStore(t *testing.T, selector uint64, completeState bool) datasto
 func testRuntime(t *testing.T, selector uint64) *runtime.Runtime {
 	t.Helper()
 
-	programsPath, programIDs, ab := soltestutils.PreloadMCMS(t, selector)
+	programsPath, programIDs, _ := soltestutils.PreloadMCMS(t, selector)
 	rt, err := runtime.New(t.Context(), runtime.WithEnvOpts(
 		environment.WithSolanaContainer(t, []uint64{selector}, programsPath, programIDs),
-		environment.WithAddressBook(ab),
 		environment.WithLogger(logger.Test(t)),
 	))
 	require.NoError(t, err)
