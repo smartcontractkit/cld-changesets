@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.1](https://github.com/smartcontractkit/cld-changesets/compare/v0.8.0...v0.8.1) (2026-07-21)
+
+
+### Bug Fixes
+
+* **datastore:** (re)expose key types used for delete operations ([#116](https://github.com/smartcontractkit/cld-changesets/issues/116)) ([984a499](https://github.com/smartcontractkit/cld-changesets/commit/984a499b2f6d6f64af92ee29417dc816f8e745e5))
+
 ## [0.8.0](https://github.com/smartcontractkit/cld-changesets/compare/v0.7.1...v0.8.0) (2026-07-01)
 
 
