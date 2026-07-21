@@ -7,7 +7,7 @@ import (
 	cldfdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldfops "github.com/smartcontractkit/chainlink-deployments-framework/operations"
 
-	"github.com/smartcontractkit/cld-changesets/datastore/internal/keys"
+	"github.com/smartcontractkit/cld-changesets/datastore/keys"
 )
 
 // DeleteContractMetadataDeps holds non-serializable dependencies for the DeleteContractMetadataOp operation.

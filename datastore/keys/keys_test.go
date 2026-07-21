@@ -9,7 +9,7 @@ import (
 
 	cldfdatastore "github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 
-	"github.com/smartcontractkit/cld-changesets/datastore/internal/keys"
+	"github.com/smartcontractkit/cld-changesets/datastore/keys"
 )
 
 func TestChainMetadataKey_JSONRoundTrip(t *testing.T) {
