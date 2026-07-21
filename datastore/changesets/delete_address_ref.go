@@ -8,7 +8,7 @@ import (
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	cldfops "github.com/smartcontractkit/chainlink-deployments-framework/operations"
 
-	"github.com/smartcontractkit/cld-changesets/datastore/internal/keys"
+	"github.com/smartcontractkit/cld-changesets/datastore/keys"
 	"github.com/smartcontractkit/cld-changesets/datastore/operations"
 )
 

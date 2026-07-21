@@ -12,7 +12,7 @@ import (
 	cldfoperations "github.com/smartcontractkit/chainlink-deployments-framework/operations"
 	cldflogger "github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
-	"github.com/smartcontractkit/cld-changesets/datastore/internal/keys"
+	"github.com/smartcontractkit/cld-changesets/datastore/keys"
 )
 
 func TestDeleteContractMetadataChangeset_VerifyPreconditions(t *testing.T) {
