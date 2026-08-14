@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.2](https://github.com/smartcontractkit/cld-changesets/compare/v0.8.1...v0.8.2) (2026-08-14)
+
+
+### Bug Fixes
+
+* bump mcms, ccip-owner-contracts and cldf ([#119](https://github.com/smartcontractkit/cld-changesets/issues/119)) ([5c18609](https://github.com/smartcontractkit/cld-changesets/commit/5c186094791e4411f112993eeac3d4cccd114abe))
+
 ## [0.8.1](https://github.com/smartcontractkit/cld-changesets/compare/v0.8.0...v0.8.1) (2026-07-21)
 
 
