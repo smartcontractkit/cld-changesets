@@ -11,7 +11,7 @@ contracts:
   - contract_name: ManyChainMultiSig
     version: "1.0.0"
     package_name: many_chain_multi_sig
-    gobindings_package: "github.com/smartcontractkit/ccip-owner-contracts/pkg/gethwrappers"
+    gobindings_package: "github.com/smartcontractkit/ccip-owner-contracts/gethwrappers"
     zksync_bytecode: ManyChainMultiSigZkBytecode
     deploy_contract_types:
       - ProposerManyChainMultiSig
@@ -22,7 +22,7 @@ contracts:
   - contract_name: RBACTimelock
     version: "1.0.0"
     package_name: rbac_timelock
-    gobindings_package: "github.com/smartcontractkit/ccip-owner-contracts/pkg/gethwrappers"
+    gobindings_package: "github.com/smartcontractkit/ccip-owner-contracts/gethwrappers"
     zksync_bytecode: RBACTimelockZkBytecode
     functions:
       - name: grantRole
@@ -32,6 +32,6 @@ contracts:
   - contract_name: CallProxy
     version: "1.0.0"
     package_name: call_proxy
-    gobindings_package: "github.com/smartcontractkit/ccip-owner-contracts/pkg/gethwrappers"
+    gobindings_package: "github.com/smartcontractkit/ccip-owner-contracts/gethwrappers"
     zksync_bytecode: CallProxyZkBytecode
     functions: []

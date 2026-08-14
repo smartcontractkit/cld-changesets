@@ -6,7 +6,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 
-	bindings "github.com/smartcontractkit/ccip-owner-contracts/pkg/gethwrappers"
+	bindings "github.com/smartcontractkit/ccip-owner-contracts/gethwrappers"
 	mcmscontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/mcms"
 
 	"github.com/smartcontractkit/cld-changesets/legacy/mcms/oputils"

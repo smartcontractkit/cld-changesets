@@ -102,9 +102,17 @@ func TestChangeset_VerifyPreconditions(t *testing.T) {
 			input: setConfigInput(validTargets, &cldf.MCMSTimelockProposalInput{
 				TimelockAction: mcmstypes.TimelockActionSchedule,
 				ValidUntil:     uint32(time.Now().Add(2 * time.Hour).UTC().Unix()), //nolint:gosec // test timestamp
+				TimelockDelay:  mcmstypes.NewDuration(-1),
+			}),
+			wantErr: "invalid MCMS timelock proposal input: invalid MCMS timelock proposal input: timelock delay must not be negative",
+		},
+		{
+			name: "MCMS schedule action accepts 0 delay",
+			input: setConfigInput(validTargets, &cldf.MCMSTimelockProposalInput{
+				TimelockAction: mcmstypes.TimelockActionSchedule,
+				ValidUntil:     uint32(time.Now().Add(2 * time.Hour).UTC().Unix()), //nolint:gosec // test timestamp
 				TimelockDelay:  mcmstypes.NewDuration(0),
 			}),
-			wantErr: "invalid MCMS timelock proposal input: invalid MCMS timelock proposal input: timelock delay must be positive for schedule action",
 		},
 		{
 			name: "ref missing from datastore",

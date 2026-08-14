@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	bindings "github.com/smartcontractkit/ccip-owner-contracts/pkg/gethwrappers"
+	bindings "github.com/smartcontractkit/ccip-owner-contracts/gethwrappers"
 	chain_selectors "github.com/smartcontractkit/chain-selectors"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	mcmscontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/mcms"

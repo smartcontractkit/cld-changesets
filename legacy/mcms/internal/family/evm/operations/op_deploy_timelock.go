@@ -6,7 +6,7 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/ethereum/go-ethereum/common"
 
-	bindings "github.com/smartcontractkit/ccip-owner-contracts/pkg/gethwrappers"
+	bindings "github.com/smartcontractkit/ccip-owner-contracts/gethwrappers"
 	mcmscontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/mcms"
 	zkbindings "github.com/smartcontractkit/mcms/sdk/zksync/bindings"
 

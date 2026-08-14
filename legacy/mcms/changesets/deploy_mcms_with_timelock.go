@@ -12,7 +12,7 @@ import (
 	"github.com/gagliardetto/solana-go"
 	xerrgroup "golang.org/x/sync/errgroup"
 
-	"github.com/smartcontractkit/ccip-owner-contracts/pkg/gethwrappers"
+	"github.com/smartcontractkit/ccip-owner-contracts/gethwrappers"
 	chainselectors "github.com/smartcontractkit/chain-selectors"
 	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"

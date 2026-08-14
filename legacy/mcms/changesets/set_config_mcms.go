@@ -10,7 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	solanasdk "github.com/gagliardetto/solana-go"
 
-	"github.com/smartcontractkit/ccip-owner-contracts/pkg/gethwrappers"
+	"github.com/smartcontractkit/ccip-owner-contracts/gethwrappers"
 	chain_selectors "github.com/smartcontractkit/chain-selectors"
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	cldf_solana "github.com/smartcontractkit/chainlink-deployments-framework/chain/solana"
