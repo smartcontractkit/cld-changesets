@@ -52,10 +52,7 @@ func (Changeset) Apply(env cldf.Environment, input Input) (cldf.ChangesetOutput,
 		DataStore:   env.DataStore,
 	}
 
-	var (
-		results []sequenceutils.OnChainOutput
-		reports []operations.Report[any, any]
-	)
+	var results []sequenceutils.OnChainOutput
 
 	for _, selector := range maputil.SortedMapKeys(input.ConfigByChain) {
 		cfg := input.ConfigByChain[selector]
@@ -81,7 +78,6 @@ func (Changeset) Apply(env cldf.Environment, input Input) (cldf.ChangesetOutput,
 		}
 
 		results = append(results, report.Output)
-		reports = append(reports, report.ExecutionReports...)
 	}
 
 	agg := mergeOutputs(results)
@@ -96,7 +92,7 @@ func (Changeset) Apply(env cldf.Environment, input Input) (cldf.ChangesetOutput,
 		return cldf.ChangesetOutput{}, fmt.Errorf("write deployment metadata to datastore: %w", err)
 	}
 
-	return cldf.NewOutputBuilder(env, ds).WithOperationsReports(reports).Build()
+	return cldf.NewOutputBuilder(env, ds).Build()
 }
 
 // mergeOutputs combines all per-chain OnChainOutput results into a single

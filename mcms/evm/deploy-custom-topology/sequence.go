@@ -8,7 +8,7 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	bindings "github.com/smartcontractkit/ccip-owner-contracts/pkg/gethwrappers"
+	bindings "github.com/smartcontractkit/ccip-owner-contracts/gethwrappers"
 	cldf_evm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
 	opscontract "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/operations2/contract"
 	"github.com/smartcontractkit/chainlink-deployments-framework/changeset/sequenceutils"

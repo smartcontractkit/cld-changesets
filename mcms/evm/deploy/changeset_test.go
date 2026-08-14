@@ -109,12 +109,6 @@ func TestDeployMCMSWithTimelock_FreshDeploy(t *testing.T) {
 	}))
 	require.NoError(t, err)
 
-	var reportsLen int
-	for _, out := range rt.State().Outputs {
-		reportsLen += len(out.Reports)
-	}
-	require.NotZero(t, reportsLen, "expected operation reports in changeset output")
-
 	refs, err := rt.State().DataStore.Addresses().Fetch()
 	require.NoError(t, err)
 	require.Len(t, refs, 5, "expected 5 MCMS contract address refs")

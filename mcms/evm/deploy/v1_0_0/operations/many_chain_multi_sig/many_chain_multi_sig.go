@@ -5,7 +5,7 @@ package many_chain_multi_sig
 import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/ethereum/go-ethereum/common"
-	gobindings "github.com/smartcontractkit/ccip-owner-contracts/pkg/gethwrappers"
+	gobindings "github.com/smartcontractkit/ccip-owner-contracts/gethwrappers"
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/operations2/contract"
 	cldf_deployment "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	zkbindings "github.com/smartcontractkit/mcms/sdk/zksync/bindings"
