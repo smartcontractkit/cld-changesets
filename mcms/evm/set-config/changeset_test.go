@@ -98,7 +98,7 @@ func TestChangeset_VerifyPreconditions(t *testing.T) {
 			wantErr: "invalid MCMS timelock proposal input: invalid MCMS timelock proposal input: valid until must be set",
 		},
 		{
-			name: "MCMS schedule action requires positive delay",
+			name: "MCMS schedule action rejects negative delay",
 			input: setConfigInput(validTargets, &cldf.MCMSTimelockProposalInput{
 				TimelockAction: mcmstypes.TimelockActionSchedule,
 				ValidUntil:     uint32(time.Now().Add(2 * time.Hour).UTC().Unix()), //nolint:gosec // test timestamp
