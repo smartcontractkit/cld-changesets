@@ -1,12 +1,12 @@
 package stellardeploy
 
 import (
-	"context"
 	"errors"
 	"testing"
 
 	protocolrpc "github.com/stellar/go-stellar-sdk/protocols/rpc"
 	"github.com/stellar/go-stellar-sdk/strkey"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	chainselectors "github.com/smartcontractkit/chain-selectors"
@@ -15,23 +15,33 @@ import (
 	cldftesthelpers "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils/testhelpers"
 
 	stellardeployment "github.com/smartcontractkit/chainlink-stellar/deployment"
+
 	stellarcre "github.com/smartcontractkit/chainlink-stellar/deployment/cre"
+	stellarmocks "github.com/smartcontractkit/mcms/sdk/stellar/mocks"
 
 	stellartestutils "github.com/smartcontractkit/cld-changesets/mcms/stellar/internal"
 )
 
 const testNetworkPassphrase = "Standalone Network ; February 2017"
 
-type stubLedgerReader struct {
-	response protocolrpc.GetLedgerEntriesResponse
-	err      error
-}
+// ledgerReaderMock returns a mockery RpcClient (from the mcms SDK's generated
+// mocks) whose GetLedgerEntries answers with the given response and error.
+// Maybe() keeps validation-only table rows, which never reach the ledger,
+// from failing the mock's expectation check.
+func ledgerReaderMock(
+	t *testing.T,
+	response protocolrpc.GetLedgerEntriesResponse,
+	err error,
+) *stellarmocks.RpcClient {
+	t.Helper()
 
-func (s stubLedgerReader) GetLedgerEntries(
-	context.Context,
-	protocolrpc.GetLedgerEntriesRequest,
-) (protocolrpc.GetLedgerEntriesResponse, error) {
-	return s.response, s.err
+	m := stellarmocks.NewRpcClient(t)
+	m.EXPECT().
+		GetLedgerEntries(mock.Anything, mock.Anything).
+		Return(response, err).
+		Maybe()
+
+	return m
 }
 
 func TestDeriveDeploymentSalt(t *testing.T) {
@@ -177,7 +187,7 @@ func TestComputeContractID_Validation(t *testing.T) {
 func TestResolveDeploymentIdentity_Validation(t *testing.T) {
 	t.Parallel()
 
-	validReader := stubLedgerReader{}
+	validReader := ledgerReaderMock(t, protocolrpc.GetLedgerEntriesResponse{}, nil)
 	validAddress := testStellarAccountAddress(t)
 	validType := mcmscontracts.ProposerManyChainMultisig
 	validWASM := []byte{1}
@@ -262,7 +272,7 @@ func TestResolveDeploymentIdentity_FreeCandidate(t *testing.T) {
 
 	got, err := resolveDeploymentIdentity(
 		t.Context(),
-		stubLedgerReader{},
+		ledgerReaderMock(t, protocolrpc.GetLedgerEntriesResponse{}, nil),
 		testNetworkPassphrase,
 		deployerAddress,
 		contractType,
@@ -296,7 +306,7 @@ func TestResolveDeploymentIdentity_LedgerError(t *testing.T) {
 
 	_, err := resolveDeploymentIdentity(
 		t.Context(),
-		stubLedgerReader{err: sentinel},
+		ledgerReaderMock(t, protocolrpc.GetLedgerEntriesResponse{}, sentinel),
 		testNetworkPassphrase,
 		testStellarAccountAddress(t),
 		mcmscontracts.ProposerManyChainMultisig,

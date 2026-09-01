@@ -14,12 +14,6 @@ import (
 	timelockbindings "github.com/smartcontractkit/chainlink-stellar/bindings/contracts/timelock"
 )
 
-// Contract initialization lives in the deploy changeset, not in the MCMS SDK:
-// deployment and initialization are chain-family deployment concerns, while the
-// SDK owns only protocol operations (set_config, set_root, execute, readers).
-// Both helpers invoke the generated Soroban binding clients directly, mirroring
-// how the EVM and Solana deploy packages use their chain-native bindings.
-
 const maxInstanceLabelLength = 32
 
 type initializeMCMSInput struct {

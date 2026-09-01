@@ -1,41 +1,18 @@
 package stellardeploy
 
 import (
-	"context"
 	"strings"
 	"testing"
 
-	protocolrpc "github.com/stellar/go-stellar-sdk/protocols/rpc"
 	"github.com/stellar/go-stellar-sdk/strkey"
-	"github.com/stellar/go-stellar-sdk/xdr"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ethereum/go-ethereum/common"
 	chainselectors "github.com/smartcontractkit/chain-selectors"
+	stellarmocks "github.com/smartcontractkit/mcms/sdk/stellar/mocks"
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 )
-
-// noInvokeInvoker fails the test if any contract invocation is attempted. It
-// backs the validation tests, which must reject bad inputs before touching the
-// chain.
-type noInvokeInvoker struct {
-	t *testing.T
-}
-
-func (i noInvokeInvoker) InvokeContract(context.Context, string, string, []xdr.ScVal) (*xdr.ScVal, error) {
-	i.t.Fatal("unexpected InvokeContract call")
-	return nil, nil
-}
-
-func (i noInvokeInvoker) SimulateContract(context.Context, string, string, []xdr.ScVal) (*xdr.ScVal, error) {
-	i.t.Fatal("unexpected SimulateContract call")
-	return nil, nil
-}
-
-func (i noInvokeInvoker) GetEvents(context.Context, string, uint32, []string) ([]protocolrpc.EventInfo, error) {
-	i.t.Fatal("unexpected GetEvents call")
-	return nil, nil
-}
 
 func testInitContractID(t *testing.T, seed byte) string {
 	t.Helper()
@@ -155,12 +132,15 @@ func TestInitializeMCMS_InvalidInput(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
+			dependency := stellarmocks.NewInvoker(t)
+
 			input := valid
 			tt.mutate(&input)
 
-			err := initializeMCMS(t.Context(), noInvokeInvoker{t: t}, input)
+			err := initializeMCMS(t.Context(), dependency, input)
 
 			require.ErrorContains(t, err, tt.wantErr)
+			dependency.AssertNotCalled(t, "InvokeContract", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 		})
 	}
 }
@@ -263,6 +243,8 @@ func TestInitializeTimelock_InvalidInput(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
+			dependency := stellarmocks.NewInvoker(t)
+
 			input := initializeTimelockInput{
 				ContractID: testInitContractID(t, 10),
 				MinDelay:   123,
@@ -272,9 +254,10 @@ func TestInitializeTimelock_InvalidInput(t *testing.T) {
 			}
 			tt.mutate(t, &input)
 
-			err := initializeTimelock(t.Context(), noInvokeInvoker{t: t}, input)
+			err := initializeTimelock(t.Context(), dependency, input)
 
 			require.ErrorContains(t, err, tt.wantErr)
+			dependency.AssertNotCalled(t, "InvokeContract", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 		})
 	}
 }
