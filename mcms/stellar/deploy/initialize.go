@@ -2,6 +2,7 @@ package stellardeploy
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	chainsel "github.com/smartcontractkit/chain-selectors"
@@ -31,27 +32,27 @@ func initializeMCMS(
 	in initializeMCMSInput,
 ) error {
 	if invoker == nil {
-		return fmt.Errorf("stellar MCMS invoker is nil")
+		return errors.New("stellar MCMS invoker is nil")
 	}
 
 	if in.ContractID == "" {
-		return fmt.Errorf("stellar MCMS contract ID is empty")
+		return errors.New("stellar MCMS contract ID is empty")
 	}
 
 	if in.Owner == "" {
-		return fmt.Errorf("stellar MCMS owner is empty")
+		return errors.New("stellar MCMS owner is empty")
 	}
 
 	if in.ChainID == "" {
-		return fmt.Errorf("stellar MCMS chain ID is empty")
+		return errors.New("stellar MCMS chain ID is empty")
 	}
 
 	if in.Config == nil {
-		return fmt.Errorf("stellar MCMS config is nil")
+		return errors.New("stellar MCMS config is nil")
 	}
 
 	if in.InstanceLabel == "" {
-		return fmt.Errorf("stellar MCMS instance label is empty")
+		return errors.New("stellar MCMS instance label is empty")
 	}
 	if len(in.InstanceLabel) > maxInstanceLabelLength {
 		return fmt.Errorf(
@@ -114,10 +115,10 @@ func initializeTimelock(
 	in initializeTimelockInput,
 ) error {
 	if invoker == nil {
-		return fmt.Errorf("stellar timelock invoker is nil")
+		return errors.New("stellar timelock invoker is nil")
 	}
 	if in.ContractID == "" {
-		return fmt.Errorf("stellar timelock contract ID is empty")
+		return errors.New("stellar timelock contract ID is empty")
 	}
 	if err := validateTimelockRoleAddresses("proposers", in.Proposers); err != nil {
 		return err

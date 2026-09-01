@@ -101,8 +101,8 @@ func runStellarDeployMCMSWithTimelock(
 		out.Metadata.Addresses = append(out.Metadata.Addresses, bypasser)
 	}
 
-	if err := validateDistinctMCMs(proposer, canceller, bypasser); err != nil {
-		return out, err
+	if distinctErr := validateDistinctMCMs(proposer, canceller, bypasser); distinctErr != nil {
+		return out, distinctErr
 	}
 
 	timelock, discovered, err := ensureTimelock(

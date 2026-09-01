@@ -23,6 +23,7 @@ import (
 	_ "github.com/smartcontractkit/cld-changesets/mcms/stellar/deploy"
 )
 
+//nolint:paralleltest // subtests share one localnet deployment and must run in order
 func TestChangeset_Stellar(t *testing.T) {
 	selector := chainselectors.STELLAR_LOCALNET.Selector
 	rt := stellartestutils.NewStellarRuntime(t, selector)

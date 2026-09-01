@@ -28,6 +28,7 @@ import (
 	_ "github.com/smartcontractkit/cld-changesets/mcms/stellar/readers"
 )
 
+//nolint:paralleltest // subtests share one localnet deployment and must run in order
 func TestChangeset_Stellar(t *testing.T) {
 	selector := chainselectors.STELLAR_LOCALNET.Selector
 	rt := stellartestutils.NewStellarRuntime(t, selector)
@@ -323,12 +324,12 @@ func stellarTransferInput(
 		},
 		MCMS: &cldf.MCMSTimelockProposalInput{
 			TimelockAction: mcmstypes.TimelockActionSchedule,
-			ValidUntil: uint32(
+			ValidUntil: uint32( //nolint:gosec // test timestamp
 				time.Now().
 					Add(2 * time.Hour).
 					UTC().
 					Unix(),
-			), //nolint:gosec // test timestamp
+			),
 			TimelockDelay: mcmstypes.NewDuration(0),
 			Description:   "Transfer Stellar MCMS ownership to timelock",
 		},

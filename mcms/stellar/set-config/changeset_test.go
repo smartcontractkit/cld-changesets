@@ -32,6 +32,7 @@ import (
 	_ "github.com/smartcontractkit/cld-changesets/mcms/stellar/transfer-to-timelock"
 )
 
+//nolint:paralleltest // subtests share one localnet deployment and must run in order
 func TestChangeset_Stellar(t *testing.T) {
 	selector := chainselectors.STELLAR_LOCALNET.Selector
 	rt := stellartestutils.NewStellarRuntime(t, selector)
@@ -269,6 +270,8 @@ func TestChangeset_Stellar(t *testing.T) {
 // This test deliberately uses its own localnet container: it transfers
 // ownership to the timelock, which would break TestChangeset_Stellar's
 // direct-send subtests if the deployment were shared.
+//
+//nolint:paralleltest // needs its own localnet container; serialized to avoid parallel-container flake
 func TestChangeset_Stellar_NonZeroRoot(t *testing.T) {
 	selector := chainselectors.STELLAR_LOCALNET.Selector
 	rt := stellartestutils.NewStellarRuntime(t, selector)
@@ -398,12 +401,12 @@ func stellarGovernedTransferInput(selector uint64) transfertotimelock.Input {
 		},
 		MCMS: &cldf.MCMSTimelockProposalInput{
 			TimelockAction: mcmstypes.TimelockActionSchedule,
-			ValidUntil: uint32(
+			ValidUntil: uint32( //nolint:gosec // test timestamp
 				time.Now().
 					Add(2 * time.Hour).
 					UTC().
 					Unix(),
-			), //nolint:gosec // test timestamp
+			),
 			TimelockDelay: mcmstypes.NewDuration(0),
 			Description:   "Transfer Stellar MCMS ownership to timelock",
 		},
@@ -434,12 +437,12 @@ func newMCMSInput(
 
 	return &cldf.MCMSTimelockProposalInput{
 		TimelockAction: action,
-		ValidUntil: uint32(
+		ValidUntil: uint32( //nolint:gosec // test timestamp
 			time.Now().
 				Add(2 * time.Hour).
 				UTC().
 				Unix(),
-		), //nolint:gosec // test timestamp
+		),
 		TimelockDelay: delay,
 		Qualifier:     qualifier,
 		Description:   description,

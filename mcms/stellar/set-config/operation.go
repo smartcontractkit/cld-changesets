@@ -1,6 +1,7 @@
 package stellarsetconfig
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -46,13 +47,13 @@ func setStellarMCMConfig(
 	in OpStellarSetConfigInput,
 ) (OpStellarSetConfigOutput, error) {
 	if in.Target.Address == "" {
-		return OpStellarSetConfigOutput{}, fmt.Errorf(
+		return OpStellarSetConfigOutput{}, errors.New(
 			"stellar set-config: target address is empty",
 		)
 	}
 
 	if in.Target.ContractType == "" {
-		return OpStellarSetConfigOutput{}, fmt.Errorf(
+		return OpStellarSetConfigOutput{}, errors.New(
 			"stellar set-config: contract type is empty",
 		)
 	}

@@ -3,6 +3,7 @@ package stellardeploy
 import (
 	"context"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 
 	"github.com/stellar/go-stellar-sdk/network"
@@ -55,10 +56,10 @@ func deriveDeploymentSalt(contractType cldf.ContractType, qualifier string, atte
 
 func computeContractID(networkPassphrase string, deployerAddress string, salt [32]byte) (string, error) {
 	if networkPassphrase == "" {
-		return "", fmt.Errorf("compute Stellar contract ID: network passphrase is empty")
+		return "", errors.New("compute Stellar contract ID: network passphrase is empty")
 	}
 	if deployerAddress == "" {
-		return "", fmt.Errorf("compute Stellar contract ID: deployer address is empty")
+		return "", errors.New("compute Stellar contract ID: deployer address is empty")
 	}
 
 	accountID, err := xdr.AddressToAccountId(deployerAddress)
@@ -108,19 +109,19 @@ func resolveDeploymentIdentity(
 	wasm []byte,
 ) (deploymentIdentity, error) {
 	if reader == nil {
-		return deploymentIdentity{}, fmt.Errorf("resolve Stellar deployment identity: ledger reader is nil")
+		return deploymentIdentity{}, errors.New("resolve Stellar deployment identity: ledger reader is nil")
 	}
 	if networkPassphrase == "" {
-		return deploymentIdentity{}, fmt.Errorf("resolve Stellar deployment identity: network passphrase is empty")
+		return deploymentIdentity{}, errors.New("resolve Stellar deployment identity: network passphrase is empty")
 	}
 	if deployerAddress == "" {
-		return deploymentIdentity{}, fmt.Errorf("resolve Stellar deployment identity: deployer address is empty")
+		return deploymentIdentity{}, errors.New("resolve Stellar deployment identity: deployer address is empty")
 	}
 	if contractType == "" {
-		return deploymentIdentity{}, fmt.Errorf("resolve Stellar deployment identity: contract type is empty")
+		return deploymentIdentity{}, errors.New("resolve Stellar deployment identity: contract type is empty")
 	}
 	if len(wasm) == 0 {
-		return deploymentIdentity{}, fmt.Errorf("resolve Stellar deployment identity: WASM is empty")
+		return deploymentIdentity{}, errors.New("resolve Stellar deployment identity: WASM is empty")
 	}
 
 	expectedWASMHash := xdr.Hash(sha256.Sum256(wasm))
@@ -235,7 +236,7 @@ func readContractInstanceIdentity(
 	}
 
 	var entry xdr.LedgerEntryData
-	if err := xdr.SafeUnmarshalBase64(entryResult.DataXDR, &entry); err != nil {
+	if unmarshalErr := xdr.SafeUnmarshalBase64(entryResult.DataXDR, &entry); unmarshalErr != nil {
 		return contractInstanceIdentity{}, fmt.Errorf(
 			"decode Stellar contract instance ledger entry for %s: %w",
 			contractID,
@@ -295,12 +296,12 @@ func contractScAddress(contractID string) (xdr.ScAddress, error) {
 
 func contractIDFromScAddress(address xdr.ScAddress) (string, error) {
 	if address.Type != xdr.ScAddressTypeScAddressTypeContract {
-		return "", fmt.Errorf("Stellar address is not a contract address")
+		return "", errors.New("stellar address is not a contract address")
 	}
 
 	contractID, ok := address.GetContractId()
 	if !ok {
-		return "", fmt.Errorf("Stellar contract address has no contract ID")
+		return "", errors.New("stellar contract address has no contract ID")
 	}
 
 	encoded, err := strkey.Encode(strkey.VersionByteContract, contractID[:])

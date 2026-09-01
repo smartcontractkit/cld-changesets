@@ -12,14 +12,14 @@ import (
 	cldfstellar "github.com/smartcontractkit/chainlink-deployments-framework/chain/stellar"
 )
 
-func FundStellarSigner(t testing.TB, chain cldfstellar.Chain) {
-	t.Helper()
+func FundStellarSigner(tb testing.TB, chain cldfstellar.Chain) {
+	tb.Helper()
 
-	require.NotNil(t, chain.Signer)
-	require.NotEmpty(t, chain.FriendbotURL)
+	require.NotNil(tb, chain.Signer)
+	require.NotEmpty(tb, chain.FriendbotURL)
 
 	friendbotURL, err := url.Parse(chain.FriendbotURL)
-	require.NoError(t, err)
+	require.NoError(tb, err)
 
 	query := friendbotURL.Query()
 	query.Set("addr", chain.Signer.Address())
@@ -31,9 +31,9 @@ func FundStellarSigner(t testing.TB, chain cldfstellar.Chain) {
 	var lastBody string
 	var lastErr error
 
-	require.Eventually(t, func() bool {
+	require.Eventually(tb, func() bool {
 		req, err := http.NewRequestWithContext(
-			t.Context(),
+			tb.Context(),
 			http.MethodGet,
 			friendbotURL.String(),
 			nil,

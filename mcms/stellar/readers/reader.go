@@ -1,6 +1,7 @@
 package stellarreaders
 
 import (
+	"errors"
 	"fmt"
 
 	mcmsstellar "github.com/smartcontractkit/mcms/sdk/stellar"
@@ -144,7 +145,7 @@ func getAddressRef(
 	qualifier string,
 ) (datastore.AddressRef, error) {
 	if e.DataStore == nil {
-		return datastore.AddressRef{}, fmt.Errorf(
+		return datastore.AddressRef{}, errors.New(
 			"datastore is not available",
 		)
 	}

@@ -319,6 +319,7 @@ func TestResolveDeploymentIdentity_LedgerError(t *testing.T) {
 	require.ErrorContains(t, err, "resolve Stellar deployment identity")
 }
 
+//nolint:paralleltest // subtests share one localnet deployment and must run in order
 func TestResolveDeploymentIdentity_AdoptsExistingAndAdvancesOnCollision(
 	t *testing.T,
 ) {

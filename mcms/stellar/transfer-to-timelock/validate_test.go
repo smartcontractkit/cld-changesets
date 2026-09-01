@@ -31,6 +31,8 @@ type transferValidateRef struct {
 }
 
 func TestVerifyStellarChains(t *testing.T) {
+	t.Parallel()
+
 	selector := chainselectors.STELLAR_LOCALNET.Selector
 	qualifier := "qualified"
 
@@ -183,6 +185,8 @@ func TestVerifyStellarChains(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			ds := datastore.NewMemoryDataStore()
 
 			for _, ref := range tt.refs {
@@ -209,7 +213,7 @@ func TestVerifyStellarChains(t *testing.T) {
 			if tt.useMCMS {
 				input.MCMS = &cldf.MCMSTimelockProposalInput{
 					TimelockAction: tt.action,
-					ValidUntil: uint32(
+					ValidUntil: uint32( //nolint:gosec // test timestamp
 						time.Now().
 							Add(2 * time.Hour).
 							UTC().
