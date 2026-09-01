@@ -240,7 +240,7 @@ func readContractInstanceIdentity(
 		return contractInstanceIdentity{}, fmt.Errorf(
 			"decode Stellar contract instance ledger entry for %s: %w",
 			contractID,
-			err,
+			unmarshalErr,
 		)
 	}
 
