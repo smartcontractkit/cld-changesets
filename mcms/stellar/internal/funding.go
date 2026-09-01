@@ -25,6 +25,8 @@ func FundStellarSigner(t testing.TB, chain cldfstellar.Chain) {
 	query.Set("addr", chain.Signer.Address())
 	friendbotURL.RawQuery = query.Encode()
 
+	client := &http.Client{Timeout: 10 * time.Second}
+
 	var lastStatus int
 	var lastBody string
 	var lastErr error
@@ -41,7 +43,7 @@ func FundStellarSigner(t testing.TB, chain cldfstellar.Chain) {
 			return false
 		}
 
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := client.Do(req)
 		if err != nil {
 			lastErr = err
 			return false

@@ -63,7 +63,7 @@ var OpTransferToTimelock = operations.NewOperation(
 			return out, fmt.Errorf("contract %s has no owner", in.Contract.Address)
 		}
 		if *owner == in.Timelock {
-			b.Logger.Infof("contract %s already owned by timelock", in.Contract.Type)
+			b.Logger.Infof("contract %s already owned by timelock", in.Contract.Address)
 			return out, nil
 		}
 

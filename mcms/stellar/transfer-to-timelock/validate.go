@@ -34,9 +34,10 @@ func verifyStellarChains(env cldf.Environment, inputs []transfertotimelock.Chain
 }
 
 // validateBypassTargets rejects bypass-action transfers that include the
-// Bypasser MCM itself. Executing that acceptance via bypasser_execute_batch
-// re-enters the Bypasser MCM while it is executing, which Soroban forbids.
-// Bypass stays allowed for other ownable targets (e.g. the CRE forwarder).
+// Bypasser MCM itself: executing that acceptance via bypasser_execute_batch
+// re-enters the Bypasser MCM while it is still executing, which Soroban
+// forbids. Bypass stays allowed for other ownable targets (e.g. the CRE
+// forwarder).
 func validateBypassTargets(input transfertotimelock.ChainInput) error {
 	if input.MCMS.TimelockAction != mcmstypes.TimelockActionBypass {
 		return nil
@@ -47,8 +48,9 @@ func validateBypassTargets(input transfertotimelock.ChainInput) error {
 		if contract.Type == bypasserType {
 			return fmt.Errorf(
 				"stellar chain %d: cannot transfer the Bypasser MCM via a bypass proposal: "+
-					"executing its accept_ownership through bypasser_execute_batch re-enters the "+
-					"executing Soroban contract; use the schedule action instead",
+					"bypasser_execute_batch would call accept_ownership on the Bypasser MCM and "+
+					"re-enter it while it is still executing, which Soroban forbids; use the "+
+					"schedule action instead",
 				input.ChainSelector,
 			)
 		}

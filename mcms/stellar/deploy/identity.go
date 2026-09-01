@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 
+	"github.com/stellar/go-stellar-sdk/network"
 	protocolrpc "github.com/stellar/go-stellar-sdk/protocols/rpc"
 	"github.com/stellar/go-stellar-sdk/strkey"
 	"github.com/stellar/go-stellar-sdk/xdr"
@@ -65,7 +66,7 @@ func computeContractID(networkPassphrase string, deployerAddress string, salt [3
 		return "", fmt.Errorf("compute Stellar contract ID: decode deployer address %q: %w", deployerAddress, err)
 	}
 
-	networkID := sha256.Sum256([]byte(networkPassphrase))
+	networkID := network.ID(networkPassphrase)
 	preimage := xdr.HashIdPreimage{
 		Type: xdr.EnvelopeTypeEnvelopeTypeContractId,
 		ContractId: &xdr.HashIdPreimageContractId{
