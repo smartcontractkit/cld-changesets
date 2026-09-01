@@ -197,6 +197,67 @@ func TestChangeset_Stellar(t *testing.T) {
 			newCfg,
 		)
 	})
+
+	// Runs last: it rewrites the config of all three MCMs. Per-role configs
+	// are deliberately distinct (EVM set-config test pattern: quorums 2/1/3
+	// with different signer sets) so a swapped proposer/canceller/bypasser
+	// pairing anywhere in the pipeline fails the read-back; identical configs
+	// would be swap-blind.
+	t.Run("direct send applies distinct configs per role", func(t *testing.T) {
+		cfgProposer := cldftesthelpers.SingleGroupMCMS(t)
+		cfgProposer.Signers = append(cfgProposer.Signers, createStellarMCMSSigner(t))
+		cfgProposer.Quorum = 2
+
+		cfgCanceller := cldftesthelpers.SingleGroupMCMS(t)
+
+		cfgBypasser := cldftesthelpers.SingleGroupMCMS(t)
+		cfgBypasser.Signers = append(
+			cfgBypasser.Signers,
+			createStellarMCMSSigner(t),
+			createStellarMCMSSigner(t),
+		)
+		cfgBypasser.Quorum = 3
+
+		err := rt.Exec(
+			runtime.ChangesetTask(
+				setconfig.Changeset{},
+				setConfigInput(
+					[]setconfig.ContractSetConfig{
+						{
+							Ref: stellartestutils.ContractRef(
+								selector,
+								mcmscontracts.ProposerManyChainMultisig,
+								"",
+							),
+							Config: cfgProposer,
+						},
+						{
+							Ref: stellartestutils.ContractRef(
+								selector,
+								mcmscontracts.CancellerManyChainMultisig,
+								"",
+							),
+							Config: cfgCanceller,
+						},
+						{
+							Ref: stellartestutils.ContractRef(
+								selector,
+								mcmscontracts.BypasserManyChainMultisig,
+								"",
+							),
+							Config: cfgBypasser,
+						},
+					},
+					nil,
+				),
+			),
+		)
+		require.NoError(t, err)
+
+		assertStellarConfigEquals(t, inspector, proposer, cfgProposer)
+		assertStellarConfigEquals(t, inspector, canceller, cfgCanceller)
+		assertStellarConfigEquals(t, inspector, bypasser, cfgBypasser)
+	})
 }
 
 // TestChangeset_Stellar_NonZeroRoot proves that a set-config with an unchanged
@@ -204,6 +265,10 @@ func TestChangeset_Stellar(t *testing.T) {
 // operation must still run set_config so clear_root wipes the stale root. The
 // non-zero root arises exactly as in production — by executing a governed
 // proposal (here: the transfer-to-timelock acceptance) through the proposer.
+//
+// This test deliberately uses its own localnet container: it transfers
+// ownership to the timelock, which would break TestChangeset_Stellar's
+// direct-send subtests if the deployment were shared.
 func TestChangeset_Stellar_NonZeroRoot(t *testing.T) {
 	selector := chainselectors.STELLAR_LOCALNET.Selector
 	rt := stellartestutils.NewStellarRuntime(t, selector)

@@ -19,6 +19,13 @@ import (
 	"github.com/smartcontractkit/cld-changesets/mcms/changesets/deploy"
 )
 
+// containerOnce ensures CTF framework initialization (docker network setup)
+// happens only once per test binary, matching the shared-once convention every
+// other chain's container loader follows in cldf's engine/test/onchain. A
+// fresh Once per runtime re-runs the setup for every container and is a flake
+// source when packages run in parallel.
+var containerOnce = &sync.Once{}
+
 func NewStellarRuntime(t *testing.T, selector uint64) *runtime.Runtime {
 	t.Helper()
 
@@ -27,7 +34,7 @@ func NewStellarRuntime(t *testing.T, selector uint64) *runtime.Runtime {
 		selector,
 		stellarprovider.CTFChainProviderConfig{
 			DeployerKeypairGen: stellarprovider.KeypairRandom(),
-			Once:               &sync.Once{},
+			Once:               containerOnce,
 		},
 	)
 

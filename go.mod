@@ -356,4 +356,6 @@ require (
 	sigs.k8s.io/yaml v1.6.0 // indirect
 )
 
+// DEV ONLY: drop before merge — repin to the mcms release cut from the
+// re-scoped mcms#844 (Stellar SDK hardening, no deployers).
 replace github.com/smartcontractkit/mcms => ../mcms

@@ -4,13 +4,14 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/common"
+
 	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	"github.com/stretchr/testify/require"
 
 	chainselectors "github.com/smartcontractkit/chain-selectors"
 	mcmscontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/mcms"
 	cldfproposalutils "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils"
-	cldftesthelpers "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/mcms/proposalutils/testhelpers"
 
 	stellardeployment "github.com/smartcontractkit/chainlink-stellar/deployment"
 
@@ -35,7 +36,11 @@ func TestChangeset_Stellar(t *testing.T) {
 	inspector := mcmsstellar.NewInspectorFromInvoker(deployer)
 	timelockInspector := mcmsstellar.NewTimelockInspectorFromInvoker(deployer)
 
-	cfg := cldftesthelpers.SingleGroupTimelockConfig(t)
+	// Per-role configs are deliberately distinct (same pattern as the EVM
+	// deploy test) so assertStellarDeployment detects a swapped
+	// proposer/canceller/bypasser pairing; identical configs would be
+	// swap-blind.
+	cfg := distinctRoleTimelockConfig(t)
 	cfg.TimelockMinDelay = big.NewInt(7)
 
 	t.Run("fresh deploy", func(t *testing.T) {
@@ -108,6 +113,30 @@ func TestChangeset_Stellar(t *testing.T) {
 			7,
 		)
 	})
+}
+
+// distinctRoleTimelockConfig mirrors the EVM deploy test's per-role config
+// pattern: each MCM role gets a different single signer, so reading configs
+// back per role fails on any pairwise swap.
+func distinctRoleTimelockConfig(t *testing.T) cldfproposalutils.MCMSWithTimelockConfig {
+	t.Helper()
+
+	signer := func(addr string) mcmstypes.Config {
+		cfg, err := mcmstypes.NewConfig(
+			1,
+			[]common.Address{common.HexToAddress(addr)},
+			[]mcmstypes.Config{},
+		)
+		require.NoError(t, err)
+
+		return cfg
+	}
+
+	return cldfproposalutils.MCMSWithTimelockConfig{
+		Proposer:  signer("0x0000000000000000000000000000000000000001"),
+		Canceller: signer("0x0000000000000000000000000000000000000002"),
+		Bypasser:  signer("0x0000000000000000000000000000000000000003"),
+	}
 }
 
 type stellarRefs struct {
