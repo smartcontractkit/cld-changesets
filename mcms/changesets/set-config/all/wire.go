@@ -8,4 +8,6 @@ import (
 	_ "github.com/smartcontractkit/cld-changesets/mcms/evm/set-config"
 	_ "github.com/smartcontractkit/cld-changesets/mcms/solana/readers"
 	_ "github.com/smartcontractkit/cld-changesets/mcms/solana/set-config"
+	_ "github.com/smartcontractkit/cld-changesets/mcms/stellar/readers"
+	_ "github.com/smartcontractkit/cld-changesets/mcms/stellar/set-config"
 )
