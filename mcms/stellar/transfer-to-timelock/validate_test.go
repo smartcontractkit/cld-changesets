@@ -50,8 +50,9 @@ func TestVerifyStellarChains(t *testing.T) {
 			wantErr: "not found in environment",
 		},
 		{
-			name:         "chain present without MCMS",
+			name:         "chain present without MCMS fails",
 			chainPresent: true,
+			wantErr:      "MCMS config is required for Stellar chain",
 		},
 		{
 			name:         "missing timelock ref",

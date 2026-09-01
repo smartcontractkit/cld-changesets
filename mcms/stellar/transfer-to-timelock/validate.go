@@ -19,8 +19,11 @@ func verifyStellarChains(env cldf.Environment, inputs []transfertotimelock.Chain
 		if _, ok := chains[input.ChainSelector]; !ok {
 			return fmt.Errorf("stellar chain %d not found in environment", input.ChainSelector)
 		}
+		// The Stellar transfer sequence hard-requires MCMS input (the
+		// acceptance is always governed); reject it here so bad inputs fail
+		// at verification instead of at execution time.
 		if input.MCMS == nil {
-			continue
+			return fmt.Errorf("MCMS config is required for Stellar chain %d", input.ChainSelector)
 		}
 		if err := stellarinternal.ValidateMCMSRefs(env, input.ChainSelector, *input.MCMS); err != nil {
 			return err
@@ -39,7 +42,7 @@ func verifyStellarChains(env cldf.Environment, inputs []transfertotimelock.Chain
 // forbids. Bypass stays allowed for other ownable targets (e.g. the CRE
 // forwarder).
 func validateBypassTargets(input transfertotimelock.ChainInput) error {
-	if input.MCMS.TimelockAction != mcmstypes.TimelockActionBypass {
+	if input.MCMS == nil || input.MCMS.TimelockAction != mcmstypes.TimelockActionBypass {
 		return nil
 	}
 
