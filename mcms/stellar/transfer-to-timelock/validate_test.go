@@ -17,6 +17,7 @@ import (
 
 	mcmstypes "github.com/smartcontractkit/mcms/types"
 
+	"github.com/smartcontractkit/cld-changesets/datastore/refkey"
 	"github.com/smartcontractkit/cld-changesets/internal/semvers"
 	transfertotimelock "github.com/smartcontractkit/cld-changesets/mcms/changesets/transfer-to-timelock"
 
@@ -39,6 +40,7 @@ func TestVerifyStellarChains(t *testing.T) {
 		useMCMS      bool
 		action       mcmstypes.TimelockAction
 		refs         []transferValidateRef
+		contracts    []refkey.RefKey
 		wantErr      string
 	}{
 		{
@@ -108,7 +110,7 @@ func TestVerifyStellarChains(t *testing.T) {
 			wantErr: "resolve Stellar MCMS",
 		},
 		{
-			name:         "bypass success",
+			name:         "bypass without bypasser target succeeds",
 			chainPresent: true,
 			useMCMS:      true,
 			action:       mcmstypes.TimelockActionBypass,
@@ -124,6 +126,41 @@ func TestVerifyStellarChains(t *testing.T) {
 					qualifier:    qualifier,
 				},
 			},
+			contracts: []refkey.RefKey{
+				refkey.New(
+					selector,
+					datastore.ContractType("StellarForwarder"),
+					&semvers.V1_0_0,
+					qualifier,
+				),
+			},
+		},
+		{
+			name:         "bypass including bypasser target fails",
+			chainPresent: true,
+			useMCMS:      true,
+			action:       mcmstypes.TimelockActionBypass,
+			refs: []transferValidateRef{
+				{
+					contractType: mcmscontracts.RBACTimelock,
+					address:      "timelock",
+					qualifier:    qualifier,
+				},
+				{
+					contractType: mcmscontracts.BypasserManyChainMultisig,
+					address:      "bypasser",
+					qualifier:    qualifier,
+				},
+			},
+			contracts: []refkey.RefKey{
+				refkey.New(
+					selector,
+					datastore.ContractType(mcmscontracts.BypasserManyChainMultisig),
+					&semvers.V1_0_0,
+					qualifier,
+				),
+			},
+			wantErr: "cannot transfer the Bypasser MCM via a bypass proposal",
 		},
 		{
 			name:         "qualifier is part of identity",
@@ -166,6 +203,7 @@ func TestVerifyStellarChains(t *testing.T) {
 
 			input := transfertotimelock.ChainInput{
 				ChainSelector: selector,
+				Contracts:     tt.contracts,
 			}
 
 			if tt.useMCMS {
