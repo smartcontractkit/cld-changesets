@@ -6,4 +6,6 @@ import (
 	_ "github.com/smartcontractkit/cld-changesets/mcms/evm/transfer-to-timelock"
 	_ "github.com/smartcontractkit/cld-changesets/mcms/solana/readers"
 	_ "github.com/smartcontractkit/cld-changesets/mcms/solana/transfer-to-timelock"
+	_ "github.com/smartcontractkit/cld-changesets/mcms/stellar/readers"
+	_ "github.com/smartcontractkit/cld-changesets/mcms/stellar/transfer-to-timelock"
 )
