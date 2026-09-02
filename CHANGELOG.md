@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.0](https://github.com/smartcontractkit/cld-changesets/compare/v0.8.2...v0.9.0) (2026-09-01)
+
+
+### Features
+
+* **mcms:** Stellar mcms changesets ([#122](https://github.com/smartcontractkit/cld-changesets/issues/122)) ([7c5badf](https://github.com/smartcontractkit/cld-changesets/commit/7c5badfa911c4a8f2e1758fd4d14b7728536f58a))
+
 ## [0.8.2](https://github.com/smartcontractkit/cld-changesets/compare/v0.8.1...v0.8.2) (2026-08-14)
 
 
