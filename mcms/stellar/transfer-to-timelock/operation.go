@@ -67,18 +67,7 @@ var OpTransferToTimelock = operations.NewOperation(
 			return out, nil
 		}
 
-		pendingOwner, err := inspector.GetPendingOwner(b.GetContext(), in.Contract.Address)
-		if err != nil {
-			return out, fmt.Errorf("read pending owner for %s: %w", in.Contract.Address, err)
-		}
-		if pendingOwner != nil && *pendingOwner != in.Timelock {
-			return out, fmt.Errorf(
-				"contract %s has unexpected pending owner %s",
-				in.Contract.Address,
-				*pendingOwner,
-			)
-		}
-
+		var pendingOwner *string
 		if !in.OnlyAcceptOwnership {
 			if *owner != deployer.SignerAddress() {
 				return out, fmt.Errorf(
@@ -89,22 +78,20 @@ var OpTransferToTimelock = operations.NewOperation(
 				)
 			}
 
-			if pendingOwner == nil {
-				if _, err = mcmsstellar.NewConfigurer(deployer).TransferOwnership(
-					b.GetContext(),
-					in.Contract.Address,
-					in.Timelock,
-				); err != nil {
-					return out, fmt.Errorf("transfer ownership of %s to timelock: %w", in.Contract.Address, err)
-				}
+			if _, err = mcmsstellar.NewConfigurer(deployer).TransferOwnership(
+				b.GetContext(),
+				in.Contract.Address,
+				in.Timelock,
+			); err != nil {
+				return out, fmt.Errorf("transfer ownership of %s to timelock: %w", in.Contract.Address, err)
+			}
 
-				pendingOwner, err = inspector.GetPendingOwner(b.GetContext(), in.Contract.Address)
-				if err != nil {
-					return out, fmt.Errorf("read pending owner for %s after transfer: %w", in.Contract.Address, err)
-				}
-				if pendingOwner == nil || *pendingOwner != in.Timelock {
-					return out, fmt.Errorf("contract %s ownership transfer to timelock was not recorded", in.Contract.Address)
-				}
+			pendingOwner, err = inspector.GetPendingOwner(b.GetContext(), in.Contract.Address)
+			if err != nil {
+				return out, fmt.Errorf("read pending owner for %s after transfer: %w", in.Contract.Address, err)
+			}
+			if pendingOwner == nil || *pendingOwner != in.Timelock {
+				return out, fmt.Errorf("contract %s ownership transfer to timelock was not recorded", in.Contract.Address)
 			}
 		}
 
