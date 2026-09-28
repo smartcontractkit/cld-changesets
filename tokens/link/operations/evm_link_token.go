@@ -16,7 +16,7 @@ var OpEVMDeployLinkToken = contract.NewDeploy(contract.DeployParams[struct{}]{
 	BytecodeByTypeAndVersion: map[string]contract.Bytecode{
 		types.BurnMintLinkTokenTypeAndVersion.String(): {
 			EVM:      common.FromHex(link_token.LinkTokenBin),
-			ZkSyncVM: link_token.ZkBytecode,
+			// ZkSyncVM: link_token.ZkBytecode,
 		},
 	},
 })

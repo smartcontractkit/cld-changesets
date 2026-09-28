@@ -131,12 +131,9 @@ func deployLinkTokenContractEVM(
 					chain.Client,
 				)
 			} else {
-				linkTokenAddr, _, linkToken, err2 = link_token.DeployLinkTokenZk(
-					nil,
-					chain.ClientZkSyncVM,
-					chain.DeployerKeyZkSyncVM,
-					chain.Client,
-				)
+				return cldf.ContractDeploy[*link_token.LinkToken]{
+					Err: fmt.Errorf("deployment with zksync bytecode no longer supported"),
+				}
 			}
 
 			return cldf.ContractDeploy[*link_token.LinkToken]{
