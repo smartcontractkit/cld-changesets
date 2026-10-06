@@ -3,6 +3,8 @@ package changesets
 import (
 	"testing"
 
+	"github.com/ethereum/go-ethereum/common"
+	eth_types "github.com/ethereum/go-ethereum/core/types"
 	"github.com/gagliardetto/solana-go"
 	"github.com/stretchr/testify/require"
 
@@ -73,7 +75,7 @@ func TestDeployStaticLinkToken(t *testing.T) {
 }
 
 func TestDeployLinkTokenZk(t *testing.T) {
-	t.Skip("https://smartcontract-it.atlassian.net/browse/CCIP-6427")
+	t.Skip("CTF anvil-zksync container runs without EVM emulator (--evm-interpreter); LINK deploys via emulator. See CCIP-6427")
 	t.Parallel()
 
 	selector := chain_selectors.TEST_90000050.Selector
@@ -92,6 +94,66 @@ func TestDeployLinkTokenZk(t *testing.T) {
 	require.Len(t, refs, 1)
 	require.Equal(t, datastore.ContractType(linkcontracts.LinkToken), refs[0].Type)
 	require.True(t, semvers.V1_0_0.Equal(refs[0].Version))
+}
+
+// TestDeployLinkTokenZkSyncEmulator covers the zkSync EVM-emulator path without a zkSync node:
+// simulated chains flagged IsZkSyncVM must deploy EVM bytecode through the standard client,
+// have the deploy tx confirmed and the address recorded. ClientZkSyncVM and
+// DeployerKeyZkSyncVM stay nil, so any native zkSync deploy attempt would fail.
+func TestDeployLinkTokenZkSyncEmulator(t *testing.T) {
+	t.Parallel()
+
+	burnMintSel := chain_selectors.TEST_90000001.Selector
+	staticSel := chain_selectors.TEST_90000002.Selector
+	rt, err := runtime.New(t.Context(), runtime.WithEnvOpts(
+		environment.WithEVMSimulated(t, []uint64{burnMintSel, staticSel}),
+	))
+	require.NoError(t, err)
+
+	e := rt.Environment()
+	var confirmed []common.Hash
+	chains := make(map[uint64]cldf_chain.BlockChain)
+	for sel, chain := range e.BlockChains.EVMChains() {
+		chain.IsZkSyncVM = true
+		require.Nil(t, chain.ClientZkSyncVM)
+		require.Nil(t, chain.DeployerKeyZkSyncVM)
+
+		confirm := chain.Confirm
+		chain.Confirm = func(tx *eth_types.Transaction) (uint64, error) {
+			confirmed = append(confirmed, tx.Hash())
+			return confirm(tx)
+		}
+		chains[sel] = chain
+	}
+	e.BlockChains = cldf_chain.NewBlockChains(chains)
+
+	input := DeployLinkTokenInput{
+		EVM: map[uint64]EVMLinkConfig{
+			burnMintSel: {},
+			staticSel:   {Variant: EVMLinkStatic},
+		},
+	}
+	require.NoError(t, DeployLinkTokenChangeset{}.VerifyPreconditions(e, input))
+	out, err := DeployLinkTokenChangeset{}.Apply(e, input)
+	require.NoError(t, err)
+	require.Len(t, confirmed, 2)
+
+	refs, err := out.DataStore.Addresses().Fetch()
+	require.NoError(t, err)
+	require.Len(t, refs, 2)
+
+	wantTypes := map[uint64]datastore.ContractType{
+		burnMintSel: datastore.ContractType(linkcontracts.LinkToken),
+		staticSel:   datastore.ContractType(linkcontracts.StaticLinkToken),
+	}
+	for _, ref := range refs {
+		require.Equal(t, wantTypes[ref.ChainSelector], ref.Type)
+		require.True(t, semvers.V1_0_0.Equal(ref.Version))
+
+		code, codeErr := chains[ref.ChainSelector].(cldf_evm.Chain).Client.CodeAt(t.Context(), common.HexToAddress(ref.Address), nil)
+		require.NoError(t, codeErr)
+		require.NotEmpty(t, code)
+	}
 }
 
 func TestDeploySolanaLinkToken(t *testing.T) {

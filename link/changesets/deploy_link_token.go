@@ -125,19 +125,10 @@ func deployLinkTokenContractEVM(
 				linkToken     *link_token.LinkToken
 				err2          error
 			)
-			if !chain.IsZkSyncVM {
-				linkTokenAddr, tx, linkToken, err2 = link_token.DeployLinkToken(
-					chain.DeployerKey,
-					chain.Client,
-				)
-			} else {
-				linkTokenAddr, _, linkToken, err2 = link_token.DeployLinkTokenZk(
-					nil,
-					chain.ClientZkSyncVM,
-					chain.DeployerKeyZkSyncVM,
-					chain.Client,
-				)
-			}
+			linkTokenAddr, tx, linkToken, err2 = link_token.DeployLinkToken(
+				chain.DeployerKey,
+				chain.Client,
+			)
 
 			return cldf.ContractDeploy[*link_token.LinkToken]{
 				Address:  linkTokenAddr,

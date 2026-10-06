@@ -2,6 +2,7 @@ package operations
 
 import (
 	"github.com/ethereum/go-ethereum/common"
+
 	"github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/operations2/contract"
 	"github.com/smartcontractkit/chainlink-evm/gethwrappers/shared/generated/initial/link_token"
 
@@ -15,8 +16,7 @@ var OpEVMDeployLinkToken = contract.NewDeploy(contract.DeployParams[struct{}]{
 	ContractMetadata: link_token.LinkTokenMetaData,
 	BytecodeByTypeAndVersion: map[string]contract.Bytecode{
 		types.BurnMintLinkTokenTypeAndVersion.String(): {
-			EVM:      common.FromHex(link_token.LinkTokenBin),
-			ZkSyncVM: link_token.ZkBytecode,
+			EVM: common.FromHex(link_token.LinkTokenBin),
 		},
 	},
 })

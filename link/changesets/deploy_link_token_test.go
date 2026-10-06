@@ -3,6 +3,8 @@ package changesets
 import (
 	"testing"
 
+	"github.com/ethereum/go-ethereum/common"
+	eth_types "github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/require"
 
 	chain_selectors "github.com/smartcontractkit/chain-selectors"
@@ -14,6 +16,7 @@ import (
 	linkcontracts "github.com/smartcontractkit/chainlink-deployments-framework/engine/cld/contracts/link"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/environment"
 	"github.com/smartcontractkit/chainlink-deployments-framework/engine/test/runtime"
+	"github.com/smartcontractkit/chainlink-deployments-framework/pkg/logger"
 
 	"github.com/smartcontractkit/cld-changesets/internal/semvers"
 )
@@ -259,4 +262,48 @@ func TestDeployLinkTokenZk(t *testing.T) {
 	require.Len(t, refs, 1)
 	require.Equal(t, datastore.ContractType(linkcontracts.LinkToken), refs[0].Type)
 	require.True(t, semvers.V1_0_0.Equal(refs[0].Version))
+}
+
+// TestDeployLinkTokenContractEVMZkSyncEmulator covers the zkSync EVM-emulator path without a
+// zkSync node: a simulated chain flagged IsZkSyncVM must still deploy through the standard
+// client, have its tx confirmed and the address recorded. ClientZkSyncVM and
+// DeployerKeyZkSyncVM stay nil, so any native zkSync deploy attempt would fail.
+func TestDeployLinkTokenContractEVMZkSyncEmulator(t *testing.T) {
+	t.Parallel()
+
+	selector := chain_selectors.TEST_90000001.Selector
+	rt, err := runtime.New(t.Context(), runtime.WithEnvOpts(
+		environment.WithEVMSimulated(t, []uint64{selector}),
+	))
+	require.NoError(t, err)
+
+	chain := rt.Environment().BlockChains.EVMChains()[selector]
+	chain.IsZkSyncVM = true
+	require.Nil(t, chain.ClientZkSyncVM)
+	require.Nil(t, chain.DeployerKeyZkSyncVM)
+
+	var confirmed []common.Hash
+	confirm := chain.Confirm
+	chain.Confirm = func(tx *eth_types.Transaction) (uint64, error) {
+		confirmed = append(confirmed, tx.Hash())
+		return confirm(tx)
+	}
+
+	ab := cldf.NewMemoryAddressBook()
+	deploy, err := deployLinkTokenContractEVM(logger.Test(t), chain, ab)
+	require.NoError(t, err)
+	require.NotNil(t, deploy.Tx)
+	require.Equal(t, []common.Hash{deploy.Tx.Hash()}, confirmed)
+
+	code, err := chain.Client.CodeAt(t.Context(), deploy.Address, nil)
+	require.NoError(t, err)
+	require.NotEmpty(t, code)
+
+	addrs, err := ab.AddressesForChain(selector)
+	require.NoError(t, err)
+	require.Len(t, addrs, 1)
+	tv, ok := addrs[deploy.Address.String()]
+	require.True(t, ok)
+	require.Equal(t, linkcontracts.LinkToken, tv.Type)
+	require.True(t, semvers.V1_0_0.Equal(&tv.Version))
 }

@@ -119,11 +119,16 @@ func (DeployLinkTokenChangeset) Apply(e cldf.Environment, input DeployLinkTokenI
 			tv = types.StaticLinkTokenTypeAndVersion
 		}
 
+		// LINK has no zkSyncVM bytecode; on zkSync chains deploy EVM bytecode through
+		// the EVM emulator via the standard client instead of the zkSync deploy path.
+		deployChain := chain
+		deployChain.IsZkSyncVM = false
+
 		qualifier := cfg.Qualifier
 		report, err := cldfops.ExecuteOperation(
 			e.OperationsBundle,
 			op,
-			chain,
+			deployChain,
 			contract.DeployInput[struct{}]{
 				TypeAndVersion: tv,
 				Qualifier:      &qualifier,
