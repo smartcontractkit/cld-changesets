@@ -73,7 +73,7 @@ func TestDeployStaticLinkToken(t *testing.T) {
 }
 
 func TestDeployLinkTokenZk(t *testing.T) {
-	t.Skip("https://smartcontract-it.atlassian.net/browse/CCIP-6427")
+	t.Skip("CTF anvil-zksync container runs without EVM emulator (--evm-interpreter); LINK deploys via emulator. See CCIP-6427")
 	t.Parallel()
 
 	selector := chain_selectors.TEST_90000050.Selector
