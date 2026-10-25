@@ -60,22 +60,3 @@ jobs:
           go-test-cmd: go test -race -coverprofile=coverage.txt ./...
           use-go-cache: true
           artifact-name: unit-tests
-
-  sonarqube:
-    name: Sonar Scan
-    if: |
-      always() &&
-      github.event_name == 'pull_request' &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled')
-    runs-on: ubuntu-24.04
-    needs: [go-mod-sync, ci-lint, ci-lint-misc, ci-test]
-    permissions:
-      contents: read
-      actions: read
-    steps:
-      - name: Scan with Sonarqube
-        uses: smartcontractkit/.github/actions/ci-sonarqube-go@01d931b0455a754d12e7143cc54a5a3521a8f6f6 # ci-sonarqube-go@0.3.1
-        with:
-          sonar-token: ${{ secrets.SONAR_TOKEN }}
-          sonar-host-url: ${{ secrets.SONAR_HOST_URL }}
