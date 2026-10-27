@@ -26,8 +26,17 @@ import (
 // source when packages run in parallel.
 var containerOnce = &sync.Once{}
 
+// NewStellarRuntime starts a Stellar test node and returns a runtime for it.
+//
+// All Stellar tests are skipped for now. The test node uses the floating image
+// "stellar/quickstart:latest". Since 2026-10-23 this image rejects the MCMS WASM
+// upload with "HostError: Error(Context, InternalError)".
+//
+// TODO: Rebuild the contracts for the new protocol version. Then remove this skip.
 func NewStellarRuntime(t *testing.T, selector uint64) *runtime.Runtime {
 	t.Helper()
+
+	t.Skip("Stellar quickstart:latest rejects the MCMS WASM upload (HostError InternalError)")
 
 	provider := stellarprovider.NewCTFChainProvider(
 		t,
