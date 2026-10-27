@@ -26,6 +26,16 @@ import (
 // source when packages run in parallel.
 var containerOnce = &sync.Once{}
 
+// stellarQuickstartImage pins the Stellar test node image by digest. The default
+// image "stellar/quickstart:latest" is a floating tag. On 2026-10-21 upstream moved
+// it to stellar-rpc v30.0.0. After that, the MCMS WASM upload fails in simulation
+// with "HostError: Error(Context, InternalError)". This digest is from before that
+// change and matches the pin in smartcontractkit/mcms#904.
+//
+// TODO: Add support for stellar-rpc v30. Then remove the pin.
+const stellarQuickstartImage = "stellar/quickstart@sha256:21a149eef1e6636b1447ce826596071bf1fc435db9d0c03169d6e2094610c443"
+
+// NewStellarRuntime starts a Stellar test node and returns a runtime for it.
 func NewStellarRuntime(t *testing.T, selector uint64) *runtime.Runtime {
 	t.Helper()
 
@@ -35,6 +45,7 @@ func NewStellarRuntime(t *testing.T, selector uint64) *runtime.Runtime {
 		stellarprovider.CTFChainProviderConfig{
 			DeployerKeypairGen: stellarprovider.KeypairRandom(),
 			Once:               containerOnce,
+			Image:              stellarQuickstartImage,
 		},
 	)
 
